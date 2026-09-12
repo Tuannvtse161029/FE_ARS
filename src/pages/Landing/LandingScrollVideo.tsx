@@ -1352,27 +1352,21 @@ const Spotlight = ({ className = '', children }: SpotlightProps) => {
 
 
 
-  return null;
-  /* return (
 
 
 
+  // CRITICAL: this component MUST render the children it receives. An
+  // earlier patch left `return null;` in place while the JSX wrapper
+  // was commented out, which silently dropped the entire CTA section
+  // (the only place `<Spotlight>` is used). Restore the wrapper so
+  // the pointer-tracking variables --mx / --my actually drive a
+  // visible gradient on a DOM element, and the children reach the
+  // page.
+  return (
     <div ref={ref} className={`${styles.spotlight} ${className}`}>
-
-
-
       {children}
-
-
-
     </div>
-
-
-
-  ); */
-
-
-
+  );
 };
 
 
@@ -2014,6 +2008,10 @@ const HeroAct = ({ t }: { t: (k: string, f: string, p?: Record<string, string | 
 
 
     <section
+
+
+
+      id="hero"
 
 
 
@@ -3273,6 +3271,16 @@ const SubstanceAct = ({ t }: { t: (k: string, f: string, p?: Record<string, stri
 
 
 
+  // BUG FIX: progress was driven from `stageRef` (the sticky child,
+  // height = 100vh - 72px). Because that child is shorter than the
+  // viewport, `total = rect.height - vh` was negative and
+  // `usePanProgress` reported progress = 0 forever -- the rail never
+  // panned. Track the parent act (height = 118vh) so progress
+  // 0 -> 1 cleanly as the visitor scrolls through the section.
+  const actRef = useRef<HTMLElement>(null);
+
+
+
   const stageRef = useRef<HTMLDivElement>(null);
 
 
@@ -3281,7 +3289,7 @@ const SubstanceAct = ({ t }: { t: (k: string, f: string, p?: Record<string, stri
 
 
 
-  const progress = usePanProgress(stageRef);
+  const progress = usePanProgress(actRef);
 
 
 
@@ -3426,6 +3434,10 @@ const SubstanceAct = ({ t }: { t: (k: string, f: string, p?: Record<string, stri
 
 
       id="substance"
+
+
+
+      ref={actRef}
 
 
 
