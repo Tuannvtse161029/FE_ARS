@@ -45,7 +45,6 @@ import {
   Clock,
   User,
   Users,
-  Info,
 } from 'lucide-react';
 import api from '../../services/axios';
 import { API_ENDPOINTS } from '../../utils/constants';
@@ -629,24 +628,12 @@ export const LecturerMaterialsPage = () => {
   const handleLmDelete = async (id: number) => {
     if (!id) return;
     try {
-      // 1. Proactively cleanup/end any active shares for this material
-      const activeShares = activeSharesByMaterial.idMap.get(id) ?? [];
-      for (const share of activeShares) {
-        if (share.sharedMaterialId) {
-          try {
-            await sharedMaterialService.update(share.sharedMaterialId, {
-              ...share,
-              status: 'ENDED',
-            });
-          } catch {
-            // best-effort cleanup
-          }
-        }
-      }
-
-      await learningMaterialService.delete(id);
+      const deleteResult = await learningMaterialService.delete(id);
       setPendingDeleteId(null);
-      showBanner(t('lecturer.materials.delete.success', 'Material deleted.'));
+      const successMessage =
+        deleteResult?.message ||
+        t('lecturer.materials.delete.success', 'Material deleted.');
+      showBanner(successMessage);
       await Promise.all([refetchLearning(), loadShared(), loadCrossReference()]);
     } catch (err) {
       const message =
@@ -681,10 +668,9 @@ export const LecturerMaterialsPage = () => {
   }, [loadShared]);
 
   // Look up the material title for each SharedMaterial row. The BE contract
-  // stores `paperId` (the underlying LearningMaterial id) together with the
-  // full status enum and a 30-day expiry auto-applied on create, so we use
-  // `paperId` to cross-reference a real LearningMaterial when one exists,
-  // and fall back to whatever the API returned otherwise.
+  // stores only `paperId` today (see the BackendGapBanner below), so when we
+  // find a LearningMaterial whose numeric id matches `paperId` we treat that
+  // as the underlying row. We also keep a fallback map for unmatched ids.
   const sharedByMe = useMemo(() => {
     return (Array.isArray(sharedItems) ? sharedItems : []).filter(
       (s) => s.lecturerId === lecturerId,
@@ -1208,7 +1194,7 @@ export const LecturerMaterialsPage = () => {
             onClick={() => setActiveTab('shared-with-me')}
           >
             <Users size={16} aria-hidden />
-            <span>{t('lecturer.materials.tab.sharedWithMe', 'Shared for me')}</span>
+            <span>{t('lecturer.materials.tab.sharedWithMe', 'Shared with me')}</span>
             <span className={styles.tabCountBadge}>{sharedWithMe.length}</span>
           </button>
         </div>
@@ -1672,7 +1658,7 @@ export const LecturerMaterialsPage = () => {
                       }`}
                     >
                       {isSharedFromColleague
-                        ? t('lecturer.materials.source.sharedWithMe', 'Shared for me')
+                        ? t('lecturer.materials.source.sharedWithMe', 'Shared with me')
                         : fileLike
                         ? t('lecturer.materials.source.file', 'File')
                         : t('lecturer.materials.source.link', 'Link')}
@@ -1736,26 +1722,11 @@ export const LecturerMaterialsPage = () => {
                   <div className={styles.materialCardUsage}>
                     {crossRefLoading && usageTotal === 0 ? (
                       <span className={styles.materialUsageChipMuted}>
-                        {t(
-                          'lecturer.materials.usage.checking',
-                          'Checking usage…',
-                        )}
+                        Checking usage…
                       </span>
                     ) : usageTotal === 0 ? (
-                      <span
-                        className={styles.materialUsageChipUnlinked}
-                        title={t(
-                          'lecturer.materials.usage.unlinkedHint',
-                          'This material is not part of any research topic or phase yet. You can still share it with colleagues from the Share button.',
-                        )}
-                      >
-                        <Info size={12} aria-hidden />
-                        <span>
-                          {t(
-                            'lecturer.materials.usage.unlinked',
-                            'Not linked to any topic/phase',
-                          )}
-                        </span>
+                      <span className={styles.materialUsageChipMuted}>
+                        {t('lecturer.materials.usage.none', 'Not used')}
                       </span>
                     ) : (
                       <button
@@ -1908,7 +1879,10 @@ export const LecturerMaterialsPage = () => {
             : ''
         }`}
       >
+<<<<<<< HEAD
 
+=======
+>>>>>>> 8186a99e77876e1daa6c7929c0dbd4a4fb5adee7
         {sharedError && (
           <div className={styles.errorBanner} role="alert">
             <span className={styles.errorBannerIcon}>
@@ -1993,7 +1967,7 @@ export const LecturerMaterialsPage = () => {
         />
       </div>
 
-      {/* ── TAB 3: Shared for me ──────────────────────────────────────────── */}
+      {/* ── TAB 3: Shared with me ────────────────────────────────────────── */}
       <div
         id="panel-shared-with-me"
         role="tabpanel"
@@ -2002,7 +1976,10 @@ export const LecturerMaterialsPage = () => {
           activeTab !== 'shared-with-me' ? styles.tabPanelHidden : ''
         }`}
       >
+<<<<<<< HEAD
 
+=======
+>>>>>>> 8186a99e77876e1daa6c7929c0dbd4a4fb5adee7
         {sharedError && (
           <div className={styles.errorBanner} role="alert">
             <span className={styles.errorBannerIcon}>
@@ -2022,7 +1999,7 @@ export const LecturerMaterialsPage = () => {
         <SharedSection
           title={t(
             'lecturer.materials.shared.sectionWithMe',
-            'Shared for me',
+            'Shared with me',
           )}
           emptyText={t(
             'lecturer.materials.shared.emptyWithMe',
@@ -2512,6 +2489,7 @@ const SharedSection = ({
           <span>{emptyText}</span>
         </div>
       ) : (
+<<<<<<< HEAD
         <div className={styles.sharedTableCard}>
           <div
             className={styles.sharedTableHead}
@@ -2623,16 +2601,49 @@ const SharedSection = ({
                     </span>
                     <button
                       type="button"
+=======
+        <ul className={styles.sharedList}>
+          {items.map((item) => {
+            const id = item.sharedMaterialId ?? item.id ?? '—';
+            const { title: materialTitle } = resolveTitle(item);
+            const uiStatus = resolveUiStatus(item);
+            const expiry = resolveExpiry(item.sharedAt ?? item.createdAt);
+            const statusLabel = t(
+              `lecturer.materials.shared.status.${uiStatus}`,
+              uiStatus,
+            );
+            const targetId =
+              typeof item.learningMaterialId === 'number'
+                ? item.learningMaterialId
+                : typeof item.paperId === 'number'
+                ? item.paperId
+                : null;
+            const foundMaterial =
+              targetId !== null && learningById ? learningById.get(targetId) : null;
+            const openUrl =
+              item.learningMaterialUrl ||
+              item.fileUrl ||
+              item.url ||
+              foundMaterial?.fileUrl;
+            const canOpen = Boolean(openUrl);
+            return (
+              <li
+                key={String(id)}
+                className={`${styles.sharedRow} ${styles[`sharedRowStatus${uiStatus}`] ?? ''}`}
+                data-testid="shared-material-row"
+              >
+                <div className={styles.sharedRowMain}>
+                  <div className={styles.sharedRowTitleRow}>
+                    <span
+>>>>>>> 8186a99e77876e1daa6c7929c0dbd4a4fb5adee7
                       className={styles.sharedRowTitle}
+                      style={canOpen ? { cursor: 'pointer', color: 'var(--ars-lecturer, #b45309)' } : undefined}
                       onClick={() => {
                         if (canOpen && openUrl) {
-                          window.open(
-                            openUrl,
-                            '_blank',
-                            'noopener,noreferrer',
-                          );
+                          window.open(openUrl, '_blank', 'noopener,noreferrer');
                         }
                       }}
+<<<<<<< HEAD
                       disabled={!canOpen}
                       title={
                         canOpen
@@ -2641,101 +2652,60 @@ const SharedSection = ({
                             : t('lecturer.materials.action.view', 'View')
                           : undefined
                       }
+=======
+                      title={canOpen ? t('lecturer.materials.action.view', 'Xem') : undefined}
+>>>>>>> 8186a99e77876e1daa6c7929c0dbd4a4fb5adee7
                     >
                       {materialTitle}
-                    </button>
-                  </span>
-                  <span
-                    className={styles.sharedColSharedWith}
-                    role="cell"
-                  >
-                    <span className={styles.sharedRowMetaLabel}>
-                      {t(
-                        'lecturer.materials.shared.colHeader.sharedWith',
-                        'Shared with',
-                      )}
                     </span>
+<<<<<<< HEAD
                     <span
                       className={styles.sharedRowColleagueName}
                       title={resolveColleagueName(item)}
                     >
+=======
+                    <span className={styles.sharedRowStatusPill}>
+                      {statusLabel}
+                    </span>
+                  </div>
+                  <div className={styles.sharedRowMeta}>
+                    <span>
+                      <span className={styles.sharedRowMetaLabel}>Colleague</span>{' '}
+>>>>>>> 8186a99e77876e1daa6c7929c0dbd4a4fb5adee7
                       {resolveColleagueName(item)}
                     </span>
-                  </span>
-                  <span
-                    className={styles.sharedColSharedAt}
-                    role="cell"
-                  >
-                    <span className={styles.sharedRowMetaLabel}>
-                      {t(
-                        'lecturer.materials.shared.colHeader.sharedAt',
-                        'Shared at',
-                      )}
-                    </span>
-                    <span className={styles.sharedRowDateValue}>
+                    <span>
+                      <span className={styles.sharedRowMetaLabel}>Shared</span>{' '}
                       {item.sharedAt
                         ? formatDisplayDateTime(item.sharedAt)
                         : '—'}
                     </span>
-                  </span>
-                  <span
-                    className={styles.sharedColExpires}
-                    role="cell"
-                  >
-                    <span className={styles.sharedRowMetaLabel}>
-                      {uiStatus === 'EXPIRED'
-                        ? t(
-                            'lecturer.materials.shared.expiredShort',
-                            'Expired',
-                          )
-                        : t(
-                            'lecturer.materials.shared.expiresShort',
-                            'Expires',
+                    {expiry.iso && (
+                      <span>
+                        <span className={styles.sharedRowMetaLabel}>
+                          {uiStatus === 'EXPIRED'
+                            ? 'Expired'
+                            : 'Expires'}
+                        </span>{' '}
+                        {formatDisplayDateTime(expiry.iso)}
+                        {expiry.daysRemaining !== null &&
+                          uiStatus !== 'EXPIRED' && (
+                            <>
+                              {' '}
+                              <span className={styles.sharedRowMetaMuted}>
+                                {`(${expiry.daysRemaining}d left)`}
+                              </span>
+                            </>
                           )}
-                    </span>
-                    <span className={styles.sharedRowDateValue}>
-                      {expiry.iso ? formatDisplayDateTime(expiry.iso) : '—'}
-                      {expiry.daysRemaining !== null &&
-                        uiStatus !== 'EXPIRED' && (
-                          <span
-                            className={styles.sharedRowDaysLeft}
-                            data-tone={
-                              expiry.daysRemaining <= 3
-                                ? 'warning'
-                                : 'normal'
-                            }
-                          >
-                            {expiry.daysRemaining === 0
-                              ? t(
-                                  'lecturer.materials.shared.daysLeftZero',
-                                  'Today',
-                                )
-                              : t(
-                                  'lecturer.materials.shared.daysLeft',
-                                  '{days}d left',
-                                  { days: expiry.daysRemaining },
-                                )}
-                          </span>
-                        )}
-                    </span>
-                  </span>
-                  <span
-                    className={styles.sharedColStatus}
-                    role="cell"
-                  >
-                    <span className={statusPillClass}>{statusLabel}</span>
-                  </span>
-                  <span
-                    className={styles.sharedColActions}
-                    role="cell"
-                  >
-                    {renderAction(item)}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className={styles.sharedRowActions}>{renderAction(item)}</div>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </section>
   );

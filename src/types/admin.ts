@@ -13,8 +13,8 @@ export interface RoleRequest {
   userName: string;
   email: string;
   phone?: string;
-  affiliation: string;
-  department: string;
+  affiliation?: string;
+  department?: string;
   /** Roles already assigned when the request was submitted. */
   currentRoles?: string[];
   /**

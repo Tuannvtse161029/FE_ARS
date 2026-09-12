@@ -437,3 +437,94 @@
   .replyItem { margin-left: var(--space-3); }
   .createForm { align-items: stretch; flex-direction: column; }
 }
+
+.replyBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  background-color: var(--ars-paper, #ffffff);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  border-radius: var(--radius-md, 8px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.replyTargetHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--ars-ink-muted, #64748b);
+}
+
+.replyTargetIndicator {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1, 4px);
+  font-weight: 600;
+  color: var(--accent-primary, #2563eb);
+}
+
+.cancelReplyIconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm, 4px);
+  color: var(--ars-ink-muted, #64748b);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.cancelReplyIconBtn:hover {
+  background: var(--ars-paper-alt, #f1f5f9);
+  color: var(--ars-ink, #0f172a);
+}
+
+.replyTextarea {
+  width: 100%;
+  background-color: var(--control-bg, #ffffff);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  border-radius: var(--radius-md, 8px);
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--control-text, #0f172a);
+  outline: none;
+  resize: vertical;
+  font-family: var(--font-family-ui, inherit);
+  line-height: var(--line-height-relaxed, 1.5);
+  box-sizing: border-box;
+  transition: border-color var(--transition-fast);
+}
+
+.replyTextarea:focus {
+  border-color: var(--focus-ring, #2563eb);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring, #2563eb) 24%, transparent);
+}
+
+.replyActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2, 8px);
+}
+
+.replyToMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--ars-ink-muted, #64748b);
+  margin-bottom: 2px;
+}
+
+.replyToIcon {
+  color: var(--accent-primary, #2563eb);
+}
+
+.replyToName {
+  font-weight: 600;
+  color: var(--accent-primary, #2563eb);
+}

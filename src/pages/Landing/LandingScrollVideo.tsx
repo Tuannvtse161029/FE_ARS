@@ -1352,7 +1352,8 @@ const Spotlight = ({ className = '', children }: SpotlightProps) => {
 
 
 
-  return (
+  return null;
+  /* return (
 
 
 
@@ -1368,7 +1369,7 @@ const Spotlight = ({ className = '', children }: SpotlightProps) => {
 
 
 
-  );
+  ); */
 
 
 
@@ -4886,7 +4887,6 @@ export const LandingScrollVideo = () => {
 
 
       <EditorialTrace />
-      <ScrollProgressRail t={t} />
 
 
 

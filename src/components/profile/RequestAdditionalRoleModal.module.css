@@ -474,3 +474,49 @@
 .hiddenInput {
   display: none;
 }
+
+.profileContextCard {
+  background: var(--ars-paper-inset, #f8fafc);
+  border: 1px solid var(--ars-node, #e2e8f0);
+  border-radius: var(--radius-md, 8px);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.profileContextItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+.profileContextLabel {
+  font-weight: 600;
+  color: var(--ars-ink, #0f172a);
+  min-width: 140px;
+}
+
+.profileContextValue {
+  color: var(--ars-ink-muted, #475569);
+}
+
+.profileContextNote {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--ars-ink-muted, #64748b);
+  border-top: 1px dashed var(--ars-node, #e2e8f0);
+  padding-top: 8px;
+  margin-top: 2px;
+}
+
+.inputHint {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--ars-ink-muted, #64748b);
+  margin-top: 4px;
+}

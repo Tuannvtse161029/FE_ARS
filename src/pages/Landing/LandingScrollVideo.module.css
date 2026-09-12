@@ -600,7 +600,7 @@
      visitor inside the scene before letting go into the next act.
      Tightened from 220vh so the dead-scroll gap before the next act
      doesn't feel like a pause. */
-  min-height: 170vh;
+  min-height: 112vh;
 }
 
 .heroStage {
@@ -857,7 +857,7 @@
      workflow cards on a single scroll tick. Tightened from 180vh so
      visitors don't scroll through a long empty buffer before the next
      scene starts. */
-  min-height: 140vh;
+  min-height: 108vh;
 }
 
 .tensionStage {
@@ -1082,7 +1082,7 @@
      workflow cards clip into the substance rail. Tightened from 180vh
      so visitors don't scroll through a long empty buffer before the
      substance act starts. */
-  min-height: 140vh;
+  min-height: 108vh;
 }
 
 .turnStage {
@@ -1250,7 +1250,7 @@
      170vh gives a clean pan arc through the four role workspaces.
      Tightened from 220vh so the dead-scroll gap before the boundaries
      section doesn't feel like a pause. */
-  min-height: 170vh;
+  min-height: 118vh;
   /* Deep academic-navy ground that matches the tension act so the two
      dark sections read as one continuous world, not as two unrelated
      panels. The outer scroll area needs a backdrop so first paint
@@ -2404,4 +2404,3 @@
     display: none;
   }
 }
-

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   MessageSquare,
@@ -13,6 +13,8 @@ import {
   Loader2,
   MoreVertical,
   CheckCircle2,
+  Reply,
+  X,
 } from 'lucide-react';
 import api from '../../services/axios';
 import {
@@ -159,6 +161,9 @@ export const CommentSection = ({
   const [draft, setDraft] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState('');
+  const [replyingToComment, setReplyingToComment] = useState<ForumComment | null>(null);
+  const [replyDraft, setReplyDraft] = useState('');
+  const [submittingReply, setSubmittingReply] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   /** Controls the delete-confirmation modal */
@@ -310,18 +315,104 @@ export const CommentSection = ({
         console.warn('Failed to send forum reply notification:', notifyErr);
       }
     } else {
-      setActionError('Failed to post comment. Please try again.');
+      setActionError(t('forum.comment.failedPostComment', 'Failed to post comment. Please try again.'));
     }
   };
+
+  const handleStartReply = (comment: ForumComment) => {
+    if (!canInteract) return;
+    setReplyingToComment(comment);
+    setReplyDraft('');
+    setActionError(null);
+  };
+
+  const handleCancelReply = () => {
+    setReplyingToComment(null);
+    setReplyDraft('');
+  };
+
+  const submitReply = async (parentComment: ForumComment) => {
+    const trimmed = replyDraft.trim();
+    const parentId = parentComment.id || parentComment.forumCommentId;
+    if (!trimmed || !currentUserId || !canInteract || !parentId) return;
+
+    setSubmittingReply(true);
+    setActionError(null);
+
+    const result = await create({
+      userId: currentUserId,
+      forumPostId: postId,
+      content: trimmed,
+      replyId: parentId,
+    });
+
+    setSubmittingReply(false);
+
+    if (result) {
+      setReplyDraft('');
+      setReplyingToComment(null);
+      setLocalComments((prev) => [...prev, result]);
+      void refetch();
+    } else {
+      setActionError(t('forum.comment.failedPostReply', 'Failed to post reply. Please try again.'));
+    }
+  };
+
+  const commentMap = useMemo(() => {
+    const map = new Map<number, ForumComment>();
+    localComments.forEach((c) => {
+      const cid = c.id || c.forumCommentId || 0;
+      if (cid) map.set(cid, c);
+    });
+    return map;
+  }, [localComments]);
+
+  const displayComments = useMemo<ForumComment[]>(() => {
+    const topLevel: ForumComment[] = [];
+    const repliesByParentId = new Map<number, ForumComment[]>();
+
+    localComments.forEach((c) => {
+      const parentId = c.replyId;
+      if (parentId && commentMap.has(parentId)) {
+        const list = repliesByParentId.get(parentId) ?? [];
+        list.push(c);
+        repliesByParentId.set(parentId, list);
+      } else {
+        topLevel.push(c);
+      }
+    });
+
+    const result: ForumComment[] = [];
+    const appendThread = (parent: ForumComment) => {
+      result.push(parent);
+      const pid = parent.id || parent.forumCommentId || 0;
+      const replies = repliesByParentId.get(pid) ?? [];
+      replies.forEach((r) => {
+        appendThread(r);
+      });
+    };
+
+    topLevel.forEach((top) => appendThread(top));
+
+    if (result.length < localComments.length) {
+      const seen = new Set(result.map((c) => c.id || c.forumCommentId));
+      localComments.forEach((c) => {
+        const cid = c.id || c.forumCommentId;
+        if (!seen.has(cid)) result.push(c);
+      });
+    }
+
+    return result;
+  }, [localComments, commentMap]);
 
   // Part 4 — keyboard shortcuts for navigating the comment thread.
   // j/k walk the comments list, Enter opens the edit textarea for the
   // focused comment. The `n` and `f` shortcuts are intentionally omitted
   // — comments don't have a "create new" or filter affordance.
   const { selectedIndex: commentSelectedIndex } = useListShortcuts({
-    itemCount: localComments.length,
+    itemCount: displayComments.length,
     onOpen: (index) => {
-      const comment = localComments[index];
+      const comment = displayComments[index];
       if (!comment) return;
       const targetId = comment.id || comment.forumCommentId || 0;
       if (!targetId) return;
@@ -535,12 +626,17 @@ export const CommentSection = ({
             />
           )}
 
-          {!isLoading && !error && localComments.length > 0 && (
+          {!isLoading && !error && displayComments.length > 0 && (
             <ul className={styles.commentList}>
-              {localComments.map((comment, commentIndex) => {
+              {displayComments.map((comment, commentIndex) => {
                 const isOwner =
                   currentUserId != null && comment.userId === currentUserId;
                 const isEditing = editingId === (comment.id || comment.forumCommentId);
+                const parentComment = comment.replyId ? commentMap.get(comment.replyId) : null;
+                const isReplyingThis =
+                  replyingToComment &&
+                  (replyingToComment.id || replyingToComment.forumCommentId) ===
+                    (comment.id || comment.forumCommentId);
                 return (
                   <li
                     key={comment.id}
@@ -557,6 +653,16 @@ export const CommentSection = ({
                       </button>
                       {isOwner && (
                         <span className={styles.commentOwnerBadge}>{currentUserName}</span>
+                      )}
+                      {parentComment && (
+                        <div className={styles.replyToMeta}>
+                          <Reply size={12} className={styles.replyToIcon} aria-hidden="true" />
+                          <span>
+                            {t('forum.comment.replyingTo', 'Replying to {name}', {
+                              name: `@${renderAuthorLabel(parentComment)}`,
+                            })}
+                          </span>
+                        </div>
                       )}
                       {comment.createdAt && (
                         <span className={styles.commentTimestamp}>
@@ -621,7 +727,7 @@ export const CommentSection = ({
                             onClick={cancelEdit}
                             disabled={submitting}
                           >
-                            Cancel
+                            {t('common.cancel', 'Cancel')}
                           </Button>
                           <Button
                             variant="primary"
@@ -630,7 +736,7 @@ export const CommentSection = ({
                             disabled={submitting || !editDraft.trim()}
                             isLoading={submitting}
                           >
-                            Save
+                            {t('common.save', 'Save')}
                           </Button>
                         </div>
                       </div>
@@ -649,8 +755,16 @@ export const CommentSection = ({
                               comment.isUpvoted ? styles.actionBtnUpvoted : ''
                             }`}
                             onClick={() => handleToggleVote(comment)}
-                            aria-label={comment.isUpvoted ? 'Unlike comment' : 'Like comment'}
-                            title={comment.isUpvoted ? 'Bỏ thích bình luận' : 'Thích bình luận'}
+                            aria-label={
+                              comment.isUpvoted
+                                ? t('forum.comment.unlike', 'Unlike comment')
+                                : t('forum.comment.like', 'Like comment')
+                            }
+                            title={
+                              comment.isUpvoted
+                                ? t('forum.comment.unlike', 'Unlike comment')
+                                : t('forum.comment.like', 'Like comment')
+                            }
                           >
                             <ThumbsUp
                               size={14}
@@ -660,26 +774,39 @@ export const CommentSection = ({
                           </button>
                         )}
 
+                        {canInteract && (
+                          <button
+                            type="button"
+                            className={styles.actionBtn}
+                            onClick={() => handleStartReply(comment)}
+                            aria-label={t('forum.comment.reply', 'Reply')}
+                            data-testid={`reply-btn-${comment.id || comment.forumCommentId}`}
+                          >
+                            <Reply size={14} aria-hidden="true" />
+                            <span>{t('forum.comment.reply', 'Reply')}</span>
+                          </button>
+                        )}
+
                         {isOwner && canInteract && (
                           <>
                             <button
                               type="button"
                               className={styles.actionBtn}
                               onClick={() => startEdit(comment)}
-                              aria-label="Edit comment"
+                              aria-label={t('forum.comment.edit', 'Edit comment')}
                             >
                               <Edit2 size={14} />
-                              Edit
+                              {t('common.edit', 'Edit')}
                             </button>
                             <button
                               type="button"
                               className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
                               onClick={() => deleteComment(comment)}
-                              aria-label="Delete comment"
+                              aria-label={t('forum.comment.delete', 'Delete comment')}
                               disabled={submitting}
                             >
                               <Trash2 size={14} />
-                              Delete
+                              {t('common.delete', 'Delete')}
                             </button>
                           </>
                         )}
@@ -698,6 +825,67 @@ export const CommentSection = ({
                         )}
                       </div>
                     )}
+
+                    {isReplyingThis && (
+                      <div className={styles.replyBlock} data-testid="inline-reply-block">
+                        <div className={styles.replyTargetHeader}>
+                          <span className={styles.replyTargetIndicator}>
+                            <Reply size={13} aria-hidden="true" />
+                            {t('forum.comment.replyingTo', 'Replying to {name}', {
+                              name: `@${renderAuthorLabel(comment)}`,
+                            })}
+                          </span>
+                          <button
+                            type="button"
+                            className={styles.cancelReplyIconBtn}
+                            onClick={handleCancelReply}
+                            aria-label={t('forum.comment.cancelReply', 'Cancel')}
+                          >
+                            <X size={14} aria-hidden="true" />
+                          </button>
+                        </div>
+                        <textarea
+                          className={styles.replyTextarea}
+                          rows={2}
+                          placeholder={t('forum.comment.replyPlaceholder', 'Write a reply…')}
+                          value={replyDraft}
+                          onChange={(e) => setReplyDraft(e.target.value)}
+                          disabled={submittingReply}
+                          onKeyDown={(e) => {
+                            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                              e.preventDefault();
+                              if (replyDraft.trim() && !submittingReply) {
+                                void submitReply(comment);
+                              }
+                            } else if (e.key === 'Escape') {
+                              e.preventDefault();
+                              handleCancelReply();
+                            }
+                          }}
+                          autoFocus
+                        />
+                        <div className={styles.replyActions}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleCancelReply}
+                            disabled={submittingReply}
+                          >
+                            {t('forum.comment.cancelReply', 'Cancel')}
+                          </Button>
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            leftIcon={<Send size={12} />}
+                            onClick={() => submitReply(comment)}
+                            disabled={submittingReply || !replyDraft.trim()}
+                            isLoading={submittingReply}
+                          >
+                            {t('forum.comment.postReply', 'Reply')}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </li>
                 );
               })}
@@ -711,7 +899,7 @@ export const CommentSection = ({
               <textarea
                 className={styles.createTextarea}
                 rows={2}
-                placeholder="Write a comment…"
+                placeholder={t('forum.comment.placeholder', 'Write a comment…')}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 disabled={submitting}
@@ -725,7 +913,7 @@ export const CommentSection = ({
                 isLoading={submitting}
                 className={styles.submitBtn}
               >
-                Post
+                {t('forum.comment.post', 'Post')}
               </Button>
             </div>
           )}
@@ -771,11 +959,14 @@ export const CommentSection = ({
       {/* Delete comment confirmation modal */}
       <ConfirmModal
         open={deleteConfirm.open}
-        title="Delete this comment?"
-        description="This action cannot be undone. The comment will be permanently removed."
+        title={t('forum.comment.deleteTitle', 'Delete this comment?')}
+        description={t(
+          'forum.comment.deleteDescription',
+          'This action cannot be undone. The comment will be permanently removed.'
+        )}
         variant="destructive"
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
+        confirmLabel={t('common.delete', 'Delete')}
+        cancelLabel={t('common.cancel', 'Cancel')}
         onConfirm={confirmDeleteComment}
         onClose={() => setDeleteConfirm({ open: false, comment: null })}
       />

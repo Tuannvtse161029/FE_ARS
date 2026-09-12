@@ -301,11 +301,8 @@ describe('Lecturer Materials — Redesigned Share Material Modal & Tab 2 View Ac
     const confirmCommitBtn = screen.getByRole('button', { name: /^delete$|^xóa$/i });
     await user.click(confirmCommitBtn);
 
-    // Should call sharedMaterialService.update to set status to ENDED
+    // Should call learningMaterialService.delete which triggers BE automatic cascade & notifications
     await waitFor(() => {
-      expect(updateSharedMock).toHaveBeenCalledWith(501, expect.objectContaining({
-        status: 'ENDED',
-      }));
       expect(deleteLearningMock).toHaveBeenCalledWith(101);
     });
   });

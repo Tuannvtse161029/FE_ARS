@@ -3,6 +3,7 @@ import { API_ENDPOINTS } from '../utils/constants';
 import type {
   LearningMaterialCreateRequest,
   LearningMaterialUpdateRequest,
+  LearningMaterialDeleteResponse,
 } from '../types/researchWorkflowDtos';
 
 const LEARNING_MATERIAL_ENDPOINTS = {
@@ -77,8 +78,13 @@ export const learningMaterialService = {
     return normalizeLearningMaterial(response.data);
   },
 
-  delete: async (id: number): Promise<void> => {
-    await api.delete(LEARNING_MATERIAL_ENDPOINTS.DELETE(id));
+  delete: async (
+    id: number,
+  ): Promise<LearningMaterialDeleteResponse | undefined> => {
+    const response = await api.delete<LearningMaterialDeleteResponse>(
+      LEARNING_MATERIAL_ENDPOINTS.DELETE(id),
+    );
+    return response?.data;
   },
 };
 

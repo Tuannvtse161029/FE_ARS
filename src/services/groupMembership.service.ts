@@ -189,6 +189,11 @@ export const getJoinedGroupsForStudent = async (
       description: group.description ?? undefined,
       deadline: group.deadline ?? undefined,
       assignedAt: group.assignedAt ?? undefined,
+      // Forward `isActive` so the GradStudent UI can react to lecturer
+      // deactivation (see `pages/GraduateStudent/SubmitReport.tsx` and
+      // `pages/GraduateStudent/StudentResearchGroups.tsx`). `undefined`
+      // is treated as "active" downstream to cover legacy rows.
+      isActive: (group as { isActive?: boolean | null }).isActive ?? null,
       membershipId: member?.id ?? id,
       activityStatus: status,
       joinedAt: member?.joinedAt ?? new Date().toISOString(),

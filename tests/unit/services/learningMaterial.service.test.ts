@@ -80,10 +80,18 @@ describe('learningMaterialService', () => {
   });
 
   describe('delete', () => {
-    it('DELETEs /api/LearningMaterial/:id', async () => {
-      deleteMock.mockResolvedValueOnce({});
-      await learningMaterialService.delete(3);
+    it('DELETEs /api/LearningMaterial/:id and returns response data', async () => {
+      deleteMock.mockResolvedValueOnce({
+        data: {
+          message: 'Xóa tài liệu thành công. Đã thu hồi liên kết chia sẻ tới 2 giảng viên và gửi thông báo tới họ.',
+          deletedId: 3,
+          revokedSharesCount: 2,
+        },
+      });
+      const result = await learningMaterialService.delete(3);
       expect(deleteMock).toHaveBeenCalledWith('/api/LearningMaterial/3');
+      expect(result?.message).toContain('Xóa tài liệu thành công');
+      expect(result?.revokedSharesCount).toBe(2);
     });
   });
 
