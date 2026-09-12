@@ -1324,6 +1324,7 @@ export const dictionary: Dictionary = {
     'lecturer.materials.action.deleteBlockedTitle': 'This material is in use and cannot be deleted.',
     'lecturer.materials.action.deleteConfirmTitle': 'Delete this material?',
     'lecturer.materials.action.deleteConfirmBody': 'You are about to delete "{title}". This cannot be undone.',
+    'lecturer.materials.action.deleteSharedWarning': 'This material is currently shared with {count} colleague(s). Deleting it will permanently revoke their access.',
     'lecturer.materials.action.deleteConfirm': 'Delete',
     'lecturer.materials.action.cancel': 'Cancel',
     'lecturer.materials.card.openAria': 'Open material',
