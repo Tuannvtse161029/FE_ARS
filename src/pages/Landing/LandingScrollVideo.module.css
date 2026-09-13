@@ -1,191 +1,89 @@
 /* ═══════════════════════════════════════════════════════════════════
-   LandingScrollVideo — premium scroll-driven landing page
-   Five-act scrollcraft narrative. Each act uses a different device so
-   the page never repeats the same idea twice.
+   LandingScrollVideo — Five-act scroll-driven landing page
+   ═══════════════════════════════════════════════════════════════════
+
+   Layout architecture (rewrite, 2026-09-13):
+
+   - The PAGE ROOT paints --page-base continuously so no act can ever
+     leak --app-canvas (#F8FAFC near-white) through a gap. The previous
+     build stitched five separate dark backgrounds together and relied
+     on matched vh heights + ::after pseudo elements to hide the seam;
+     any vh drift (DevTools open, browser zoom, OS scrollbar) left a
+     visible white sliver between acts.
+
+   - Each act is a sibling block, sized by its OWN CONTENT plus a
+     content-driven min-height. There are no nested sticky stages. The
+     act's direct children (parallax layers, pan rail, counter) own
+     their scroll-driven transforms; React reads each act ref's
+     bounding rect and applies translateX / translateY as the act
+     scrolls through the viewport.
+
+   - All viewport units use 100dvh (dynamic viewport height). 100dvh
+     tracks the actual visible viewport including browser chrome and
+     DevTools, so opening DevTools at the bottom no longer misaligns
+     the hero metrics, and the tension parallax layers stay anchored
+     to the visible window.
+
+   - The previous `--sc-*` token set (--sc-stage-bg, --sc-stage-bg-2,
+     --sc-stage-bg-deep, --sc-card-bg, --sc-card-bg-edge, --sc-glass,
+     --sc-glass-strong, --sc-pill-bg, --sc-shadow, --sc-shadow-heavy)
+     collapses into --page-base plus the existing four semantic
+     surfaces already defined in ars-tokens.css (--surface-raised,
+     --surface-paper, --surface-sunken, --surface-paper-muted). The
+     theme override happens once, at the root, so paper-day doesn't
+     need per-act overrides anymore.
+
+   - The dark-mode lamp effect (cone of light from above the hero)
+     stays. The editorial trace stays. The five scroll behaviors
+     (parallax hero, parallax tension, kinetic turn, pan substance,
+     spotlight CTA) all stay. The RecognitionAct stays unchanged.
    ═══════════════════════════════════════════════════════════════════ */
 
-/* Always-dark cinematic surfaces — see the block at the bottom of the
-   file for the full note explaining why these exist.
-   NOTE: The paper-day override block below sits in :global() so it
-   applies to every page that uses LandingScrollVideo. The dark
-   defaults are intentionally cinematic; the overrides switch the
-   page to a warm parchment surface so the visitor doesn't read the
-   light theme as "night mode that lost its lights". */
-:root {
-  --sc-stage-bg: #0a0d20;            /* Hero / tension / turn stage base */
-  --sc-stage-bg-2: #0b1238;          /* Lighter midnight highlight */
-  --sc-stage-bg-deep: #050818;       /* Deepest midnight */
-  --sc-card-bg: #0d1326;             /* Substance card base */
-  --sc-card-bg-edge: #050a18;        /* Bottom edge of substance card */
-  --sc-shadow: rgba(0, 0, 0, 0.55);  /* Card lift shadow */
-  --sc-shadow-heavy: rgba(0, 0, 0, 0.7); /* Heavy card shadow (active) */
-  --sc-glass: rgba(13, 19, 38, 0.65);/* Chip / overlay plate */
-  --sc-glass-strong: rgba(13, 19, 38, 0.78);
-  --sc-pill-bg: rgba(8, 12, 24, 0.7);/* Editorial trace pill */
-  /* Local mirror of `--ink-on-dark` so the landing page can override
-     it per theme. Default (dark theme) = near-white so all the
-     titles/copy render against the cinematic midnight surfaces. */
-  --sc-ink-on-dark: #fffdf8;
-  --sc-ink-on-dark-soft: rgba(255, 253, 248, 0.78);
-  --sc-ink-on-dark-muted: rgba(255, 253, 248, 0.55);
-  /* Dark-theme defaults for the substance + scrim variables that
-     the paper-day override below flips. */
-  --sc-substance-bg-top: #0a1024;
-  --sc-substance-bg-bot: #060c1e;
-  --sc-substance-act-bg: #0a1024;
-  --sc-scrim-band-top: rgba(8, 12, 24, 0.92);
-  --sc-scrim-band-mid: rgba(8, 12, 24, 0.28);
-  --sc-scrim-band-bot: transparent;
-}
-
-/* Paper-day overrides — switch the cinematic dark surfaces to a
-   clean white paper surface so the page reads as a bright editorial
-   layout. The hero stays dark in BOTH themes because it carries the
-   library photograph that anchors the page; everything below the
-   hero flips to white with warm parchment supporting surfaces.
-
-   Yellow is used as a *measured accent* (not a flood). The brand's
-   `--accent-primary` appears as: the small logo mark, the kicker
-   rule, the primary CTA button, the trace playhead, the role-color
-   tints, and the "Explore" arrow on the substance cards. White is
-   the dominant content surface so the page reads as a journal, not
-   as a yellow blanket. */
-:global(:root[data-theme='paper-day']) {
-  /* Supporting surfaces — warm parchment with a yellow tint so the
-     brand color carries from card surface to background. Previously
-     this was a neutral cream (#f5f1e8) — now it picks up a touch
-     more yellow to match the substance stage gradient and the
-     warm-cream card surface, so the page reads as one continuous
-     warm wash instead of "yellow zone + cream zone". */
-  --sc-stage-bg: #f5ebc8;            /* warm parchment (tension/turn) */
-  --sc-stage-bg-2: #fbf2d4;          /* lighter parchment for highlights */
-  --sc-stage-bg-deep: #ebdfa8;       /* deepest parchment band (footer) */
-
-  /* Content surfaces — warm cream rather than pure white. A subtle
-     yellow gradient wash so the cards feel like printed paper that
-     has soaked up a touch of warm light, not a sterile Word doc.
-     Pure white (#ffffff) was reading as blinding under the bright
-     stage backdrop; this warm cream sits in the same hue family as
-     the page's `--accent-primary` so the brand color carries
-     throughout. */
-  --sc-card-bg: #fdf6e3;
-  --sc-card-bg-edge: #e8dcb8;
-  --sc-shadow: rgba(96, 72, 18, 0.14);
-  --sc-shadow-heavy: rgba(96, 72, 18, 0.22);
-
-  /* Glass surfaces — warm-cream white with a touch of yellow, lower
-     opacity so the parchment stage bleeds through. Reducing the
-     opacity from 0.92 → 0.78 keeps the cards readable as distinct
-     surfaces without the "scrap of paper on parchment" effect, and
-     the warm hue ties them to the project's yellow brand color. */
-  --sc-glass: rgba(255, 247, 220, 0.78);
-  --sc-glass-strong: rgba(255, 247, 220, 0.88);
-
-  /* Editorial trace pill — kept as a dark glass plate so it floats
-     over any scroll position without ever blending into the page.
-     The trace is a piece of UI chrome, not a brand surface, so it
-     stays dark in both themes. */
-  --sc-pill-bg: rgba(15, 18, 28, 0.78);
-
-  /* Local override — `--ink-on-dark` is defined in ars-tokens.css
-     and is near-white in both themes by default. The parchment and
-     white surfaces below the hero need DARK ink so titles, chips,
-     copy, and stage plates render as dark text on a paper surface.
-     The heroCopy override below restores the light ink just for the
-     hero's photo overlay. */
-  --sc-ink-on-dark: #1d1c19;
-  --sc-ink-on-dark-soft: rgba(29, 28, 25, 0.78);
-  --sc-ink-on-dark-muted: rgba(29, 28, 25, 0.55);
-
-  /* Hero layers — kept dark because the photo is dark in both
-     themes. These don't change in paper-day. */
-  --sc-hero-layer: rgba(29, 28, 25, 0.22);
-  --sc-hero-layer-strong: rgba(29, 28, 25, 0.34);
-
-  /* Substance stage — warm yellow gradient so the cards lift off a
-     brand-tinted surface instead of a stark white plane. The top
-     stop is a soft yellow-cream, fading into the deeper parchment
-     at the bottom, so the section reads as a continuous warm wash
-     rather than a white card floating on a cream backdrop. The
-     substanceAct outer wash uses a slightly bolder yellow so the
-     color carries through to the page edges. */
-  --sc-substance-bg-top: #fff3c4;
-  --sc-substance-bg-bot: #f0e2b0;
-  --sc-substance-act-bg: #f7e9c2;
-
-  /* Scrims — were hardcoded `rgba(8, 12, 24, ...)`. Override to a
-     lighter, transparent overlay so they no longer drop a near-black
-     band onto the stage in paper-day. */
-  --sc-scrim-band-top: rgba(29, 28, 25, 0.0);
-  --sc-scrim-band-mid: rgba(29, 28, 25, 0.0);
-  --sc-scrim-band-bot: rgba(29, 28, 25, 0.0);
-}
-
-/* Paper-day header: the cream glass plate makes the dark-navy logo
-   unreadable against the warm library photo and feels jarring between
-   the dark hero and the light stage. Replace with the brand's nav-bar
-   dark navy so the header reads as a confident brand rail rather than
-   a floating white strip. The logo elements stay dark (#2D3561) on the
-   dark background for high contrast and brand cohesion. */
-:global(:root[data-theme='paper-day']) .header {
-  background: #1b1a17;
-  border-bottom-color: rgba(255, 255, 255, 0.08);
-  color: #fff;
-}
-
-/* Paper-day: same dark background and white text for the footer. */
-:global(:root[data-theme='paper-day']) .footer {
-  background: #1b1a17;
-  color: #fff;
-}
-:global(:root[data-theme='paper-day']) .footerBrand span {
-  color: #fff;
-}
-:global(:root[data-theme='paper-day']) .footerNav a {
-  color: rgba(255, 255, 255, 0.82);
-}
-:global(:root[data-theme='paper-day']) .footerNav a:hover {
-  color: var(--accent-primary);
-}
-:global(:root[data-theme='paper-day']) .footerCopy {
-  color: rgba(255, 255, 255, 0.45);
-  border-top-color: rgba(255, 255, 255, 0.1);
-}
-
-/* Paper-day: brand text and nav links are white; nav links turn
-   yellow on hover for clear affordance against the dark background. */
-:global(:root[data-theme='paper-day']) .brand span {
-  color: #fff;
-}
-:global(:root[data-theme='paper-day']) .navigation a {
-  color: rgba(255, 255, 255, 0.82);
-}
-:global(:root[data-theme='paper-day']) .navigation a:hover,
-:global(:root[data-theme='paper-day']) .navigation a:focus-visible {
-  color: var(--accent-primary);
-}
-
-/* Paper-day substance header: the stage sits on dark navy ground with
-   a library discussion photo blended in via soft-light. The title and
-   lead were using dark ink (--sc-ink-on-dark = #1d1c19 in paper-day)
-   which goes invisible on the dark photo background. Flip to warm
-   cream so the text reads clearly without harsh contrast against the
-   amber-toned photo. */
-:global(:root[data-theme='paper-day']) .substanceTitle {
-  color: #fff8e7;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-}
-:global(:root[data-theme='paper-day']) .substanceLead {
-  color: rgba(255, 248, 231, 0.75);
-}
-
-/* ── Base page chrome ─────────────────────────────────────────── */
+/* Landing page always uses archive-dusk (dark mode) theme.
+   The page component sets data-theme="archive-dusk" on the root .page div,
+   so these tokens use the dark palette from the deployed site. */
+:root,
 .page {
-  min-height: 100vh;
-  color: var(--ink-primary);
-  background: var(--app-canvas);
+  /* ── Dark mode surfaces (from fe-ars.vercel.app) ─────────────── */
+  --page-base: #090d16;
+  --surface-act: #121a2d;
+  --surface-act-edge: #0a0d20;
+  --surface-act-card: #162035;
+  --surface-act-card-edge: #101726;
+  --scrim-top: rgba(8, 12, 24, 0.92);
+  --scrim-mid: rgba(8, 12, 24, 0.28);
+  --scrim-bot: transparent;
+  --glass-soft: rgba(13, 19, 38, 0.65);
+  --glass-strong: rgba(13, 19, 38, 0.82);
+  --pill-bg: rgba(8, 12, 24, 0.78);
+  --shadow-card: rgba(0, 0, 0, 0.55);
+  --shadow-card-heavy: rgba(0, 0, 0, 0.72);
+
+  /* Hero photo is dark, so hero copy ink stays near-white. */
+  --ink-on-dark: #fffdf8;
+  --ink-on-dark-soft: rgba(255, 253, 248, 0.78);
+  --ink-on-dark-muted: rgba(255, 253, 248, 0.55);
+
+  /* Page chrome — solid dark header and footer with white text. */
+  --chrome-bg: #1b1a17;
+  --chrome-text: #fffdf8;
+  --chrome-text-muted: rgba(255, 253, 248, 0.7);
+}
+
+/* ── Page root ─────────────────────────────────────────────── */
+/* --page-base here is the safety net for any pixel not covered by
+   an act. Acts paint their own gradients on top. */
+.page {
+  min-height: 100dvh;
+  color: var(--ink-on-dark);
+  background: var(--page-base);
   scroll-behavior: smooth;
   scroll-padding-top: 80px;
+  /* Phone protection — no act, scrim, parallax, lamp, or pan layer
+     should ever force a horizontal scroll. Acts are sized to 100%
+     of the page width and the body itself owns the scrollbar. */
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
 .page *,
@@ -207,54 +105,46 @@
   z-index: 100;
   padding: 10px 14px;
   color: var(--ink-on-paper);
-  /* Always-dark plate (keyboard-only on focus). */
-  background: var(--sc-stage-bg);
+  background: var(--page-base);
   text-decoration: none;
   transform: translateY(-180%);
   transition: transform var(--transition-fast);
 }
-.skipLink:focus { transform: translateY(0); }
+
+.skipLink:focus {
+  transform: translateY(0);
+}
 
 /* ══════════════════════════════════════════════════════════════════
    EDITORIAL TRACE — signature move
-   A thin horizontal line fixed at the bottom edge of the viewport,
-   present on every scroll position. The playhead glides with scroll;
-   passing an act stamps a marker that stays lit. This is the
-   bespoke interaction that lives on this site alone. Scrollcraft
-   uniqueness.md §3 lists this pattern by name.
-
-   The trace is intentionally restrained: 1px track, 6px playhead,
-   no animation. It earns its presence by being consistent rather
-   than by being loud.
+   Thin horizontal line fixed at the bottom edge of the viewport.
+   The playhead glides with scroll; passing an act stamps a marker
+   that stays lit. This is the bespoke interaction that lives on
+   this site alone.
    ══════════════════════════════════════════════════════════════════ */
 .editorialTrace {
   position: fixed;
   z-index: 60;
   left: 50%;
-  right: auto;
   bottom: 16px;
   transform: translateX(-50%);
   width: min(960px, calc(100% - 48px));
   height: 36px;
   pointer-events: none;
-  /* Soft glassy plate so the trace reads cleanly above scrolling
-     content without fully occluding it. The backdrop blur keeps
-     anything underneath legible while letting the line stay crisp. */
   padding: 0 12px;
   display: flex;
   align-items: center;
 }
+
 .editorialTrace::before {
   content: '';
   position: absolute;
   inset: 4px -8px;
   border-radius: 999px;
-  /* Always-dark glassy pill. Previously used `color-mix(... --ink-primary 70%, transparent)`
-     which became a near-white pill in archive-dusk mode. */
-  background: var(--sc-pill-bg);
+  background: var(--pill-bg);
   backdrop-filter: blur(10px) saturate(140%);
   -webkit-backdrop-filter: blur(10px) saturate(140%);
-  border: 1px solid color-mix(in srgb, var(--sc-ink-on-dark) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ink-on-dark) 10%, transparent);
   z-index: -1;
 }
 
@@ -265,11 +155,7 @@
   top: 50%;
   height: 1px;
   transform: translateY(-50%);
-  /* Always-light track — the pill plate is dark glass in both themes,
-     so its track must read against a dark surface in both themes.
-     Using `--sc-ink-on-dark` here was a bug in the previous pass: in
-     paper-day that variable flips to dark ink, which made the track
-     a near-invisible dark line on a dark glass pill. */
+  /* Always-light against the dark pill, in both themes. */
   background: rgba(255, 253, 248, 0.28);
   z-index: 1;
 }
@@ -306,10 +192,10 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  /* Always-light idle dot — pill is dark glass in both themes. */
   background: rgba(255, 253, 248, 0.5);
   transition: background var(--transition-fast), transform var(--transition-fast);
 }
+
 .editorialMarker[data-passed='true'] .editorialMarkerDot {
   background: var(--accent-primary);
   transform: scale(1.4);
@@ -323,11 +209,11 @@
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  /* Always-light label — pill is dark glass in both themes. */
   color: rgba(255, 253, 248, 0.6);
   white-space: nowrap;
   transition: color var(--transition-fast);
 }
+
 .editorialMarker[data-passed='true'] .editorialMarkerLabel {
   color: var(--accent-primary);
 }
@@ -345,147 +231,42 @@
   padding-left: 14px;
 }
 
-/* Page-level fade-in for any text. With the engine gone, this is what
-   carries the "things arrive as you read them" feeling. */
+/* Page-level rise animation for any heading / paragraph that lives
+   directly on the page (not inside a stage). Cues the page-load
+   sequence without per-component animation. */
 @keyframes sc-rise {
-  from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.page h1, .page h2, .page h3, .page p, .page .issueLine {
-  animation: sc-rise 700ms var(--motion-ease-standard, ease) backwards;
-}
-.page .heroCopy > *:nth-child(1) { animation-delay: 0ms; }
-.page .heroCopy > *:nth-child(2) { animation-delay: 80ms; }
-.page .heroCopy > *:nth-child(3) { animation-delay: 160ms; }
-.page .heroCopy > *:nth-child(4) { animation-delay: 240ms; }
-.page .heroCopy > *:nth-child(5) { animation-delay: 320ms; }
-@media (prefers-reduced-motion: reduce) {
-  .page h1, .page h2, .page h3, .page p, .page .issueLine {
-    animation: none;
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-.scrim {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-}
-/* Band: density at the bottom where copy sits on full-width hero.
-   In dark mode the scrim is dark so text is readable on top of
-   bright photos. In paper-day the same gradient stop values would
-   drop a near-black band onto the warm parchment surface, so the
-   scrim is collapsed to a transparent overlay (the stage is already
-   a paper surface and doesn't need a contrast plate). */
-.scrimBand {
-  background: linear-gradient(
-    to top,
-    rgba(8, 12, 24, 0.92) 0%,
-    rgba(8, 12, 24, 0.68) 28%,
-    rgba(8, 12, 24, 0.28) 56%,
-    transparent 78%
-  );
-}
-/* Paper-day: the Turn and Substance stages use .scrimBand as well.
-   In paper-day those stages sit on warm parchment so the dark band
-   reads as a black bar across a cream surface — collapse it to
-   transparent. The hero scrim has its own override below that
-   keeps the dark gradient because the photo needs the contrast. */
-:global(:root[data-theme='paper-day']) .turnStage .scrimBand,
-:global(:root[data-theme='paper-day']) .substanceStage .scrimBand {
-  background: transparent;
+.page h1,
+.page h2,
+.page h3,
+.page p,
+.page .issueLine {
+  animation: sc-rise 520ms var(--motion-ease-standard, ease) backwards;
 }
 
-/* Paper-day substanceStage: library discussion area image as a subtle
-   background wash behind the role-based workspace cards. The image is
-   very faint (opacity 0.12) so it reads as an atmospheric texture,
-   not a competing visual layer. The scrimBand stays transparent so
-   the warm-cream card surfaces have the contrast they need. */
-:global(:root[data-theme='paper-day']) .substanceStage {
-  background-image: url('../../assets/images/Codex Image Sep 9, 2026, 05_17_43 PM.png');
-  background-size: cover;
-  background-position: center 40%;
-  background-repeat: no-repeat;
-  background-blend-mode: soft-light;
-}
-/* Hero scrim — always dark because the photo needs contrast. Even
-   in paper-day the hero photo is the same dark library shot, so
-   the dark scrim stays. The variable approach below lets the hero
-   override remain scoped to the heroStage descendant. */
-:global(:root[data-theme='paper-day']) .heroStage .scrimBand {
-  background: linear-gradient(
-    to top,
-    rgba(8, 12, 24, 0.92) 0%,
-    rgba(8, 12, 24, 0.68) 28%,
-    rgba(8, 12, 24, 0.28) 56%,
-    transparent 78%
-  );
-}
-/* Lead: density at the right corner where copy sits in the tension act.
-   Reduced from 94% → 78% because the previous density was overpowering the
-   body text — the gradient left a near-opaque dark wedge in the bottom-right
-   that swallowed the body line into the background. The lighter stop values
-   still create a directional depth cue while leaving the body copy legible. */
-.scrimLead {
-  background: linear-gradient(
-    to top left,
-    rgba(8, 12, 24, 0.84) 0%,
-    rgba(8, 12, 24, 0.58) 32%,
-    rgba(8, 12, 24, 0.22) 58%,
-    transparent 78%
-  );
-}
+.page .heroCopy > *:nth-child(1) { animation-delay: 0ms; }
+.page .heroCopy > *:nth-child(2) { animation-delay: 60ms; }
+.page .heroCopy > *:nth-child(3) { animation-delay: 120ms; }
+.page .heroCopy > *:nth-child(4) { animation-delay: 180ms; }
+.page .heroCopy > *:nth-child(5) { animation-delay: 240ms; }
 
-.primaryButton {
-  min-height: 50px;
-  padding: 0 24px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 9px;
-  background: var(--accent-primary);
-  color: var(--ink-primary);
-  font-size: 0.9rem;
-  font-weight: 750;
-  border: 1px solid var(--accent-primary);
-  border-radius: 4px;
-  text-decoration: none;
-  cursor: pointer;
-  transition:
-    background var(--transition-fast),
-    color var(--transition-fast),
-    border-color var(--transition-fast),
-    transform var(--transition-fast),
-    box-shadow var(--transition-fast);
-}
-/* Hover / focus-visible: darken the background and switch the text to
-   white so it stays readable. Previously the text stayed near-black on a
-   darker-yellow hover background, which read as low-contrast. */
-.primaryButton:hover,
-.primaryButton:focus-visible {
-  background: var(--accent-hover);
-  color: #ffffff;
-  border-color: var(--accent-hover);
-  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent-primary) 30%, transparent);
-  transform: translateY(-1px);
-}
-.primaryButton:active { transform: translateY(0) scale(0.98); }
-
-.textLink {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--ink-secondary);
-  font-size: 0.88rem;
-  font-weight: 700;
-  text-decoration: underline;
-  text-underline-offset: 5px;
-  transition: color var(--transition-fast), gap var(--transition-fast);
-}
-.textLink:hover,
-.textLink:focus-visible {
-  color: var(--accent-primary);
-  gap: 10px;
+@media (prefers-reduced-motion: reduce) {
+  .page h1,
+  .page h2,
+  .page h3,
+  .page p,
+  .page .issueLine {
+    animation: none;
+  }
 }
 
 /* ── HEADER ───────────────────────────────────────────────────── */
@@ -493,15 +274,14 @@
   position: sticky;
   top: 0;
   z-index: var(--z-index-sticky);
-  border-bottom: 1px solid var(--border-subtle);
-  color: var(--sc-ink-on-dark);
-  /* Always-dark glassy header. Previous build used
-     `color-mix(... --ink-primary 92%, transparent)` which became a
-     near-white frosted plate in archive-dusk — the brand bar floated
-     over photos as a washed-out wash instead of a confident navy rail. */
-  background: var(--sc-glass-strong);
-  backdrop-filter: saturate(140%) blur(12px);
-  -webkit-backdrop-filter: saturate(140%) blur(12px);
+  border-bottom: 1px solid color-mix(in srgb, var(--chrome-bg) 12%, transparent);
+  /* Solid #1B1A17 in BOTH themes with white text (per design directive).
+     The chrome is the editorial frame of the page; it stays dark
+     even when the canvas switches to warm parchment. */
+  background: var(--chrome-bg);
+  color: var(--chrome-text);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .headerInner {
@@ -517,20 +297,22 @@
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  color: inherit;
+  color: var(--chrome-text);
   font-weight: 750;
   text-decoration: none;
 }
+
 .brandLogo {
   width: 42px;
   height: 42px;
   object-fit: cover;
   flex-shrink: 0;
 }
+
 .brand span {
   font-family: var(--font-family-serif);
   font-size: 1rem;
-  color: var(--sc-ink-on-dark);
+  color: var(--chrome-text);
 }
 
 .navigation {
@@ -539,16 +321,23 @@
   gap: 24px;
   margin-left: auto;
 }
+
 .navigation a {
-  color: color-mix(in srgb, var(--sc-ink-on-dark) 78%, transparent);
+  color: var(--chrome-text-muted);
   font-size: 0.83rem;
   text-decoration: none;
   text-underline-offset: 5px;
   transition: color var(--transition-fast);
 }
+
+/* Light mode - white text for navigation */
+:root[data-theme='paper-day'] .navigation a {
+  color: #ffffff;
+}
+
 .navigation a:hover,
 .navigation a:focus-visible {
-  color: var(--accent-primary);
+  color: #FACC15;
   text-decoration: underline;
 }
 
@@ -577,8 +366,7 @@
     color var(--transition-fast),
     border-color var(--transition-fast);
 }
-/* Same white-on-darker-yellow hover as .primaryButton so the header
-   Sign In button reads cleanly when the cursor lands on it. */
+
 .loginButton:hover,
 .loginButton:focus-visible {
   background: var(--accent-hover);
@@ -587,144 +375,130 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   ACT 1 — HERO (scrub): video scrubs frame-by-frame as headline assembles
+   ACT 1 — HERO (parallax)
+   The act is a single 100dvh-tall full-bleed scene. The photo and
+   three parallax layers are direct children. React reads the act ref
+   and applies translateY to each layer at a different rate.
    ══════════════════════════════════════════════════════════════════ */
 .heroAct {
   position: relative;
-  /* The act owns 3 viewports of scroll. Most of any act — this is the peak.
-     Without an explicit min-height the sticky stage has no scroll range and
-     scrolls past with the page on the very first scroll tick — the hero
-     title and metrics clip into the tension section and the editorial trace
-     markers all fire at once. 170vh gives the parallax handlers enough
-     range to fire and the sticky stage enough room to actually pin the
-     visitor inside the scene before letting go into the next act.
-     Tightened from 220vh so the dead-scroll gap before the next act
-     doesn't feel like a pause. */
-  min-height: 112vh;
+  /* 100dvh baseline so the photo fills the visible viewport on
+     first paint, but the act can grow if the headline wraps to
+     more lines than expected. Painted with the dark navy so any
+     sub-pixel uncovered area reads as the photo, not parchment. */
+  min-height: 100dvh;
+  background: #0a0d20;
+  /* No top padding — the hero photo bleeds under the header. */
+  padding-block: 0;
+  /* Clip so parallax layers that drift off the top don't paint into
+     the next act. */
+  overflow: hidden;
 }
 
 .heroStage {
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  height: 100svh;
+  position: relative;
+  width: 100%;
+  min-height: 100dvh;
+  /* Inherit the act's dark navy so any parallax drift that momentarily
+     exposes the photo edges still reads as the photo. */
+  background: #0a0d20;
   overflow: hidden;
-  background: #0a0d20; /* deep navy so first paint doesn't flash white */
 }
 
-.heroVideo {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  opacity: 0;
-  transition: opacity 380ms var(--motion-ease-standard);
-  z-index: 0;
-}
-/* When the video emits loadeddata, fade it in over the poster. We also
-   respect the engine's flag so the existing data-sc-has-clip pathway
-   still works if a future integration uses it. */
-.heroStage[data-sc-has-clip] .heroVideo,
-.heroVideo[data-sc-ready='true'] { opacity: 1; }
-
-.heroPoster {
+/* Full-bleed scene image — fills the act entirely so no page-canvas
+   can leak through, fixing image 3's white-gap seam between acts.
+   Used identically for the hero, tension, turn, and testimonial. */
+.scene {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
   z-index: 0;
-  /* Slight scale-up so parallax has somewhere to go without revealing
-     edges when the layer drifts upward. */
-  transform: scale(1.06);
-  transform-origin: center 60%;
+  display: block;
   will-change: transform;
-  transition:
-    opacity 380ms var(--motion-ease-standard),
-    filter 320ms ease;
-}
-.heroStage[data-sc-has-clip] .heroPoster,
-.heroPoster[data-sc-ready='true'] { opacity: 0; }
-
-/* Darken the photo in archive-dusk so the warm spotlight cone reads
-   clearly against a darker base. Without this, the photo's natural
-   interior lighting dominates and the lamp overlay blends into the
-   existing warmth rather than reading as a distinct overhead light.
-   The (data-theme='archive-dusk') selector is on <html>; a separate
-   .heroStage[data-dark-mode='true'] doesn't exist since we drive the
-   gating off the root attribute. */
-:global(html[data-theme='archive-dusk']) .heroPoster {
-  filter: brightness(0.55) saturate(0.85);
 }
 
-/* Foreground layer — a parallax plane that drifts opposite to the
-   photo so the two read as separate depths. Originally this layer
-   also tinted the bottom of the hero with a warm --accent-primary
-   glow (a "desk-lamp streak"), which leaked into light mode where
-   --accent-primary is a warm ochre and made the paper-day hero
-   itself look lit by a lamp.
-
-   The lamp effect is now its own set of gated layers (.heroLampGlow
-   family, dark-only), so this plane no longer needs its own
-   background — leaving it transparent lets the photo breathe in
-   paper-day without any colored wash, while preserving the parallax
-   drift behaviour that React drives from the same scroll handler. */
-.heroLayerForeground {
+.sceneScrim {
   position: absolute;
   inset: 0;
   z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(80% 60% at 30% 50%, rgba(8, 12, 24, 0.55) 0%, transparent 70%),
+    linear-gradient(to top,
+      rgba(8, 12, 24, 0.85) 0%,
+      rgba(8, 12, 24, 0.45) 50%,
+      rgba(8, 12, 24, 0.25) 100%);
+}
+
+/* Dark-mode hero: extra darkness on the photo so the lamp glow
+   reads as a defined beam. */
+.heroStage .scene {
+  filter: brightness(0.55) saturate(0.85);
+}
+
+/* Foreground parallax plane — drifts opposite the photo. Sits above
+   the scene + sceneScrim so it can layer light streaks across the
+   copy area. */
+.heroLayerForeground {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
   pointer-events: none;
   background: transparent;
   will-change: transform;
 }
 
-/* Near-camera plane — a thin accent rule that sits a hair in front
-   of the copy, anchored to the top edge of the stage. Drifts slightly
-   more than the foreground so the three planes separate visibly. The
-   gradient stops are dark / always-dark so the rule reads as a thin
-   midnight line in both themes (the previous --ink-primary mix made
-   it a near-white stripe in archive-dusk). */
+/* Near-camera plane — a thin accent rule across the frame. Drifts
+   slightly more than the foreground so the planes separate. */
 .heroLayerNear {
   position: absolute;
   inset: 0;
-  z-index: 2;
+  z-index: 3;
   pointer-events: none;
   background:
-    linear-gradient(
-      to bottom,
+    linear-gradient(to bottom,
       transparent 0%,
       transparent 38%,
       rgba(8, 12, 24, 0.22) 41%,
       rgba(8, 12, 24, 0.34) 42%,
       rgba(8, 12, 24, 0.22) 43%,
       transparent 46%,
-      transparent 100%
-    );
+      transparent 100%);
   will-change: transform, opacity;
 }
 
-/* Drift overlay — sits above the video but below the scrim so the page
-   background color interpolates as the act passes through. */
-.drift {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background: transparent;
-  transition: background 200ms linear;
+/* (Old .heroScrim rule removed — the universal .sceneScrim above
+   provides the dark overlay for text contrast on top of the scene
+   image. The lamp effect layers (z-index 4/5) handle the dark-mode
+   warm overhead light.) */
+
+/* Light mode - reduce hero scrim for brighter background */
+:root[data-theme='paper-day'] .sceneScrim {
+  background: linear-gradient(180deg,
+    rgba(8, 12, 24, 0.18) 0%,
+    rgba(8, 12, 24, 0.12) 35%,
+    rgba(8, 12, 24, 0.08) 100%);
+}
+
+/* Dark mode - lighter scrim for better text readability */
+:root[data-theme='archive-dusk'] .sceneScrim {
+  background: linear-gradient(180deg,
+    rgba(8, 12, 24, 0.35) 0%,
+    rgba(8, 12, 24, 0.28) 42%,
+    rgba(8, 12, 24, 0.22) 43%,
+    transparent 46%,
+    transparent 100%);
 }
 
 .heroCopy {
   position: absolute;
-  z-index: 3;
+  z-index: 5;
   left: clamp(1.25rem, 5vw, 5.5rem);
   right: clamp(1.25rem, 5vw, 5.5rem);
-  /* Anchor near the top so the multi-line headline has room to breathe
-     before the metrics and actions. Bottom anchor was clipping the
-     "Where Vietnamese..." line on standard 16:9 viewports. */
-  top: clamp(2.5rem, 10vh, 5rem);
-  bottom: clamp(3rem, 8vh, 6rem);
+  top: clamp(3rem, 7dvh, 5rem);
+  bottom: clamp(3rem, 8dvh, 6rem);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -742,35 +516,31 @@
 
 .heroTitle {
   margin: 18px 0 0;
-  color: var(--sc-ink-on-dark);
+  color: var(--ink-on-dark);
   font-family: var(--font-family-serif);
-  /* Reduced clamp from (2.8rem, 6vw, 5.6rem) to (2.4rem, 4.6vw, 4.4rem).
-     The previous sizing produced 4+ visible lines on 16:9 displays,
-     which the bottom-anchored copy box couldn't contain. */
   font-size: clamp(2.4rem, 4.6vw, 4.4rem);
   font-weight: 750;
   letter-spacing: 0;
   line-height: 1.04;
   text-wrap: balance;
 }
-/* The hero photo is dark in BOTH themes so the hero title needs to
-   stay near-white regardless of theme. In paper-day `--sc-ink-on-dark`
-   flips to dark ink for the parchment sections below — so we restore
-   the light ink just for the heroCopy. */
-:global(:root[data-theme='paper-day']) .heroCopy {
-  --sc-ink-on-dark: #fffdf8;
-  --sc-ink-on-dark-soft: rgba(255, 253, 248, 0.78);
-  --sc-ink-on-dark-muted: rgba(255, 253, 248, 0.55);
+
+/* Hero copy always uses light ink on the dark photo background. */
+.heroCopy {
+  --ink-on-dark: #fffdf8;
+  --ink-on-dark-soft: rgba(255, 253, 248, 0.78);
+  --ink-on-dark-muted: rgba(255, 253, 248, 0.55);
 }
 
 .heroLead {
   margin: 18px 0 0;
   max-width: 46ch;
-  color: color-mix(in srgb, var(--sc-ink-on-dark) 78%, transparent);
+  color: color-mix(in srgb, var(--ink-on-dark) 78%, transparent);
   font-size: 1.05rem;
   line-height: 1.55;
 }
 
+/* Metrics row — three count-up tiles. */
 .heroMetrics {
   display: flex;
   align-items: center;
@@ -784,6 +554,7 @@
   flex-direction: column;
   gap: 4px;
 }
+
 .metricValue {
   font-family: var(--font-family-serif);
   font-size: clamp(1.6rem, 3vw, 2.4rem);
@@ -793,17 +564,19 @@
   letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
 }
+
 .metricLabel {
   font-size: 0.7rem;
   font-weight: 600;
-  color: color-mix(in srgb, var(--sc-ink-on-dark) 55%, transparent);
+  color: color-mix(in srgb, var(--ink-on-dark) 55%, transparent);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
+
 .metricDivider {
   width: 1px;
   height: 32px;
-  background: color-mix(in srgb, var(--sc-ink-on-dark) 22%, transparent);
+  background: color-mix(in srgb, var(--ink-on-dark) 22%, transparent);
 }
 
 .heroActions {
@@ -814,21 +587,76 @@
   gap: 20px;
 }
 
+.primaryButton {
+  min-height: 50px;
+  padding: 0 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  background: var(--accent-primary);
+  color: var(--ink-primary);
+  font-size: 0.9rem;
+  font-weight: 750;
+  border: 1px solid var(--accent-primary);
+  border-radius: 4px;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast),
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.primaryButton:hover,
+.primaryButton:focus-visible {
+  background: var(--accent-hover);
+  color: #ffffff;
+  border-color: var(--accent-hover);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent-primary) 30%, transparent);
+  transform: translateY(-1px);
+}
+
+.primaryButton:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.textLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink-secondary);
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 5px;
+  transition: color var(--transition-fast), gap var(--transition-fast);
+}
+
+.textLink:hover,
+.textLink:focus-visible {
+  color: var(--accent-primary);
+  gap: 10px;
+}
+
 .heroHint {
   position: absolute;
-  z-index: 3;
-  bottom: clamp(1.5rem, 4vh, 2.5rem);
+  z-index: 4;
+  bottom: clamp(1.5rem, 4dvh, 2.5rem);
   left: 50%;
   transform: translateX(-50%);
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  color: color-mix(in srgb, var(--sc-ink-on-dark) 60%, transparent);
+  color: color-mix(in srgb, var(--ink-on-dark) 60%, transparent);
   font-size: 0.72rem;
   font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
 }
+
 .heroHintLine {
   display: inline-block;
   width: 36px;
@@ -836,131 +664,194 @@
   background: currentColor;
   animation: hintPulse 1800ms var(--motion-ease-standard) infinite;
 }
+
 @keyframes hintPulse {
-  0%, 100% { transform: scaleX(0.4); opacity: 0.5; transform-origin: left center; }
-  50% { transform: scaleX(1); opacity: 1; }
+  0%, 100% {
+    transform: scaleX(0.4);
+    opacity: 0.5;
+    transform-origin: left center;
+  }
+  50% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+/* Lamp light effect (dark mode only) — ceiling spotlight from above.
+   Four stacked layers for the warm yellow glow effect. */
+.heroVignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+  background:
+    linear-gradient(to top,
+      rgba(6, 9, 15, 0.95) 0%,
+      rgba(6, 9, 15, 0.7) 25%,
+      rgba(6, 9, 15, 0.25) 50%,
+      transparent 72%),
+    linear-gradient(to right,
+      rgba(6, 9, 15, 0.85) 0%,
+      rgba(6, 9, 15, 0.3) 16%,
+      transparent 32%,
+      transparent 68%,
+      rgba(6, 9, 15, 0.3) 84%,
+      rgba(6, 9, 15, 0.85) 100%);
+}
+
+.heroLampGlow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+  background:
+    radial-gradient(ellipse 26% 85% at 50% 0%,
+      rgba(255, 230, 150, 0.55) 0%,
+      rgba(255, 215, 110, 0.36) 8%,
+      rgba(245, 180, 0, 0.22) 20%,
+      rgba(234, 173, 47, 0.10) 36%,
+      rgba(180, 130, 30, 0.04) 55%,
+      transparent 72%);
+  animation: lampFlicker 4s ease-in-out infinite;
+}
+
+.heroLampCore {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: min(180px, 18vw);
+  height: min(180px, 18vw);
+  transform: translate(-50%, -55%);
+  border-radius: 50%;
+  background: radial-gradient(circle at center,
+    rgba(255, 250, 235, 0.95) 0%,
+    rgba(255, 235, 175, 0.65) 16%,
+    rgba(255, 210, 110, 0.32) 40%,
+    rgba(245, 180, 0, 0.12) 64%,
+    rgba(180, 130, 30, 0.05) 78%,
+    transparent 90%);
+  pointer-events: none;
+  z-index: 8;
+  animation: lampPulse 3s ease-in-out infinite;
+}
+
+.heroLightRays {
+  position: absolute;
+  top: -40px;
+  left: 50%;
+  width: min(360px, 38vw);
+  height: 60%;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 7;
+  opacity: 0.6;
+  background: linear-gradient(to bottom,
+    rgba(255, 245, 200, 0.65) 0%,
+    rgba(255, 222, 130, 0.32) 18%,
+    rgba(245, 180, 0, 0.12) 45%,
+    rgba(226, 173, 47, 0.04) 70%,
+    transparent 95%);
+  mask: radial-gradient(ellipse 100% 75% at 50% 0%,
+    rgba(0, 0, 0, 0.95) 0%,
+    rgba(0, 0, 0, 0.75) 22%,
+    rgba(0, 0, 0, 0.4) 50%,
+    transparent 85%);
+  -webkit-mask: radial-gradient(ellipse 100% 75% at 50% 0%,
+    rgba(0, 0, 0, 0.95) 0%,
+    rgba(0, 0, 0, 0.75) 22%,
+    rgba(0, 0, 0, 0.4) 50%,
+    transparent 85%);
+  animation: raysSway 9s ease-in-out infinite;
+}
+
+@keyframes lampFlicker {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.85; }
+}
+
+@keyframes lampPulse {
+  0%, 100% {
+    transform: translate(-50%, -55%) scale(1);
+    opacity: 0.95;
+  }
+  50% {
+    transform: translate(-50%, -55%) scale(1.08);
+    opacity: 1;
+  }
+}
+
+@keyframes raysSway {
+  0%, 100% {
+    transform: translateX(-50%) translateX(0);
+    opacity: 0.65;
+  }
+  50% {
+    transform: translateX(-50%) translateX(8px);
+    opacity: 0.8;
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   ACT 2 — TENSION (pin + parallax): the cost of scattered tools
-   Redesigned as a cinematic night scene:
-   - rich midnight ground (replaces the gray sunken surface)
-   - three independent depth planes (back grid + aurora, mid glow,
-     foreground chips) that drift at slightly different rates
-   - right-anchored copy with a quote-mark kicker for editorial weight
+   ACT 2 — TENSION: The cost of scattered tools
+   Dark surface with floating tag labels that drift through the act.
+   Matches the dark theme of the hero and workflow sections.
    ══════════════════════════════════════════════════════════════════ */
 .tensionAct {
   position: relative;
-  /* Give the sticky stage scroll range so the parallax layers actually have
-     room to drift before the act lets go into the turn. Without it the
-     tension title clips into the turn header and the chips overlap the
-     workflow cards on a single scroll tick. Tightened from 180vh so
-     visitors don't scroll through a long empty buffer before the next
-     scene starts. */
-  min-height: 108vh;
-}
-
-.tensionStage {
-  /* Anchor below the sticky header (~72px) so the stage's content is
-     not hidden under the navigation bar. The hero stage stays at top:0
-     because it is full-bleed behind the header. The tension/turn/
-     substance stages are content-first and need the header offset. */
-  position: sticky;
-  top: 72px;
-  height: calc(100vh - 72px);
-  height: calc(100svh - 72px);
+  min-height: 100dvh;
+  /* Dark surface matching the overall dark theme */
+  background:
+    radial-gradient(70% 60% at 50% 50%,
+      color-mix(in srgb, var(--accent-primary) 8%, #1a1f36) 0%,
+      #141829 70%,
+      #0f1320 100%);
+  color: var(--ink-on-dark);
+  display: flex;
+  align-items: stretch;
   overflow: hidden;
-  /* Cinematic midnight ground — always dark. Previously built with
-     `color-mix(... --ink-primary 90%, #0b1238 10%)` which evaluates to
-     near-white in archive-dusk (because --ink-primary becomes #f8fafc
-     in dark mode). The act flipped from midnight to parchment and the
-     white-on-light tension copy became unreadable. */
+  border-top: 1px solid color-mix(in srgb, var(--ink-on-dark) 8%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--ink-on-dark) 8%, transparent);
+}
+
+/* Light mode yellow spotlight */
+:root[data-theme='paper-day'] .tensionAct {
   background:
-    radial-gradient(
-      120% 90% at 70% 30%,
-      var(--sc-stage-bg-2) 0%,
-      var(--sc-stage-bg) 55%,
-      var(--sc-stage-bg-deep) 100%
-    );
+    radial-gradient(70% 60% at 50% 50%,
+      rgba(250, 204, 21, 0.35) 0%,
+      rgba(250, 204, 21, 0.18) 18%,
+      rgba(252, 211, 77, 0.08) 45%,
+      rgba(253, 224, 71, 0.02) 70%,
+      transparent 95%),
+    var(--page-base);
+  color: var(--ink-primary);
 }
 
-/* Far plane — deep grid + aurora wash. Drifts slowest so it reads as
-   "the room", not as something the visitor is moving past. */
-.tensionLayerBack {
-  position: absolute;
-  inset: -10% -6% 0 -6%;
-  background:
-    /* aurora: two soft lights, primary accent at the upper right where
-       the copy sits, cooler reviewer accent at the lower left for
-       visual balance */
-    radial-gradient(45% 35% at 78% 18%, color-mix(in srgb, var(--accent-primary) 22%, transparent), transparent 70%),
-    radial-gradient(35% 40% at 8% 88%, color-mix(in srgb, var(--ars-reviewer) 16%, transparent), transparent 70%),
-    /* deep grid: hairline lines at 80px so it doesn't read as a
-       webdev grid */
-    linear-gradient(color-mix(in srgb, var(--sc-ink-on-dark) 5%, transparent) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in srgb, var(--sc-ink-on-dark) 5%, transparent) 1px, transparent 1px);
-  background-size: 100% 100%, 100% 100%, 80px 80px, 80px 80px;
-  z-index: 0;
-  will-change: transform;
-}
-
-/* Mid plane — a single soft light orb that drifts slightly faster
-   than the back, giving the room a sense of scale. */
-.tensionLayerMid {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background: radial-gradient(
-    28% 22% at 65% 35%,
-    color-mix(in srgb, var(--accent-primary) 14%, transparent),
-    transparent 75%
-  );
-  will-change: transform;
-}
-
-/* Foreground plane — a near-camera light streak that drifts fastest.
-   This is the "depth" plane the eye reads as the closest object. */
-.tensionLayerFront {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  background:
-    /* a thin horizontal light bar at the bottom that catches the eye
-       and anchors the composition */
-    linear-gradient(
-      to top,
-      color-mix(in srgb, var(--accent-primary) 10%, transparent) 0%,
-      transparent 18%
-    );
-  will-change: transform;
-}
-
+/* Copy sits above the chip layer. */
 .tensionCopy {
-  position: absolute;
-  z-index: 3;
-  inset-inline: auto clamp(1.25rem, 5vw, 5.5rem);
-  right: clamp(1.25rem, 5vw, 5.5rem);
-  bottom: clamp(3rem, 12vh, 9rem);
+  position: relative;
+  z-index: 5;
+  margin-left: auto;
+  margin-right: clamp(1.25rem, 5vw, 5.5rem);
+  margin-top: clamp(3rem, 12dvh, 9rem);
+  margin-bottom: clamp(3rem, 12dvh, 9rem);
+  padding-top: clamp(1.5rem, 6dvh, 4rem);
   max-width: min(38rem, 60vw);
   text-align: right;
 }
 
-/* Kicker uses a left-side accent rule (right-aligned in JSX). We render
-   the rule via an absolutely positioned span so it tracks the kicker
-   without breaking the right alignment of the title and body. */
+/* Dark surface uses light ink. */
 .tensionKicker {
   position: relative;
   margin: 0;
   padding-right: 14px;
-  color: var(--accent-primary);
+  color: color-mix(in srgb, var(--ink-on-dark) 86%, transparent);
   font-family: var(--font-family-mono);
   font-size: 0.74rem;
   font-weight: 800;
   letter-spacing: 0.18em;
   text-transform: uppercase;
 }
+
 .tensionKicker::after {
   content: '';
   position: absolute;
@@ -981,37 +872,34 @@
   font-weight: 750;
   letter-spacing: -0.012em;
   line-height: 1.04;
-  color: var(--sc-ink-on-dark);
+  /* Light ink on dark surface */
+  color: var(--ink-on-dark);
   text-wrap: balance;
-  text-shadow:
-    0 1px 0 var(--sc-card-bg-edge),
-    0 2px 24px var(--sc-shadow);
 }
 
 .tensionBody {
   margin: 22px 0 0;
   margin-left: auto;
-  color: color-mix(in srgb, var(--sc-ink-on-dark) 88%, transparent);
+  color: color-mix(in srgb, var(--ink-on-dark) 78%, transparent);
   font-size: 1.02rem;
   line-height: 1.72;
   max-width: 50ch;
   font-weight: 500;
-  text-shadow: 0 0 18px var(--sc-card-bg-edge);
 }
 
-/* Editorial quote mark — a large serif glyph anchored above the title
-   for editorial weight. Lives behind the title so it never collides
-   with copy. */
 .tensionQuote {
   position: absolute;
-  z-index: 2;
+  z-index: 4;
   right: clamp(1.25rem, 5vw, 5.5rem);
-  top: clamp(1.5rem, 6vh, 4rem);
+  top: clamp(1.5rem, 6dvh, 4rem);
   font-family: var(--font-family-serif);
   font-weight: 750;
   font-size: clamp(5rem, 12vw, 10rem);
   line-height: 0.8;
-  color: color-mix(in srgb, var(--accent-primary) 22%, transparent);
+  /* Brand yellow ghost mark — same accent used elsewhere on the
+     page so the giant quote mark reads as a brand mark, not a
+     stray glyph. */
+  color: color-mix(in srgb, var(--accent-primary) 38%, transparent);
   pointer-events: none;
   user-select: none;
   letter-spacing: -0.06em;
@@ -1019,7 +907,7 @@
 
 .tensionChips {
   position: absolute;
-  z-index: 2;
+  z-index: 5;
   inset: 0;
   list-style: none;
   margin: 0;
@@ -1036,19 +924,17 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  /* Always-dark glassy chip. Previously used
-     `color-mix(... --ink-primary 60%, transparent)` which became a
-     near-white plate in archive-dusk — the chips turned into parchment
-     labels floating over a midnight stage. */
-  color: var(--sc-ink-on-dark);
-  background: var(--sc-glass);
-  border: 1px solid color-mix(in srgb, var(--sc-ink-on-dark) 14%, transparent);
-  backdrop-filter: blur(8px) saturate(140%);
+  /* Light text on dark glass background for dark mode */
+  color: color-mix(in srgb, var(--ink-on-dark) 84%, transparent);
+  background: rgba(13, 19, 38, 0.72);
+  border: 1px solid color-mix(in srgb, var(--ink-on-dark) 10%, transparent);
+  backdrop-filter: blur(6px) saturate(140%);
   box-shadow:
-    0 8px 24px var(--sc-shadow),
-    inset 0 1px 0 color-mix(in srgb, var(--sc-ink-on-dark) 8%, transparent);
+    0 6px 18px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
   will-change: transform;
 }
+
 .tensionChip::before {
   content: '';
   display: inline-block;
@@ -1060,113 +946,62 @@
   vertical-align: middle;
   box-shadow: 0 0 8px color-mix(in srgb, var(--accent-primary) 60%, transparent);
 }
+
 .tensionChip:nth-child(1) { top: 14%; left: 12%; }
 .tensionChip:nth-child(2) { top: 22%; left: 36%; }
 .tensionChip:nth-child(3) { top: 60%; left: 8%; }
 .tensionChip:nth-child(4) { top: 70%; left: 28%; }
-/* Added in the second pass to fill the negative space on the left half
-   of the stage — chips 5-8 nestle into the gaps between the original
-   four and the lower band of the layer. */
 .tensionChip:nth-child(5) { top: 32%; left: 20%; }
 .tensionChip:nth-child(6) { top: 46%; left: 6%; }
 .tensionChip:nth-child(7) { top: 78%; left: 16%; }
 .tensionChip:nth-child(8) { top: 84%; left: 36%; }
 
 /* ══════════════════════════════════════════════════════════════════
-   ACT 3 — TURN (pin + kinetic): five editorial stages, one by one
+   ACT 3 — TURN: Five editorial workflow stages
+   Background photo (reading room with arched windows) sits behind
+   the cards via the .scene + .sceneScrim pair. The act uses
+   --page-base as a brief fallback before the photo paints, so no
+   canvas can leak through.
    ══════════════════════════════════════════════════════════════════ */
 .turnAct {
   position: relative;
-  /* Same pattern as the hero/tension acts: the sticky stage needs scroll
-     range on the parent or it scrolls past in a single tick and the
-     workflow cards clip into the substance rail. Tightened from 180vh
-     so visitors don't scroll through a long empty buffer before the
-     substance act starts. */
-  min-height: 108vh;
-}
-
-.turnStage {
-  /* Sticks below the sticky header (72px) so the title and stages are
-     not hidden behind the navigation bar. */
-  position: sticky;
-  top: 72px;
-  height: calc(100vh - 72px);
-  height: calc(100svh - 72px);
+  padding-block: clamp(56px, 8dvh, 96px);
+  background: var(--page-base);
+  color: var(--ink-on-dark);
   overflow: hidden;
-  /* Always-dark. Previously `var(--ink-primary)` — fine in paper-day
-     (near-black) but a near-white panel in archive-dusk, breaking
-     every text contrast and chip color in this act. */
-  background-color: var(--sc-stage-bg);
-  color: var(--sc-ink-on-dark);
-  display: flex;
-  align-items: stretch;
-  justify-content: center;
 }
 
-/* Image background for the 5-stages section — bright open library hall
-   from the workflow image. Placed after the first .turnStage block so
-   background-image overrides the initial background-color in dark mode.
-   In paper-day the image is visible; in dark mode it blends into the
-   dark radial gradient fallback. */
-.turnStage {
-  position: relative;
-  background-image: url('../../assets/images/Codex Image Sep 11, 2026, 04_21_02 PM.png');
-  background-size: cover;
-  background-position: center 30%;
-  background-repeat: no-repeat;
-}
-
-/* Paper-day: the Turn stage uses .scrimBand as well. Replace the
-   transparent scrim override with a soft ivory overlay so the library
-   background stays visible but the text has a warm contrast plate. */
-:global(:root[data-theme='paper-day']) .turnStage .scrimBand {
-  background: linear-gradient(
-    to top,
-    rgba(255, 251, 235, 0.78) 0%,
-    rgba(255, 251, 235, 0.55) 40%,
-    rgba(255, 251, 235, 0.25) 65%,
-    transparent 85%
-  );
-}
-
-/* Paper-day: the section title sits over the warm library hall image,
-   so the default dark ink loses contrast against the amber/golden
-   tones. Flip .turnTitle to a warm parchment-cream that stays readable
-   on the photo while keeping the page's journal tone. A pure white
-   would feel cold against the warm gradient; this off-cream sits in
-   the same hue family as the surrounding paper surfaces. */
-:global(:root[data-theme='paper-day']) .turnTitle {
-  color: #fff8e7;
-  text-shadow: 0 1px 2px rgba(48, 32, 12, 0.35);
+/* Light mode yellow spotlight */
+:root[data-theme='paper-day'] .turnAct {
+  background:
+    radial-gradient(70% 60% at 50% 50%,
+      rgba(250, 204, 21, 0.35) 0%,
+      rgba(250, 204, 21, 0.18) 18%,
+      rgba(252, 211, 77, 0.08) 45%,
+      rgba(253, 224, 71, 0.02) 70%,
+      transparent 95%),
+    var(--page-base);
+  color: var(--ink-primary);
 }
 
 .turnInner {
   position: relative;
-  z-index: 3;
+  z-index: 2;
   width: min(1180px, calc(100% - 48px));
   margin: 0 auto;
-  padding: clamp(60px, 10vh, 110px) 0 clamp(60px, 10vh, 110px);
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 36px;
-  /* Center the header + cards vertically inside the full-height stage
-     so the cards sit in the middle of the viewport instead of clumping
-     at the top and leaving a large empty void below. */
-  align-content: center;
 }
 
-.turnHeader { max-width: 760px; }
-
-.turnHeader .issueLine {
-  color: var(--accent-primary);
-  border-left: 3px solid var(--accent-primary);
-  padding-left: 14px;
+.turnHeader {
+  max-width: 760px;
 }
 
 .turnTitle {
   margin: 18px 0 0;
   font-family: var(--font-family-serif);
-  color: var(--sc-ink-on-dark);
+  color: var(--ink-on-dark);
   font-size: clamp(2.2rem, 4.4vw, 3.8rem);
   font-weight: 750;
   letter-spacing: 0;
@@ -1179,20 +1014,15 @@
   margin: 24px 0 0;
   padding: 0;
   display: grid;
-  /* One row, five cards at desktop. The earlier `auto-fit` resolved to
-     two rows at common widths; explicit `repeat(5, …)` keeps the
-     Decision-Authority-era vertical fold out of the layout. Tablet
-     collapses to 2-col, mobile to 1-col via the media queries below. */
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
 }
 
 .turnItem {
   padding: 16px;
-  border: 1px solid color-mix(in srgb, var(--sc-ink-on-dark) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ink-on-dark) 12%, transparent);
   border-radius: 8px;
-  /* Always-dark glassy item plate — see note on the page-root block. */
-  background: var(--sc-glass);
+  background: var(--glass-soft);
   backdrop-filter: blur(8px);
   display: grid;
   grid-template-columns: auto 1fr;
@@ -1220,129 +1050,56 @@
   font-family: var(--font-family-serif);
   font-size: 1.05rem;
   font-weight: 750;
-  color: var(--sc-ink-on-dark);
+  color: var(--ink-on-dark);
 }
 
 .turnStepBody {
   margin: 6px 0 0;
-  color: color-mix(in srgb, var(--sc-ink-on-dark) 65%, transparent);
+  color: color-mix(in srgb, var(--ink-on-dark) 65%, transparent);
   font-size: 0.8rem;
   line-height: 1.5;
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   ACT 4 — SUBSTANCE (pan): cinematic role-preview window
-   Redesigned: instead of four white cards on a plain gradient, the
-   substance stage now reads like a deep "preview window" — a single
-   dark surface where role-specific workspace previews glide past the
-   visitor, each card carrying a mini-mockup of the actual UI it
-   stands in for. The horizontal pan is preserved (still the device
-   the scrollcraft grammar calls for here) but every visual element
-   is upgraded.
+   ACT 4 — SUBSTANCE (pan): Cinematic role-preview window
+   The act owns a horizontal rail of role preview cards. As the act
+   scrolls through the viewport, the rail pans left. On narrow
+   viewports the rail collapses to a vertical stack and the pan
+   driver is bypassed.
    ══════════════════════════════════════════════════════════════════ */
 .substanceAct {
   position: relative;
-  /* The pan rail translates horizontally as `usePanProgress` reports
-     progress 0..1 based on how far the visitor has scrolled through the
-     parent act. If the parent is the same height as the sticky stage
-     (100vh - 72px) the progress jumps from 0 straight to 1 on the
-     first scroll tick and the four roles whip past with no pan at all.
-     170vh gives a clean pan arc through the four role workspaces.
-     Tightened from 220vh so the dead-scroll gap before the boundaries
-     section doesn't feel like a pause. */
-  min-height: 118vh;
-  /* Deep academic-navy ground that matches the tension act so the two
-     dark sections read as one continuous world, not as two unrelated
-     panels. The outer scroll area needs a backdrop so first paint
-     doesn't flash the page canvas before the sticky stage settles.
-     Theme-aware via `--sc-substance-act-bg` so paper-day lifts this
-     off to warm parchment. */
-  background: var(--sc-substance-act-bg, #0a1024);
-}
-
-/* Soft accent wash on the act's outer wrapper so the deep navy has
-   atmospheric depth even before the sticky stage is in view. */
-.substanceAct::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(60% 50% at 90% 30%, color-mix(in srgb, var(--accent-primary) 14%, transparent), transparent 70%),
-    radial-gradient(50% 50% at 5% 80%, color-mix(in srgb, var(--ars-reviewer) 12%, transparent), transparent 70%);
-  pointer-events: none;
-}
-
-.substanceStage {
-  /* Sticks below the sticky header (72px) so the section heading and
-     the role cards are not hidden behind the navigation bar. */
-  position: sticky;
-  top: 72px;
-  height: calc(100vh - 72px);
-  height: calc(100svh - 72px);
-  min-height: 580px; /* a touch taller so the preview mockups fit */
-  overflow: hidden;
-  /* Theme-aware — was hardcoded midnight gradient. Paper-day overrides
-     the gradient stops so the cards lift off a warm parchment surface
-     instead of a midnight void. */
-  background: linear-gradient(180deg, var(--sc-substance-bg-top, #0a1024) 0%, var(--sc-substance-bg-bot, #060c1e) 100%);
+  /* No fixed min-height: the act sizes to its content (header +
+     rail + progress dots) plus the stage's min-height for the rail
+     cards. The act grows tall enough that the rail cards are
+     comfortable in the center of the viewport without leaving dead
+     parchment space at the top. */
+  min-height: 100dvh;
+  padding-block: clamp(40px, 8dvh, 80px);
+  /* Photo background now lives on .scene + .sceneScrim (rendered as
+     direct children by the JSX). The act paints --page-base so any
+     uncovered pixel is intentional navy, never --app-canvas. */
+  background: var(--page-base);
+  color: var(--ink-on-dark);
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
-  padding-top: clamp(40px, 6vh, 60px);
-  isolation: isolate;
-}
-
-/* Atmospheric orb that follows the active role's accent color,
-   positioned behind the rail so it gives the page an ever-shifting
-   sense of "where you are" in the workspace journey. */
-.substanceStage::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background: radial-gradient(
-    60% 50% at var(--sc-role-x, 30%) 50%,
-    color-mix(in srgb, var(--sc-role-accent, var(--accent-primary)) 22%, transparent),
-    transparent 75%
-  );
-  transition: background 600ms var(--motion-ease-standard);
+  justify-content: center;
+  overflow: hidden;
 }
 
 .substanceHeader {
   position: relative;
   z-index: 3;
   width: min(1180px, calc(100% - 48px));
-  margin: 0 auto 0;
-  padding: 0 0 18px;
+  margin: 0 auto;
+  padding-bottom: 18px;
   max-width: 820px;
-}
-
-/* Two-line heading: light kicker + serif title in ink-on-dark */
-.substanceKicker {
-  margin: 0;
-  color: var(--accent-primary);
-  font-family: var(--font-family-mono);
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-}
-.substanceKicker::before {
-  content: '';
-  display: inline-block;
-  width: 18px;
-  height: 1px;
-  background: var(--accent-primary);
-  vertical-align: middle;
-  margin-right: 10px;
-  margin-bottom: 3px;
 }
 
 .substanceTitle {
   margin: 14px 0 0;
   font-family: var(--font-family-serif);
-  color: var(--sc-ink-on-dark);
+  color: var(--ink-on-dark);
   font-size: clamp(1.8rem, 3.2vw, 2.8rem);
   font-weight: 750;
   letter-spacing: -0.008em;
@@ -1352,12 +1109,14 @@
 
 .substanceLead {
   margin: 12px 0 0;
-  color: color-mix(in srgb, var(--sc-ink-on-dark) 70%, transparent);
+  color: color-mix(in srgb, var(--ink-on-dark) 70%, transparent);
   font-size: 0.94rem;
   line-height: 1.6;
   max-width: 56ch;
 }
 
+/* Pan rail — direct child of the act. JS applies translateX based on
+   scroll progress through the act. No sticky wrapper. */
 .substanceRail {
   position: relative;
   z-index: 2;
@@ -1365,35 +1124,23 @@
   gap: clamp(16px, 1.8vw, 26px);
   padding: 12px clamp(1rem, 4vw, 4.5rem) 24px;
   align-items: stretch;
-  /* scrollcraft drives translateX via [data-sc-pan]; we also set it manually */
   width: max-content;
   will-change: transform;
-  /* Let the rail fill the remaining stage height so cards center
-     vertically. */
   flex: 1;
 }
 
 .substanceCard {
-  /* Cards are taller and richer — they hold a header + body + a real
-     preview mockup, not just an icon + headline + paragraph.
-     Widened from `clamp(260px, 22vw, 300px)` so each card's body copy
-     has room for two full lines without ellipsizing. Cards are now
-     read-only previews (the surrounding <Link> was removed) so we
-     still size them as a coherent set across the pan stage. */
   flex: 0 0 clamp(290px, 25vw, 360px);
   min-height: 0;
-  max-height: clamp(460px, 64vh, 560px);
+  max-height: clamp(460px, 64dvh, 560px);
   padding: 0;
-  border: 1px solid color-mix(in srgb, var(--sc-ink-on-dark) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ink-on-dark) 22%, transparent);
   border-radius: 16px;
-  /* Always-dark glassy surface with role-tinted edge light. Previous
-     build used `var(--ink-primary)` in this gradient which is correct
-     for paper-day but became a near-white card in archive-dusk — the
-     four workspace cards rendered as bright parchment panels instead
-     of dark glass cards. The role accent still tints the top edge so
-     each card still reads as belonging to its role. */
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--accent-role, var(--accent-primary)) 12%, var(--sc-card-bg)) 0%, color-mix(in srgb, var(--sc-card-bg) 88%, var(--sc-card-bg-edge) 12%) 100%);
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--accent-role, var(--accent-primary)) 8%, var(--surface-act)) 0%,
+      color-mix(in srgb, var(--surface-act) 92%, var(--surface-act-edge) 8%) 100%);
+  backdrop-filter: blur(14px) saturate(120%);
   display: flex;
   flex-direction: column;
   position: relative;
@@ -1402,42 +1149,35 @@
   color: inherit;
   transition: box-shadow 360ms var(--motion-ease-standard), border-color 360ms var(--motion-ease-standard);
   box-shadow:
-    0 24px 48px var(--sc-shadow),
-    inset 0 1px 0 color-mix(in srgb, var(--sc-ink-on-dark) 14%, transparent);
+    0 24px 48px var(--shadow-card-heavy),
+    inset 0 1px 0 color-mix(in srgb, var(--ink-on-dark) 18%, transparent);
 }
+
 .substanceCard::before {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  background: radial-gradient(
-    120% 80% at 50% 0%,
+  background: radial-gradient(120% 80% at 50% 0%,
     color-mix(in srgb, var(--accent-role, var(--accent-primary)) 22%, transparent) 0%,
-    transparent 60%
-  );
+    transparent 60%);
 }
+
 .substanceCard[data-active='true'] {
   border-color: color-mix(in srgb, var(--accent-role, var(--accent-primary)) 50%, transparent);
   box-shadow:
-    0 32px 64px var(--sc-shadow-heavy),
-    inset 0 1px 0 color-mix(in srgb, var(--sc-ink-on-dark) 18%, transparent),
+    0 32px 64px var(--shadow-card-heavy),
+    inset 0 1px 0 color-mix(in srgb, var(--ink-on-dark) 18%, transparent),
     0 0 0 1px color-mix(in srgb, var(--accent-role, var(--accent-primary)) 30%, transparent);
 }
-/* Hover no longer lifts the card — these are read-only previews, so a
-   lift would imply clickability. Keep a small border-color cue so the
-   card still feels responsive to the cursor without signalling "link". */
-.substanceCard:hover {
-  border-color: color-mix(in srgb, var(--accent-role, var(--accent-primary)) 30%, transparent);
-}
-/* No focus ring — the card isn't focusable as a link target anymore. */
 
 .substanceCardHeader {
   padding: 22px 22px 14px;
   display: flex;
   align-items: center;
   gap: 14px;
-  border-bottom: 1px solid color-mix(in srgb, var(--sc-ink-on-dark) 8%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--ink-on-dark) 8%, transparent);
 }
 
 .substanceIcon {
@@ -1459,6 +1199,7 @@
   flex: 1;
   min-width: 0;
 }
+
 .substanceCardRole {
   margin: 0;
   font-family: var(--font-family-mono);
@@ -1468,28 +1209,22 @@
   text-transform: uppercase;
   color: color-mix(in srgb, var(--accent-role, var(--accent-primary)) 80%, transparent);
 }
+
 .substanceCardTitle {
   margin: 0;
   font-family: var(--font-family-serif);
-  color: var(--sc-ink-on-dark);
+  color: var(--ink-on-dark);
   font-size: 1.18rem;
   font-weight: 750;
   letter-spacing: -0.005em;
   line-height: 1.2;
-  /* Was `white-space: nowrap; overflow: hidden; text-overflow: ellipsis`
-     which truncated the longer "Graduate student workspace" / "Researcher
-     workspace" titles at the new narrower card width. Clamp at two
-     lines and ellipsize anything beyond so the card stays uniform. */
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-/* Mini preview surface — a stripped-down representation of what the
-   visitor would actually see in this workspace. Not a fake dashboard;
-   a label-only schematic so the reader understands the role's surface
-   without an invented metric. */
 .substancePreview {
   flex: 1;
   padding: 16px 22px;
@@ -1505,75 +1240,74 @@
   gap: 10px;
   padding: 10px 12px;
   border-radius: 8px;
-  background: color-mix(in srgb, var(--sc-ink-on-dark) 4%, transparent);
-  border: 1px solid color-mix(in srgb, var(--sc-ink-on-dark) 8%, transparent);
+  background: color-mix(in srgb, var(--ink-on-dark) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ink-on-dark) 8%, transparent);
   font-size: 0.78rem;
-  color: color-mix(in srgb, var(--sc-ink-on-dark) 78%, transparent);
+  color: color-mix(in srgb, var(--ink-on-dark) 78%, transparent);
 }
+
 .substancePreviewRow[data-status='active'] {
   background: color-mix(in srgb, var(--accent-role, var(--accent-primary)) 14%, transparent);
   border-color: color-mix(in srgb, var(--accent-role, var(--accent-primary)) 35%, transparent);
-  color: var(--sc-ink-on-dark);
+  color: var(--ink-on-dark);
 }
+
 .substancePreviewDot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--sc-ink-on-dark) 30%, transparent);
+  background: color-mix(in srgb, var(--ink-on-dark) 30%, transparent);
   flex-shrink: 0;
 }
+
 .substancePreviewRow[data-status='active'] .substancePreviewDot {
   background: var(--accent-role, var(--accent-primary));
   box-shadow: 0 0 8px color-mix(in srgb, var(--accent-role, var(--accent-primary)) 60%, transparent);
 }
+
 .substancePreviewLabel {
   flex: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
 .substancePreviewMeta {
   font-family: var(--font-family-mono);
   font-size: 0.68rem;
-  color: color-mix(in srgb, var(--sc-ink-on-dark) 50%, transparent);
+  color: color-mix(in srgb, var(--ink-on-dark) 50%, transparent);
 }
 
 .substanceCardFooter {
   padding: 14px 22px 18px;
-  border-top: 1px solid color-mix(in srgb, var(--sc-ink-on-dark) 8%, transparent);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--ink-on-dark) 8%, transparent);
 }
 
 .substanceCardBody {
   margin: 0;
   font-size: 0.88rem;
-  color: color-mix(in srgb, var(--sc-ink-on-dark) 70%, transparent);
+  color: color-mix(in srgb, var(--ink-on-dark) 70%, transparent);
   line-height: 1.55;
-  /* Full width now — the Explore span that used to share the footer
-     row is gone. */
   flex: 1;
   max-width: 100%;
 }
 
 .panProgress {
-  position: absolute;
-  bottom: 28px;
-  left: 50%;
-  transform: translateX(-50%);
   display: inline-flex;
   gap: 8px;
-  z-index: 3;
+  align-items: center;
+  padding: 0 clamp(1rem, 4vw, 4.5rem);
+  margin-top: 8px;
 }
+
 .panDot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--sc-ink-on-dark) 22%, transparent);
+  background: color-mix(in srgb, var(--ink-on-dark) 22%, transparent);
   transition: background var(--transition-fast), transform var(--transition-fast), width var(--transition-fast);
 }
+
 .panDot[data-active='true'] {
   background: var(--accent-primary);
   transform: scaleX(2.4);
@@ -1583,52 +1317,111 @@
   height: 6px;
 }
 
-/* ══════════════════════════════════════════════════════════════════
-   ACT 5 — COMMITMENT (flow + spotlight): boundaries, testimonial, FAQ, CTA
-   ══════════════════════════════════════════════════════════════════ */
-.commitment { background: var(--app-canvas); }
+/* Right-edge peek hint — softens the visual stop where the last card
+   ends mid-rail. Hidden on viewports where the rail is a stack. */
+.substanceRail::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 64px;
+  pointer-events: none;
+  background: linear-gradient(to right,
+    transparent 0%,
+    color-mix(in srgb, var(--surface-act) 40%, transparent) 60%,
+    color-mix(in srgb, var(--surface-act) 78%, transparent) 100%);
+  z-index: 4;
+  opacity: 0.9;
+}
 
-/* Spotlight wrapper — gradient follows cursor on fine pointers */
+@media (max-width: 900px) {
+  .substanceRail::after {
+    display: none;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   ACT 5 — RECOGNITION: medal tier ladder
+   The RecognitionAct is rendered as its own <section> by RecognitionAct.tsx.
+   It sits between the substance act and the commitment section. The
+   stage styles live in RecognitionAct.module.css.
+
+   Here we just ensure the commitment wrapper underneath paints
+   --page-base so the page root colour stays continuous even if the
+   RecognitionAct doesn't extend to its full background.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ══════════════════════════════════════════════════════════════════
+   ACT 6 — COMMITMENT (flow + spotlight): boundaries, testimonial, FAQ, CTA
+   The act is a single block. The spotlight is a wrapper that
+   tracks the pointer and overlays a radial gradient on the CTA.
+   ══════════════════════════════════════════════════════════════════ */
+.commitment {
+  background: var(--page-base);
+}
+
 .spotlight {
   position: relative;
   isolation: isolate;
 }
+
 .spotlight::after {
   content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 1;
-  background: radial-gradient(
-    36rem 36rem at calc(var(--mx, 0.5) * 100%) calc(var(--my, 0.5) * 100%),
+  background: radial-gradient(36rem 36rem at calc(var(--mx, 0.5) * 100%) calc(var(--my, 0.5) * 100%),
     color-mix(in srgb, var(--accent-primary) 14%, transparent),
-    transparent 70%
-  );
+    transparent 70%);
   opacity: 0;
   transition: opacity var(--duration-emphasis) var(--motion-ease-standard);
 }
+
 @media (hover: hover) and (pointer: fine) {
-  .spotlight:hover::after { opacity: 1; }
+  .spotlight:hover::after {
+    opacity: 1;
+  }
 }
 
-/* ── Boundaries ──────────────────────────────────────────────── */
+/* Boundaries — public access, carefully defined. */
 .boundariesSection {
-  padding: clamp(60px, 9vh, 100px) 0;
-  background: var(--surface-sunken);
-  border-top: 1px solid var(--border-subtle);
-  border-bottom: 1px solid var(--border-subtle);
-  /* Default visible so content shows even if the JS reveal hook fails
-     to fire (e.g. observer misconfigured). The `not(.revealed)` state
-     re-applies the hidden styling only when JS explicitly sets up. */
+  padding-block: clamp(60px, 9dvh, 100px);
+  background: var(--page-base);
+  color: var(--ink-on-dark);
+  border-top: 1px solid color-mix(in srgb, var(--ink-on-dark) 12%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--ink-on-dark) 12%, transparent);
   opacity: 1;
   transform: translateY(0);
-  transition: opacity 700ms var(--motion-ease-standard), transform 700ms var(--motion-ease-standard);
+  transition: opacity 520ms var(--motion-ease-standard), transform 520ms var(--motion-ease-standard);
 }
+
+/* Light mode - white background with lowered opacity and black text */
+:root[data-theme='paper-day'] .boundariesSection {
+  background: rgba(255, 255, 255, 0.75);
+  color: #000000;
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+:root[data-theme='paper-day'] .boundariesTitle {
+  color: #000000;
+}
+
+:root[data-theme='paper-day'] .boundariesItem {
+  color: rgba(0, 0, 0, 0.75);
+}
+
 .boundariesSection:not(.revealed) {
   opacity: 0;
   transform: translateY(24px);
 }
-.revealed { opacity: 1; transform: translateY(0); }
+
+.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
 
 .boundariesInner {
   width: min(1180px, calc(100% - 48px));
@@ -1647,7 +1440,7 @@
   font-weight: 750;
   letter-spacing: 0;
   line-height: 1.06;
-  color: var(--ink-primary);
+  color: var(--ink-on-dark);
   max-width: 600px;
 }
 
@@ -1656,6 +1449,7 @@
   padding: 0;
   list-style: none;
 }
+
 .boundariesItem {
   padding: 16px 0;
   border-top: 1px solid var(--border-subtle);
@@ -1666,55 +1460,66 @@
   line-height: 1.6;
   align-items: flex-start;
 }
-.boundariesItem:last-child { border-bottom: 1px solid var(--border-subtle); }
-.boundariesItem svg { flex-shrink: 0; margin-top: 3px; color: var(--ars-reviewer); }
 
-/* ── Testimonial ──────────────────────────────────────────────── */
+.boundariesItem:last-child {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.boundariesItem svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: var(--ars-reviewer);
+}
+
+/* Testimonial — quiet moment between two loud sections. */
 .testimonialSection {
   position: relative;
-  padding: clamp(70px, 10vh, 110px) 0;
-  background: var(--surface-paper);
+  padding-block: clamp(70px, 10dvh, 110px);
+  /* Dark surface in BOTH themes so the bright reading-nook photo
+     has a uniform backdrop underneath — no parchment gap between
+     this and the surrounding acts. Light ink for the white text
+     to read on the dark scrim. */
+  background: var(--surface-act-edge);
+  color: var(--ink-on-dark);
   opacity: 1;
   transform: translateY(0);
-  transition: opacity 700ms var(--motion-ease-standard) 80ms, transform 700ms var(--motion-ease-standard) 80ms;
+  transition: opacity 520ms var(--motion-ease-standard) 80ms, transform 520ms var(--motion-ease-standard) 80ms;
 }
 
-/* Paper-day: warm desk lamp / manuscript image behind the testimonial.
-   The dark overlay (0.80 opacity at top, fading to 0.55 at bottom) 
-   gives the light serif quote text the contrast it needs. */
-:global(:root[data-theme='paper-day']) .testimonialSection {
-  background-image:
-    linear-gradient(
-      to bottom,
-      rgba(30, 22, 8, 0.82) 0%,
-      rgba(30, 22, 8, 0.65) 45%,
-      rgba(30, 22, 8, 0.55) 100%
-    ),
-    url('../../assets/images/Codex Image Sep 11, 2026, 04_22_37 PM.png');
-  background-size: cover;
-  background-position: center center;
-  background-repeat: no-repeat;
+/* Testimonial scrim — distinct from the universal .sceneScrim because
+   the testimonial scene is a bright reading nook and we want darker
+   coverage top and bottom for readable white quote text over the photo. */
+.testimonialScrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg,
+      rgba(8, 12, 24, 0.62) 0%,
+      rgba(8, 12, 24, 0.45) 35%,
+      rgba(8, 12, 24, 0.55) 65%,
+      rgba(8, 12, 24, 0.78) 100%);
 }
 
-/* Paper-day: the testimonial quote text is light on the dark overlay */
-:global(:root[data-theme='paper-day']) .testimonialQuote {
-  color: #fdf6e3;
+/* Light mode - lighter testimonial scrim for brighter background */
+:root[data-theme='paper-day'] .testimonialScrim {
+  background:
+    linear-gradient(180deg,
+      rgba(8, 12, 24, 0.35) 0%,
+      rgba(8, 12, 24, 0.25) 35%,
+      rgba(8, 12, 24, 0.30) 65%,
+      rgba(8, 12, 24, 0.45) 100%);
 }
-:global(:root[data-theme='paper-day']) .testimonialName {
-  color: #f5e6c8;
-}
-:global(:root[data-theme='paper-day']) .testimonialRole {
-  color: #c8b89a;
-}
-:global(:root[data-theme='paper-day']) .testimonialMark {
-  color: var(--accent-primary);
-}
+
 .testimonialSection:not(.revealed) {
   opacity: 0;
   transform: translateY(24px);
 }
 
 .testimonialInner {
+  position: relative;
+  z-index: 2;
   width: min(900px, calc(100% - 48px));
   margin: 0 auto;
   text-align: center;
@@ -1727,7 +1532,7 @@
   font-weight: 900;
   line-height: 0.6;
   color: var(--accent-primary);
-  opacity: 0.32;
+  opacity: 0.72;
   margin-bottom: 28px;
   user-select: none;
 }
@@ -1736,40 +1541,54 @@
   font-family: var(--font-family-serif);
   font-size: clamp(1.3rem, 3vw, 2rem);
   font-style: italic;
-  font-weight: 400;
+  font-weight: 500;
   line-height: 1.5;
-  color: var(--ink-primary);
+  color: var(--ink-on-dark);
   max-width: 820px;
   margin: 0 auto;
-  letter-spacing: 0;
+  letter-spacing: -0.005em;
 }
 
 .testimonialAttribution {
-  margin-top: 28px;
+  margin-top: 32px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 6px;
-}
-.testimonialName {
-  font-size: 0.95rem;
-  font-weight: 800;
-  color: var(--ink-primary);
-  letter-spacing: 0.02em;
-}
-.testimonialRole {
-  font-size: 0.82rem;
-  color: var(--ink-muted);
+  gap: 4px;
 }
 
-/* ── FAQ ──────────────────────────────────────────────────────── */
+.testimonialName {
+  font-weight: 750;
+  font-size: 0.95rem;
+  color: var(--ink-on-dark);
+}
+
+.testimonialRole {
+  font-size: 0.82rem;
+  color: color-mix(in srgb, var(--ink-on-dark) 65%, transparent);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* FAQ */
 .faqSection {
-  padding: clamp(60px, 9vh, 100px) 0;
-  background: var(--app-canvas);
+  padding-block: clamp(60px, 9dvh, 100px);
+  background: var(--page-base);
+  color: var(--ink-on-dark);
   opacity: 1;
   transform: translateY(0);
-  transition: opacity 700ms var(--motion-ease-standard), transform 700ms var(--motion-ease-standard);
+  transition: opacity 520ms var(--motion-ease-standard), transform 520ms var(--motion-ease-standard);
 }
+
+/* Light mode - white background with black text */
+:root[data-theme='paper-day'] .faqSection {
+  background: #ffffff;
+  color: #000000;
+}
+
+:root[data-theme='paper-day'] .faqTitle {
+  color: #000000;
+}
+
 .faqSection:not(.revealed) {
   opacity: 0;
   transform: translateY(24px);
@@ -1784,7 +1603,6 @@
   align-items: start;
 }
 
-.faqIntro .issueLine { color: var(--accent-primary); border-left-color: var(--accent-primary); padding-left: 14px; }
 .faqTitle {
   margin: 16px 0 0;
   padding-left: 17px;
@@ -1793,7 +1611,7 @@
   font-weight: 750;
   letter-spacing: 0;
   line-height: 1.06;
-  color: var(--ink-primary);
+  color: var(--ink-on-dark);
 }
 
 .faqList {
@@ -1813,11 +1631,23 @@
   font-weight: 750;
   line-height: 1.35;
   list-style: none;
-  color: var(--ink-primary);
+  color: var(--ink-on-dark);
   transition: color var(--transition-fast);
 }
-.faqItem summary::-webkit-details-marker { display: none; }
-.faqItem summary:hover { color: var(--accent-hover); }
+
+/* Light mode - black text for FAQ items */
+:root[data-theme='paper-day'] .faqItem summary {
+  color: #000000;
+}
+
+.faqItem summary::-webkit-details-marker {
+  display: none;
+}
+
+.faqItem summary:hover {
+  color: var(--accent-hover);
+}
+
 .faqItem summary::after {
   content: '+';
   position: absolute;
@@ -1830,7 +1660,10 @@
   line-height: 1;
   transition: content var(--transition-fast);
 }
-.faqItem[open] summary::after { content: '−'; }
+
+.faqItem[open] summary::after {
+  content: '−';
+}
 
 .faqItem p {
   max-width: 680px;
@@ -1840,56 +1673,37 @@
   line-height: 1.72;
 }
 
-/* ── CTA ──────────────────────────────────────────────────────── */
+/* CTA */
 .ctaSection {
   position: relative;
   z-index: 2;
-  min-height: clamp(320px, 60vh, 480px);
-  padding: clamp(60px, 9vh, 110px) 24px;
+  min-height: clamp(320px, 60dvh, 480px);
+  padding: clamp(60px, 9dvh, 110px) 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-  /* Always-dark CTA. Previous `var(--ink-primary)` flipped to near-white
-     in archive-dusk — the final CTA rendered as a bright parchment
-     slab with white text on it, completely inverted from the dark
-     cinematic feel of the surrounding acts. */
-  background: var(--sc-stage-bg);
-  color: var(--sc-ink-on-dark);
-  overflow: hidden;
+  background: var(--page-base);
+  color: var(--ink-on-dark);
   opacity: 1;
   transform: translateY(0);
-  transition: opacity 700ms var(--motion-ease-standard), transform 700ms var(--motion-ease-standard);
+  transition: opacity 520ms var(--motion-ease-standard), transform 520ms var(--motion-ease-standard);
 }
 
-/* Reveal state: hidden BELOW the fold until IntersectionObserver fires,
-   then rises into place. The CSS uses `transform: translateY(24px)`
-   only when the observer hasn't yet attached the `seen` class. */
+/* Light mode - white background with black text */
+:root[data-theme='paper-day'] .ctaSection {
+  background: #ffffff;
+  color: #000000;
+}
+
+:root[data-theme='paper-day'] .ctaTitle {
+  color: #000000;
+}
+
 .ctaSection:not(.revealed) {
   opacity: 0;
   transform: translateY(24px);
-}
-
-/* Paper-day override: in the bright theme, --sc-stage-bg resolves to
-   warm parchment yellow and the kicker (.issueLine) is brand yellow,
-   which is yellow-on-yellow. Switch the CTA to a deep navy surface in
-   paper-day so the yellow kicker reads cleanly and the section visually
-   mirrors the dark hero at the top of the page. Archive-dusk already
-   uses a dark stage, so no change there. */
-:global(:root[data-theme='paper-day']) .ctaSection {
-  background: var(--sc-stage-bg-deep);
-  color: var(--sc-ink-on-dark);
-}
-:global(:root[data-theme='paper-day']) .ctaSection .issueLine {
-  color: var(--accent-primary);
-  border-left-color: var(--accent-primary);
-}
-
-.ctaSection .issueLine {
-  color: var(--accent-primary);
-  border-left-color: var(--accent-primary);
-  padding-left: 14px;
 }
 
 .ctaTitle {
@@ -1901,7 +1715,7 @@
   font-weight: 750;
   letter-spacing: 0;
   line-height: 1.04;
-  color: var(--sc-ink-on-dark);
+  color: var(--ink-on-dark);
 }
 
 .ctaActions {
@@ -1915,19 +1729,30 @@
   gap: 20px;
 }
 
-.ctaSection .textLink {
-  color: color-mix(in srgb, var(--sc-ink-on-dark) 78%, transparent);
+.ctaSection .issueLine {
+  color: var(--accent-primary);
+  border-left-color: var(--accent-primary);
+  padding-left: 14px;
 }
-.ctaSection .textLink:hover { color: var(--accent-primary); }
 
-/* ── Footer ────────────────────────────────────────────────────── */
-.footer {
-  color: var(--sc-ink-on-dark);
-  /* Always-dark footer (slightly deeper than the cinematic stage so
-     the page finishes with a confident terminator rail). */
-  background: var(--sc-stage-bg-deep);
-  border-top: 1px solid var(--border-subtle);
+.ctaSection .textLink {
+  color: var(--ink-secondary);
 }
+
+.ctaSection .textLink:hover {
+  color: var(--accent-primary);
+}
+
+/* ── FOOTER ────────────────────────────────────────────────────── */
+.footer {
+  color: var(--chrome-text);
+  /* Solid #1B1A17 with white text in BOTH themes (per design directive).
+     The footer mirrors the header so the page reads as bookended by
+     the same dark rail. */
+  background: var(--chrome-bg);
+  border-top: 1px solid color-mix(in srgb, var(--chrome-bg) 12%, transparent);
+}
+
 .footerInner {
   width: min(1180px, calc(100% - 48px));
   margin: 0 auto;
@@ -1937,46 +1762,69 @@
   justify-content: space-between;
   gap: 28px;
   flex-wrap: wrap;
+  padding-block: 24px;
 }
+
 .footerBrand {
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  color: inherit;
+  color: var(--chrome-text);
   font-weight: 750;
   text-decoration: none;
 }
-.footerBrand img { width: 40px; height: 40px; object-fit: cover; }
-.footerBrand span { font-family: var(--font-family-serif); font-size: 0.95rem; color: var(--sc-ink-on-dark); }
+
+.footerBrand img {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+}
+
+.footerBrand span {
+  font-family: var(--font-family-serif);
+  font-size: 0.95rem;
+  color: var(--chrome-text);
+}
+
 .footerNav {
   display: flex;
   flex-wrap: wrap;
   gap: 20px 32px;
   align-items: center;
 }
+
 .footerNav a {
-  color: color-mix(in srgb, var(--sc-ink-on-dark) 60%, transparent);
+  color: var(--chrome-text-muted);
   font-size: 0.83rem;
   text-decoration: none;
   text-underline-offset: 4px;
   transition: color var(--transition-fast);
 }
-.footerNav a:hover { color: var(--accent-primary); text-decoration: underline; }
+
+.footerNav a:hover {
+  color: var(--accent-primary);
+  text-decoration: underline;
+}
+
 .footerCopy {
   width: min(1180px, calc(100% - 48px));
   margin: 0 auto;
   padding-bottom: 28px;
   padding-top: 20px;
   font-size: 0.72rem;
-  color: color-mix(in srgb, var(--sc-ink-on-dark) 35%, transparent);
-  border-top: 1px solid color-mix(in srgb, var(--sc-ink-on-dark) 10%, transparent);
+  color: rgba(255, 253, 248, 0.45);
+  border-top: 1px solid rgba(255, 253, 248, 0.12);
 }
 
 /* ── Reduced motion ───────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  .heroHintLine { animation: none !important; }
-  .heroVideo,
-  .heroPoster { transition: none !important; }
+  .heroHintLine,
+  .heroLampGlow,
+  .heroLampCore,
+  .heroLightRays {
+    animation: none !important;
+  }
+
   .revealed,
   .boundariesSection,
   .testimonialSection,
@@ -1990,239 +1838,118 @@
 
 /* ── Responsive — Tablet ──────────────────────────────────────── */
 @media (max-width: 900px) {
-  .navigation { display: none; }
+  .navigation {
+    display: none;
+  }
+
   .tensionCopy {
-    left: clamp(1.25rem, 5vw, 5.5rem);
-    right: clamp(1.25rem, 5vw, 5.5rem);
+    margin-left: clamp(1.25rem, 5vw, 5.5rem);
+    margin-right: clamp(1.25rem, 5vw, 5.5rem);
     text-align: left;
     max-width: none;
-    bottom: clamp(2.5rem, 10vh, 7rem);
   }
-  .tensionBody { margin-left: 0; }
-  /* Tablet: five columns doesn't fit cleanly — fall back to 2-col so
-     the body copy stays legible instead of getting squashed. */
-  .turnList { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  .tensionBody {
+    margin-left: 0;
+  }
+
+  .turnList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .boundariesInner,
-  .faqInner { grid-template-columns: 1fr; gap: 0; }
-  .footerInner { flex-direction: column; align-items: flex-start; gap: 20px; }
+  .faqInner {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .footerInner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+  }
 }
 
 /* ── Responsive — Mobile ──────────────────────────────────────── */
 @media (max-width: 640px) {
-  .brand span { display: none; }
+  .brand span {
+    display: none;
+  }
+
   .heroCopy {
     left: clamp(1rem, 4vw, 1.25rem);
     right: clamp(1rem, 4vw, 1.25rem);
-    bottom: clamp(2rem, 8vh, 5rem);
+    bottom: clamp(2rem, 8dvh, 5rem);
+    top: auto;
   }
-  .heroTitle { font-size: clamp(2.4rem, 10vw, 3.4rem); }
-  .heroMetrics { gap: 16px; }
-  .metricDivider { display: none; }
-  .heroActions { flex-direction: column; align-items: stretch; }
+
+  .heroTitle {
+    font-size: clamp(2.4rem, 10vw, 3.4rem);
+  }
+
+  .heroMetrics {
+    gap: 16px;
+  }
+
+  .metricDivider {
+    display: none;
+  }
+
+  .heroActions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .heroActions .primaryButton,
-  .heroActions .textLink { width: 100%; justify-content: center; }
-  .tensionChips { display: none; }
-  .turnInner { padding: clamp(40px, 8vh, 70px) 0; }
-  /* Mobile: still single column so the body copy stays readable. */
-  .turnList { grid-template-columns: 1fr; }
-  .substanceCard { flex: 0 0 86vw; min-height: 0; padding: 28px; }
-  .footerCopy { padding-top: 16px; }
-}
-
-/* ══════════════════════════════════════════════════════════════════
-   LAMP LIGHT — Dark Mode Hero Effect (ceiling spotlight from above)
-
-   The user-facing reference is the gallery/document shots in
-   `src/assets/images/Codex Image Sep 9, 2026, 05_17_*.png`:
-   a focused bright beam coming from above the frame, a warm cone
-   of light sweeping down and outward, and shadow gathering at the
-   lower / side edges. The previous version was a centered radial
-   that read as a desk lamp glowing in the middle of the room —
-   this version is a top-down cone instead.
-
-   Four stacked layers, all gated by React's `isDarkMode` so they
-   never render in paper-day:
-
-     .heroVignette         — bottom + side darkening so the lit
-        center reads as the brightest part of the frame
-     .heroLampGlow         — narrow warm cone anchored at the top
-        center, brighter near the source, fading DOWNWARD
-     .heroLampCore         — the actual lamp bulb — bright spot
-        at top center, half above frame so it reads as "off-screen
-        above"
-     .heroLightRays        — subtle downward beam from the bulb,
-        clipped via mask into a conical shape
-
-   The .heroLayerForeground change above means paper-day shows ZERO
-   lamp effect (no overlay wash anywhere).
-   ══════════════════════════════════════════════════════════════════ */
-
-/* Vignette: heavy horizontal + vertical shadows so the lit center
-   reads as a bright spot against darkness — same effect as image
-   2, where the framed picture is brightly lit while the wall
-   around it stays dark. Bottom edge anchors the brightest part of
-   the page below into near-black; sides pull the corners inward. */
-.heroVignette {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 2;
-  background:
-    linear-gradient(
-      to top,
-      rgba(6, 9, 15, 0.95) 0%,
-      rgba(6, 9, 15, 0.7) 25%,
-      rgba(6, 9, 15, 0.25) 50%,
-      transparent 72%
-    ),
-    linear-gradient(
-      to right,
-      rgba(6, 9, 15, 0.85) 0%,
-      rgba(6, 9, 15, 0.3) 16%,
-      transparent 32%,
-      transparent 68%,
-      rgba(6, 9, 15, 0.3) 84%,
-      rgba(6, 9, 15, 0.85) 100%
-    );
-}
-
-/* Main warm cone — the visible ceiling spotlight beam. We make it
-   a focused, narrow cone anchored at the top center, with the
-   brightest stop very near the source so it reads as a clear
-   cone of light descending. Wider at the bottom than the top —
-   natural spotlight shape. Intensity drops sharply past the
-   upper third of the hero so the lamp doesn't wash out the
-   copy area at the bottom. */
-.heroLampGlow {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 3;
-  background: radial-gradient(
-    ellipse 26% 85% at 50% 0%,
-    rgba(255, 230, 150, 0.55) 0%,
-    rgba(255, 215, 110, 0.36) 8%,
-    rgba(245, 180, 0, 0.22) 20%,
-    rgba(234, 173, 47, 0.10) 36%,
-    rgba(180, 130, 30, 0.04) 55%,
-    transparent 72%
-  );
-  animation: lampFlicker 4s ease-in-out infinite;
-}
-
-/* The lamp bulb — the bright source. Pushed half above the frame
-   so it reads as "from above". We keep the bulb compact and warm
-   (near-white core fading through pale gold to amber at the edge)
-   so it reads as a real incandescent spotlight rather than a
-   glowing disc painted on the photo. */
-.heroLampCore {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  width: min(180px, 18vw);
-  height: min(180px, 18vw);
-  transform: translate(-50%, -55%);
-  border-radius: 50%;
-  background: radial-gradient(
-    circle at center,
-    rgba(255, 250, 235, 0.95) 0%,
-    rgba(255, 235, 175, 0.65) 16%,
-    rgba(255, 210, 110, 0.32) 40%,
-    rgba(245, 180, 0, 0.12) 64%,
-    rgba(180, 130, 30, 0.05) 78%,
-    transparent 90%
-  );
-  pointer-events: none;
-  z-index: 4;
-  animation: lampPulse 3s ease-in-out infinite;
-}
-
-/* Visible light beams descending from the bulb. We tune this as a
-   subtle cone of haze falling from the bulb — narrower than the
-   lamp glow so it reads as a defined shaft of light, with the
-   bottom edge held well above the copy so the beam doesn't
-   obscure the text. Subtle horizontal sway mimics dust drifting
-   through a real stationary spotlight. */
-.heroLightRays {
-  position: absolute;
-  top: -40px;
-  left: 50%;
-  width: min(360px, 38vw);
-  height: 60%;
-  transform: translateX(-50%);
-  pointer-events: none;
-  z-index: 5;
-  opacity: 0.6;
-  background: linear-gradient(
-    to bottom,
-    rgba(255, 245, 200, 0.65) 0%,
-    rgba(255, 222, 130, 0.32) 18%,
-    rgba(245, 180, 0, 0.12) 45%,
-    rgba(226, 173, 47, 0.04) 70%,
-    transparent 95%
-  );
-  mask: radial-gradient(
-    ellipse 100% 75% at 50% 0%,
-    rgba(0, 0, 0, 0.95) 0%,
-    rgba(0, 0, 0, 0.75) 22%,
-    rgba(0, 0, 0, 0.4) 50%,
-    transparent 85%
-  );
-  -webkit-mask: radial-gradient(
-    ellipse 100% 75% at 50% 0%,
-    rgba(0, 0, 0, 0.95) 0%,
-    rgba(0, 0, 0, 0.75) 22%,
-    rgba(0, 0, 0, 0.4) 50%,
-    transparent 85%
-  );
-  animation: raysSway 9s ease-in-out infinite;
-}
-
-/* Flicker — gentle breathing on the warm haze. We don't touch
-   scale because the lamp no longer has a single point of
-   reference; the warm halo just gets slightly brighter and
-   dimmer over time. */
-@keyframes lampFlicker {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0.85; }
-}
-
-/* Pulse on the bulb — slight scale + glow change only. Position
-   transform stays translate(-50%, -55%) so the bulb stays
-   anchored at the top of the frame. */
-@keyframes lampPulse {
-  0%, 100% {
-    transform: translate(-50%, -55%) scale(1);
-    opacity: 0.95;
+  .heroActions .textLink {
+    width: 100%;
+    justify-content: center;
   }
-  50% {
-    transform: translate(-50%, -55%) scale(1.08);
-    opacity: 1;
+
+  .tensionChips {
+    display: none;
   }
-}
 
-/* Sway on the beam — gentle opacity + horizontal drift to mimic
-   dust drifting through a real spotlight. No rotation by
-   design — the bulb stays anchored at the top so the room
-   reads as still, while the dust drifts. */
-@keyframes raysSway {
-  0%, 100% { transform: translateX(-50%) translateX(0); opacity: 0.65; }
-  50%      { transform: translateX(-50%) translateX(8px); opacity: 0.8; }
-}
+  .turnList {
+    grid-template-columns: 1fr;
+  }
 
-/* Mobile adjustments: the cone narrows more, the bulb shrinks
-   proportionally, and the rays narrow so they fit on a small
-   viewport without dominating the frame. */
-@media (max-width: 640px) {
+  /* Substance pan device → vertical stack.
+     On mobile, the rail collapses to a column so every card is
+     reachable via natural page scroll. The JS pan driver is gated
+     on innerWidth > 640 so it stays at translate3d(0,0,0) here. */
+  .substanceAct {
+    min-height: 0;
+    padding-block: clamp(32px, 6dvh, 48px);
+  }
+
+  .substanceRail {
+    flex-direction: column;
+    flex-wrap: wrap;
+    width: 100%;
+    padding: 12px clamp(1rem, 4vw, 1.25rem) 24px;
+    transform: none !important;
+    will-change: auto;
+  }
+
+  .substanceCard {
+    flex: 1 1 100%;
+    max-width: 100%;
+    max-height: none;
+    min-height: 0;
+  }
+
+  .panProgress {
+    display: none;
+  }
+
   .heroLampGlow {
     background:
-      radial-gradient(
-        ellipse 50% 90% at 50% 0%,
+      radial-gradient(ellipse 50% 90% at 50% 0%,
         rgba(255, 222, 130, 0.42) 0%,
         rgba(245, 180, 0, 0.26) 14%,
         rgba(234, 173, 47, 0.14) 32%,
-        transparent 75%
-      );
+        transparent 75%);
   }
 
   .heroLampCore {
@@ -2233,5 +1960,75 @@
   .heroLightRays {
     width: min(380px, 90vw);
   }
-}
 
+  /* Testimonial — the giant 8rem quote mark is a desktop setpiece.
+     On mobile clamp to a smaller value so it stays a punctuation
+     accent rather than swallowing the section. */
+  .testimonialMark {
+    font-size: 4.5rem;
+    margin-bottom: 16px;
+  }
+
+  .testimonialQuote {
+    line-height: 1.4;
+  }
+
+  /* Turn workflow stage cards already collapse to 1 column.
+     The turn header padding also tightens so the kicker + heading
+     don't crowd the cards above it on small screens. */
+  .turnAct {
+    padding-block: clamp(40px, 6dvh, 64px);
+  }
+
+  .turnHeader {
+    padding-inline: 4px;
+  }
+
+  /* Substance pan driver is JS-gated to innerWidth > 640. The CSS
+     here is a safety net so the rail never overflows horizontally
+     if the gate fails for any reason. */
+  .substanceAct {
+    overflow-x: hidden;
+  }
+
+  /* Hero copy — when small, place at the bottom so the photo's
+     library scene reads top-down before the headline appears.
+     Metrics stack more tightly and the divider lines disappear. */
+  .heroKicker {
+    font-size: 0.66rem;
+  }
+
+  .heroMetrics {
+    flex-wrap: wrap;
+    gap: 12px 18px;
+  }
+
+  /* The Tension act's parallax copy needs single-column alignment
+     on phone so it doesn't fight the keyboard on rotation. */
+  .tensionCopy {
+    text-align: left;
+    margin-left: clamp(1rem, 4vw, 1.25rem);
+    margin-right: clamp(1rem, 4vw, 1.25rem);
+    max-width: none;
+  }
+
+  .tensionBody {
+    margin-left: 0;
+    font-size: 0.95rem;
+  }
+
+  .tensionTitle {
+    font-size: clamp(2rem, 9vw, 3rem);
+  }
+
+  /* Footer stacks tighter on mobile. */
+  .footerInner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .footerCopy {
+    padding-top: 16px;
+  }
+}

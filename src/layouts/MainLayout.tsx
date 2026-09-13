@@ -254,10 +254,21 @@ interface NavItem {
 
 /** Section label helper */
 const SECTION_LABELS: Record<string, string> = {
+  // Admin-only sections (kept under their `admin.nav.section.*` key
+  // so the Admin sidebar doesn't drift from the existing translation
+  // entries in en.ts / vi.ts).
   review: 'admin.nav.section.review',
   people: 'admin.nav.section.people',
   payment: 'admin.nav.section.payment',
   platform: 'admin.nav.section.platform',
+  // Cross-role section labels (used by Reviewer / Lecturer /
+  // Graduate Student / Researcher / Admin). Sharing the same key
+  // across roles means a single translation pair feeds every rail,
+  // so the rail reads consistently even when a user switches roles.
+  discover: 'nav.section.discover',
+  teaching: 'nav.section.teaching',
+  academics: 'nav.section.academics',
+  research: 'nav.section.research',
 };
 
 /**
@@ -575,22 +586,30 @@ export const MainLayout = () => {
         ];
       case 'Reviewer':
         return [
+          // ── Discover ─────────────────────────────────
+          { to: '#', label: copy('Discover', 'Khám phá'), icon: <HomeIcon size={20} />, isSectionHeader: true, sectionLabelKey: SECTION_LABELS.discover },
           { to: ROUTES.HOME, label: copy('Discover Research', 'Khám phá nghiên cứu'), icon: <HomeIcon size={20} />, end: true },
           { to: ROUTES.FORUM, label: copy('Forums', 'Diễn đàn'), icon: <ForumIcon size={20} /> },
+
+          // ── Review ──────────────────────────────────
+          { to: '#', label: copy('Review', 'Phản biện'), icon: <AssignmentsIcon size={20} />, isSectionHeader: true, sectionLabelKey: SECTION_LABELS.review },
           { to: ROUTES.SEMINAR_PARTICIPATIONS, label: copy('Seminar Participations', 'Lượt tham gia hội thảo'), icon: <SeminarParticipationIcon size={20} /> },
           { to: ROUTES.REVIEWER_ASSIGNMENTS, label: copy('Review Assignments', 'Nhiệm vụ phản biện'), icon: <AssignmentsIcon size={20} /> },
-          // Profile — single sidebar entry for every role. The page renders
-          // three tabs (Account / Professional / Public) so users no longer
-          // see two parallel "Profile" links and have to figure out which is
-          // which.
-          { to: ROUTES.PROFILE, label: copy('Profile', 'Hồ sơ'), icon: <UserRound size={20} />, end: true },
+          // NOTE: Profile is rendered in the unified bottom-group
+          // (`sidebarBottomGroup`) below the nav, not inside the
+          // primary list, so it always anchors at the very bottom
+          // of the rail regardless of how many sections a role has.
         ];
       case 'Lecturer':
         return [
+          // ── Discover ─────────────────────────────────
+          { to: '#', label: copy('Discover', 'Khám phá'), icon: <HomeIcon size={20} />, isSectionHeader: true, sectionLabelKey: SECTION_LABELS.discover },
           // Top-level entry points (shared with all roles).
           { to: ROUTES.HOME, label: copy('Discover Research', 'Khám phá nghiên cứu'), icon: <HomeIcon size={20} />, end: true },
           { to: ROUTES.FORUM, label: copy('Forums', 'Diễn đàn'), icon: <ForumIcon size={20} /> },
 
+          // ── Teaching ────────────────────────────────
+          { to: '#', label: copy('Teaching', 'Giảng dạy'), icon: <SeminarIcon size={20} />, isSectionHeader: true, sectionLabelKey: SECTION_LABELS.teaching },
           // Lecturer Seminar surface. The "Seminar Participations" tab is
           // intentionally NOT exposed as a top-level sidebar item here,
           // because the Lecturer's Seminar Workspace already surfaces the
@@ -600,13 +619,8 @@ export const MainLayout = () => {
           // to deep-link a lecturer straight into participations.
           { to: ROUTES.SEMINAR_WORKSPACE, label: copy('Seminar', 'Hội thảo khoa học'), icon: <SeminarIcon size={20} /> },
 
-          // Profile — single sidebar entry for every role. The page renders
-          // three tabs (Account / Professional / Public) so users no longer
-          // see two parallel "Profile" links and have to figure out which is
-          // which. Lecturers get the "Professional" tab in trimmed-down
-          // mode (expertise only — no availability, no academic metrics).
-          { to: ROUTES.PROFILE, label: copy('Profile', 'Hồ sơ'), icon: <UserRound size={20} />, end: true },
-
+          // ── Research ────────────────────────────────
+          { to: '#', label: copy('Research', 'Nghiên cứu'), icon: <GroupIcon size={20} />, isSectionHeader: true, sectionLabelKey: SECTION_LABELS.research },
           // PhasedReport core flow — read top-to-bottom in workflow order:
           // define a Topic → assign Groups → manage Phases inline in the
           // topic table → review Phase Reports submitted against those
@@ -616,21 +630,39 @@ export const MainLayout = () => {
           { to: ROUTES.RESEARCH_GROUP, label: copy('Research Groups', 'Nhóm nghiên cứu'), icon: <GroupIcon size={20} />, activeFor: ['/lecturer/groups'] },
           { to: ROUTES.LECTURER_PHASE_REPORTS, label: copy('Phase Reports', 'Báo cáo giai đoạn'), icon: <PapersIcon size={20} /> },
           { to: ROUTES.LECTURER_MATERIALS, label: copy('Materials', 'Tài liệu học tập'), icon: <Library size={20} /> },
+          // NOTE: Profile is rendered in the unified bottom-group
+          // (`sidebarBottomGroup`) below the nav, not inside the
+          // primary list, so it always anchors at the very bottom
+          // of the rail regardless of how many sections a role has.
         ];
       case 'Graduate Student':
         return [
+          // ── Discover ─────────────────────────────────
+          { to: '#', label: copy('Discover', 'Khám phá'), icon: <HomeIcon size={20} />, isSectionHeader: true, sectionLabelKey: SECTION_LABELS.discover },
           { to: ROUTES.HOME, label: copy('Discover Research', 'Khám phá nghiên cứu'), icon: <HomeIcon size={20} />, end: true },
           { to: ROUTES.FORUM, label: copy('Forums', 'Diễn đàn'), icon: <ForumIcon size={20} /> },
+
+          // ── Academics ───────────────────────────────
+          { to: '#', label: copy('Academics', 'Học tập'), icon: <GroupIcon size={20} />, isSectionHeader: true, sectionLabelKey: SECTION_LABELS.academics },
           { to: ROUTES.SEMINAR_PARTICIPATIONS, label: copy('Seminar Participations', 'Lượt tham gia hội thảo'), icon: <SeminarParticipationIcon size={20} /> },
           { to: ROUTES.STUDENT_RESEARCH_GROUPS, label: copy('Research Groups', 'Nhóm nghiên cứu'), icon: <GroupIcon size={20} /> },
           { to: ROUTES.SUBMIT_REPORT, label: copy('Submit Report', 'Nộp báo cáo'), icon: <Upload size={20} /> },
+          // NOTE: Profile is rendered in the unified bottom-group
+          // (`sidebarBottomGroup`) below the nav. The Graduate Student
+          // role did not have a Profile sidebar entry before — adding it
+          // here matches the rest of the roles so every rail ends with
+          // the same Profile anchor at the bottom.
         ];
       case 'Researcher':
       default:
         return [
+          // ── Discover ─────────────────────────────────
+          { to: '#', label: copy('Discover', 'Khám phá'), icon: <HomeIcon size={20} />, isSectionHeader: true, sectionLabelKey: SECTION_LABELS.discover },
           { to: ROUTES.HOME, label: copy('Discover Research', 'Khám phá nghiên cứu'), icon: <HomeIcon size={20} />, end: true },
           { to: ROUTES.FORUM, label: copy('Forums', 'Diễn đàn'), icon: <ForumIcon size={20} /> },
 
+          // ── Research ────────────────────────────────
+          { to: '#', label: copy('Research', 'Nghiên cứu'), icon: <PapersIcon size={20} />, isSectionHeader: true, sectionLabelKey: SECTION_LABELS.research },
           // Researcher Seminar surface. The "Seminar Participations" tab
           // is intentionally NOT exposed as a top-level sidebar item here
           // because the Researcher's Seminar Workspace already surfaces
@@ -641,13 +673,10 @@ export const MainLayout = () => {
           // in App.tsx so a deep-link still works.
           { to: ROUTES.SEMINAR_WORKSPACE, label: copy('Seminar', 'Hội thảo khoa học'), icon: <SeminarIcon size={20} /> },
           { to: ROUTES.RESEARCHER_SUBMISSIONS, label: copy('My Research Papers', 'Bài báo của tôi'), icon: <PapersIcon size={20} /> },
-
-          // Profile — single sidebar entry for every role. The page renders
-          // three tabs (Account / Professional / Public). The Professional
-          // tab hides the reviewer availability toggle for Researchers and
-          // keeps the academic metrics block (H-Index, citations,
-          // publication count).
-          { to: ROUTES.PROFILE, label: copy('Profile', 'Hồ sơ'), icon: <UserRound size={20} />, end: true },
+          // NOTE: Profile is rendered in the unified bottom-group
+          // (`sidebarBottomGroup`) below the nav, not inside the
+          // primary list, so it always anchors at the very bottom
+          // of the rail regardless of how many sections a role has.
         ];
     }
   };
@@ -661,6 +690,19 @@ export const MainLayout = () => {
   // affordance easy to find without scrolling the main list.
   const showSubscriptionFooter =
     activeRole === 'Researcher' || activeRole === 'Lecturer';
+
+  // Profile anchors at the very bottom of the sidebar for every
+  // authenticated, verified role EXCEPT Admin — Admin role does not
+  // have a personal profile surface (the Admin profile is owned by
+  // the Admin Console and surfaced through the header dropdown's
+  // admin-specific account menu, not the workspace rail). For
+  // Researcher / Lecturer / Reviewer / Graduate Student the sidebar
+  // Profile link is the canonical entry point to the unified
+  // Account / Professional / Public profile tabs. For Guests
+  // (unverified users who can only read /forum) the entry is hidden
+  // because the unverified guard would bounce them from /profile
+  // anyway.
+  const showProfileFooter = !isGuest && activeRole !== 'Admin';
 
   return (
     /* Theme attribute (Agent 38) lives on the MainLayout root so the
@@ -700,9 +742,22 @@ export const MainLayout = () => {
           </button>
         </div>
 
+        {/* Role context — single-line pill rendered as
+            "Workspace type · Role" (e.g. "Research Workspace · Researcher",
+            "Admin Console · Admin"). Inlining the two pieces keeps the
+            sidebar header compact and matches the customer-facing
+            reference design. The role-appropriate workspace label is
+            chosen by `activeRole` so admins don't see "Research" in
+            their admin console and researchers don't see "Admin" in
+            their research workspace. */}
         <div className={styles.roleContext}>
-          <span className={styles.roleContextLabel}>{copy('Research workspace', 'Không gian nghiên cứu')}</span>
-          <strong>{formatRole(displayedRole)}</strong>
+          <span className={styles.roleContextWorkspace}>
+            {activeRole === 'Admin'
+              ? copy('Admin Console', 'Bảng quản trị')
+              : copy('Research Workspace', 'Không gian nghiên cứu')}
+          </span>
+          <span className={styles.roleContextSeparator} aria-hidden>·</span>
+          <strong className={styles.roleContextRole}>{formatRole(displayedRole)}</strong>
         </div>
 
         <nav
@@ -766,18 +821,27 @@ export const MainLayout = () => {
           })}
         </nav>
 
-        {/* Bottom-anchored "My Subscription" footer — sits at the very
-            bottom of the sidebar so it's visually separated from the
-            primary role-based nav. The wrapper uses `margin-top: auto`
-            to push the link to the end of the aside's flex column,
-            regardless of how many primary nav items the role exposes.
-            Inside the same <aside> so it inherits the dark-navy
-            sidebar background (#323964). Active-state styling routes
-            through the same `navItem` / `navItemActive` classes as the
-            regular nav items, so aria-current and the 3px primary rule
-            stay consistent. */}
-        {showSubscriptionFooter && (
-          <div className={styles.sidebarFooter}>
+        {/* Bottom-anchored group — sits at the very bottom of the
+            sidebar so all sidebar-bottom items (Subscription +
+            Profile) cluster together and never get lost inside the
+            primary nav. The wrapper uses `margin-top: auto` to push
+            the whole group to the end of the aside's flex column,
+            regardless of how many primary nav items the role
+            exposes. Inside the same <aside> so it inherits the
+            dark-navy sidebar background (#323964). Active-state
+            styling routes through the same `navItem` /
+            `navItemActive` classes as the regular nav items, so
+            aria-current and the 3px primary rule stay consistent.
+
+            Profile is always rendered as the LAST item in this
+            group (when shown) so it anchors at the very bottom of
+            the rail regardless of whether the role also shows a
+            Subscription entry. Admin does not have a personal
+            profile surface, so the Profile entry is intentionally
+            omitted for Admin — the header dropdown's admin account
+            menu is the canonical Admin identity surface instead. */}
+        <div className={styles.sidebarBottomGroup}>
+          {showSubscriptionFooter && (
             <NavLink
               to={ROUTES.SUBSCRIPTION}
               end={false}
@@ -792,8 +856,25 @@ export const MainLayout = () => {
               </span>
               <span className={styles.navLabel}>{copy('My Subscription', 'Gói đăng ký của tôi')}</span>
             </NavLink>
-          </div>
-        )}
+          )}
+          {showProfileFooter && (
+            <NavLink
+              to={ROUTES.PROFILE}
+              end={false}
+              aria-label={copy('Profile', 'Hồ sơ')}
+              title={copy('Profile', 'Hồ sơ')}
+              className={({ isActive }) =>
+                `${styles.navItem} ${isActive ? styles.navItemActive : ''}`
+              }
+              data-testid="sidebar-profile-link"
+            >
+              <span className={styles.navIcon}>
+                <UserRound size={20} />
+              </span>
+              <span className={styles.navLabel}>{copy('Profile', 'Hồ sơ')}</span>
+            </NavLink>
+          )}
+        </div>
 
         {/* Centered collapse/expand button — lives at the bottom of the
             sidebar so the user can always collapse OR expand the rail
