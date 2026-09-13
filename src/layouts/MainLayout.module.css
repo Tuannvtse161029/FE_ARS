@@ -262,10 +262,17 @@
 /* Active state — calm but unmistakable.
    The 3px primary rule on the left edge, a quiet 8% primary wash on the
    background, and the navy panel still dominates so it reads as a journal
-   table-of-contents rather than a neon tab. */
+   table-of-contents rather than a neon tab.
+
+   Text color is locked to pure white (`#ffffff`) so it stays readable on
+   every active background variant (yellow wash, dark wash, etc.) across
+   both themes — the cream/ink-on-dark fallback previously used washed out
+   against the yellow primary wash and looked "black-ish" in customer
+   walkthroughs. The `!important` flag defends against the dark-theme
+   `.navItem` color override below. */
 .navItemActive {
   background-color: color-mix(in srgb, var(--ars-blue) 8%, transparent);
-  color: var(--ink-on-dark, #ffffff) !important;
+  color: #ffffff !important;
   font-weight: var(--font-weight-semibold);
 }
 
@@ -384,33 +391,49 @@
   pointer-events: none;
 }
 
-/* Sidebar footer — wraps the dedicated "My Subscription" link so it
-   sits at the very bottom of the <aside> regardless of how many
-   primary nav items the role exposes. `margin-top: auto` consumes
-   any remaining vertical space inside the sidebar's flex column,
-   pinning the footer flush against the bottom edge. A subtle top
-   divider visually separates it from the primary role-based nav
-   list above. */
-.sidebarFooter {
+/* ── Sidebar bottom group (Subscription + Profile) ─────────────
+   Both sidebar-bottom entries (Subscription for paid roles, Profile
+   for every role) live inside this wrapper so they share the same
+   divider + padding + auto-margin behaviour. `margin-top: auto` on
+   the wrapper pins the whole group flush against the bottom of the
+   aside's flex column; the `gap` keeps the two items visually
+   separated. The wrapper is always rendered (even when a role has
+   no Subscription entry) so the divider above it is consistent
+   across all roles. */
+.sidebarBottomGroup {
   margin-top: auto;
   padding: var(--space-2) var(--space-2) var(--space-3);
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-/* On mobile drawer we keep the same structure; the footer just sits
-   below the nav, above any other sidebar content. */
+/* On mobile drawer we keep the same structure; the bottom group
+   just sits below the nav, above any other sidebar content. */
 @media (max-width: 768px) {
-  .sidebarFooter {
+  .sidebarBottomGroup {
     padding: var(--space-2) var(--space-2) var(--space-4);
   }
 }
 
-/* When the sidebar is collapsed, the footer link still anchors at
-   the bottom but only the icon is visible (the label is hidden by
-   `.sidebarCollapsed .navLabel { display: none; }` above). */
-.sidebarCollapsed .sidebarFooter {
+/* When the sidebar is collapsed, the bottom-group items still
+   anchor at the bottom but only the icon is visible (the label is
+   hidden by `.sidebarCollapsed .navLabel { display: none; }`
+   above). */
+.sidebarCollapsed .sidebarBottomGroup {
   padding-inline: var(--space-2);
+}
+
+/* Legacy `.sidebarFooter` selector — kept as a no-op so any
+   legacy import / future contributor doesn't trip over a missing
+   class. The single Subscription entry that used to live here is
+   now rendered inside `.sidebarBottomGroup` along with the
+   always-present Profile entry. */
+.sidebarFooter {
+  /* intentionally empty — see `.sidebarBottomGroup` for the
+     current visual contract. */
 }
 
 .sidebarWatermarkImage {
@@ -1193,17 +1216,58 @@
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   background: var(--sidebar-raised);
-  display: grid;
-  gap: 3px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
 }
-.roleContextLabel {
+
+/* Workspace label ("Research Workspace" / "Admin Console") — sits at
+   the start of the inline pill, same warm-parchment color as the
+   nav items so it reads as a label rather than a button. */
+.roleContextWorkspace {
+  color: var(--nav-text-on-dark, var(--ink-on-dark));
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.01em;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Dot separator between the workspace label and the role name.
+   aria-hidden so screen readers skip the visual divider and the
+   role name is still announced as the value. */
+.roleContextSeparator {
   color: var(--ink-muted);
-  font-family: var(--font-family-mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  user-select: none;
 }
-.roleContext strong { color: var(--ink-on-dark); font-size: var(--font-size-sm); }
+
+/* Role name — slightly bolder than the workspace label so it
+   anchors the eye when the rail is glanced at, but not so heavy
+   that it competes with the primary nav items below. */
+.roleContextRole {
+  color: var(--ink-on-dark);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Legacy selectors retained as no-ops so any future contributor who
+   lands on them doesn't trip over a missing class. The role context
+   is now rendered inline via `.roleContextWorkspace` +
+   `.roleContextSeparator` + `.roleContextRole` (see above). The
+   former `.roleContextLabel` uppercase micro-label and the
+   `.roleContext strong` shorthand have been superseded. */
+.roleContextLabel,
+.roleContextRole {
+  /* intentionally empty */
+}
+
 .sidebarCollapsed .roleContext,
 .sidebarCollapsed .sidebarAccountText,
 .sidebarCollapsed .sidebarLogout { display: none; }
@@ -1216,7 +1280,7 @@
 .sidebarLogout:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .navItemActive {
   background: color-mix(in srgb, var(--accent-primary) 18%, var(--sidebar-raised));
-  color: var(--ink-on-dark) !important;
+  color: #ffffff !important;
 }
 .navItemActive::before { background: var(--accent-primary); }
 .navSectionHeader { border-top-color: var(--border-subtle); }

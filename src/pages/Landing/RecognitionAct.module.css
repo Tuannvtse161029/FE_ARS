@@ -1,0 +1,286 @@
+/* ═══════════════════════════════════════════════════════════════════
+   RecognitionAct — landing-page section showing the four-tier medal
+   ladder (Bronze / Silver / Gold / Platinum).
+
+   Design intent per ARS Paper Day theme:
+   - Surface uses --surface-paper so the section reads as a warm
+     paper wash that sits naturally between the dark substance act
+     above and the white boundaries section below.
+   - Section kicker uses --accent-primary with the same left-rule
+     treatment as .issueLine in the parent file.
+   - Tier cards have no shadow — only a hairline border and a 2px
+     brand-colored left edge so the cards feel printed rather than
+     elevated.
+   - Medal images are 96px on desktop / 64px on mobile, with a warm
+     drop-shadow that hints at the brand yellow.
+   - Responsive grid collapses 4 → 2 → 1 columns.
+
+   Accessibility:
+   - Tier titles use h3 inside an ordered list so screen readers
+     announce them as 4 numbered tiers in sequence.
+   - Decorative medal images use `aria-hidden="true"` so the tier
+     title and criterion carry the meaning.
+   - The section uses `aria-labelledby="recognition-title"` so the
+     heading is the region's accessible name.
+   ═══════════════════════════════════════════════════════════════════ */
+
+.act {
+  background: var(--surface-paper);
+  padding: clamp(64px, 9dvh, 104px) 0 clamp(56px, 8dvh, 96px);
+  /* Flush top margin so the act seats against the bottom of the
+     substance act with no canvas-color gap. The page root paints
+     --page-base (deep navy) so any uncovered pixel is intentional. */
+  margin-top: 0;
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+  isolation: isolate;
+  /* Default visible so the section renders even if the IntersectionObserver
+     hasn't fired yet (matches the pattern used by .boundariesSection,
+     .faqSection, etc.). The reveal hook will swap the class for the
+     .revealed transition pair. */
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 700ms var(--motion-ease-standard),
+    transform 700ms var(--motion-ease-standard);
+}
+
+.act:not(.revealed) {
+  opacity: 0;
+  transform: translateY(24px);
+}
+
+/* Soft accent wash on the section's right edge — keeps the warm
+   paper surface from reading as flat. Tinted with --accent-primary
+   at low opacity so the brand color carries through. */
+.act::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      55% 80% at 92% 50%,
+      color-mix(in srgb, var(--accent-primary) 14%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      40% 70% at 5% 80%,
+      color-mix(in srgb, var(--accent-primary) 10%, transparent),
+      transparent 75%
+    );
+}
+
+.inner {
+  width: min(1180px, calc(100% - 48px));
+  margin: 0 auto;
+  position: relative;
+}
+
+/* Header — kicker + heading + lead. Matches the spacing rhythm of
+   the .boundariesSection / .faqSection headers in the parent file. */
+.header {
+  max-width: 760px;
+  margin: 0 0 clamp(36px, 6vh, 56px);
+}
+
+.kicker {
+  margin: 0;
+  color: var(--accent-primary);
+  font-family: var(--font-family-mono);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  border-left: 3px solid var(--accent-primary);
+  padding-left: 14px;
+}
+
+.title {
+  margin: 18px 0 0;
+  padding-left: 17px;
+  font-family: var(--font-family-serif);
+  font-size: clamp(1.9rem, 3.4vw, 2.9rem);
+  font-weight: 750;
+  letter-spacing: -0.005em;
+  line-height: 1.06;
+  color: var(--ink-primary);
+  text-wrap: balance;
+}
+
+.lead {
+  margin: 14px 0 0;
+  padding-left: 17px;
+  color: var(--ink-secondary);
+  font-size: 0.96rem;
+  line-height: 1.6;
+  max-width: 60ch;
+}
+
+/* Tiers — ordered list so the four cards read as a numbered ladder.
+   CSS grid handles the desktop 4-col / tablet 2x2 / mobile 1-col
+   layout, with a consistent 18px gutter at every breakpoint. */
+.tiers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+  counter-reset: tier;
+}
+
+.tier {
+  counter-increment: tier;
+  position: relative;
+  padding: 28px 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  border-left: 2px solid var(--accent-primary);
+  border-radius: 6px;
+  /* Slight warm wash on each card so the four feel like a coherent
+     collection rather than four isolated tiles. The wash is the same
+     hue family as the brand yellow so the cards stay on-brand. */
+  background-image:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--accent-primary) 4%, var(--surface-raised)) 0%,
+      var(--surface-raised) 80%
+    );
+  transition:
+    transform 320ms var(--motion-ease-standard),
+    border-color 320ms var(--motion-ease-standard),
+    box-shadow 320ms var(--motion-ease-standard);
+}
+
+/* Tier-number tag in the top-right corner — small, mono, brand
+   yellow on a subtle accent wash. The number is set via the CSS
+   counter so the order is automatic. */
+.tier::before {
+  content: '0' counter(tier);
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  font-family: var(--font-family-mono);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: var(--accent-primary);
+  background: color-mix(in srgb, var(--accent-primary) 12%, transparent);
+  border-radius: 3px;
+  padding: 2px 6px;
+}
+
+/* Hover + focus-visible — slight lift + brighter left edge. Matches
+   the UserFlairBadge scale affordance so the brand language stays
+   consistent between forum cards and the landing page. */
+.tier:hover,
+.tier:focus-within {
+  transform: translateY(-3px);
+  border-left-color: var(--accent-hover);
+  box-shadow:
+    0 18px 36px color-mix(in srgb, var(--accent-primary) 16%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--accent-primary) 22%, transparent);
+}
+
+.tier:focus-within {
+  outline: none;
+}
+
+/* Tablet — 2x2 grid. The four tiers become two rows of two so the
+   criteria copy stays readable. */
+@media (max-width: 900px) {
+  .tiers {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Mobile — single column. The card padding tightens to keep the
+   section from getting too tall. */
+@media (max-width: 640px) {
+  .act { padding: clamp(48px, 8vh, 72px) 0 clamp(40px, 6vh, 64px); }
+  .tiers {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .tier {
+    padding: 24px 18px 22px;
+  }
+}
+
+/* Medal image — 96px on desktop / 64px on mobile. Warm drop-shadow
+   tinted with --accent-primary so the badge feels lit by brand
+   yellow. The shadow uses a low-alpha yellow to stay subtle. */
+.medal {
+  display: block;
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  filter: drop-shadow(
+    0 4px 12px color-mix(in srgb, var(--accent-primary) 22%, transparent)
+  );
+  /* Subtle scale-in on hover to mirror UserFlairBadge's 1.08 hover. */
+  transition: transform 240ms var(--motion-ease-standard);
+}
+.tier:hover .medal,
+.tier:focus-within .medal {
+  transform: scale(1.06);
+}
+@media (max-width: 640px) {
+  .medal { width: 64px; height: 64px; }
+}
+
+.tierTitle {
+  margin: 0;
+  font-family: var(--font-family-serif);
+  font-size: 1.18rem;
+  font-weight: 750;
+  letter-spacing: -0.005em;
+  line-height: 1.2;
+  color: var(--ink-primary);
+  /* Reserve a small padding-right so the corner tier tag never
+     collides with the tier title at narrow viewports. */
+  padding-right: 36px;
+}
+
+.tierCriterion {
+  margin: 0;
+  color: var(--ink-secondary);
+  font-size: 0.88rem;
+  line-height: 1.55;
+  /* Tight clamp so long VI translations don't blow out the card
+     height — same 4-line ceiling used by the substance cards. The
+     `line-clamp` line alongside the `-webkit-line-clamp` line is
+     the canonical linter fix; without it the CSS linter warns. */
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .act { transition: none; opacity: 1; transform: none; }
+  .tier,
+  .medal,
+  .tier:hover,
+  .tier:focus-within,
+  .tier:hover .medal,
+  .tier:focus-within .medal {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+/* Keyboard focus ring on the medal image so keyboard users see the
+   selected tier. The .tier parent receives focus-within instead so
+   any child (title, criterion) being focused lifts the whole card. */
+.tier:focus-within .medal {
+  filter:
+    drop-shadow(0 4px 12px color-mix(in srgb, var(--accent-primary) 22%, transparent))
+    drop-shadow(0 0 0 2px var(--focus-ring));
+}
