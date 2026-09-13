@@ -58,8 +58,6 @@ import SubmitReportModal from '../../../components/gradstudent/SubmitReportModal
 import PhaseReportDetailModal from '../../../components/gradstudent/PhaseReportDetailModal';
 
 
-import MilestoneProgress from '../../../components/research/MilestoneProgress';
-
 
 import { PageHeader } from '../../../components/PageHeader';
 
@@ -84,8 +82,6 @@ import { TablePagination } from '../../../components/table/TablePagination';
 
 import { SortableHeader } from '../../../components/table/SortableHeader';
 
-
-import BackendGapBanner from '../../../components/BackendGapBanner';
 
 
 import { usePagination } from '../../../hooks/usePagination';
@@ -566,9 +562,6 @@ export const WorkspaceView = ({
 
 
 
-      <BackendGapBanner field="ProjectGuideline and phase-group task" feature="Guidelines and group-specific phase instructions" />
-
-
 
 
 
@@ -584,13 +577,6 @@ export const WorkspaceView = ({
 
 
 
-      <section className={styles.card}>
-
-
-        <MilestoneProgress reports={reports} />
-
-
-      </section>
 
 
 
