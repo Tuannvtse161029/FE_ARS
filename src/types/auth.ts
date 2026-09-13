@@ -90,6 +90,7 @@ export interface AuthResponse {
   token: string;
   username: string;
   email: string;
+  avatarUrl?: string | null;
   /**
    * BE-derived business-role name. Nullable to accommodate first-time
    * Google accounts where the BE has not yet assigned a role. The

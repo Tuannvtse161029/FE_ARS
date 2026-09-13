@@ -30,6 +30,7 @@ import { useShortcuts } from '../../hooks/useShortcuts';
 import { useListShortcuts } from '../../hooks/useListShortcuts';
 import { ROUTES } from '../../routes/paths';
 import { ForumPostCard } from '../../components/forum/ForumPostCard';
+import { AvatarVisual } from '../../components/profile/AvatarVisual';
 import { SkeletonRow } from '../../components/SkeletonRow';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorBanner } from '../../components/ErrorBanner';
@@ -69,6 +70,7 @@ export const Forum = () => {
   const currentUserId = user?.userId ?? stored?.id ?? null;
   const currentUserName =
     stored?.fullName ?? stored?.username ?? user?.username ?? 'You';
+  const currentUserAvatarUrl = user?.avatarUrl ?? stored?.avatarUrl ?? null;
 
   const [activeCategory, setActiveCategory] = useState<Category>('All Posts');
   const [sortBy, setSortBy] = useState<SortBy>('Newest');
@@ -541,6 +543,7 @@ export const Forum = () => {
         <CreatePostModal
           currentUserId={currentUserId}
           currentUserName={currentUserName}
+          currentUserAvatarUrl={currentUserAvatarUrl}
           onClose={() => setIsCreateModalOpen(false)}
           onPublished={() => {
             setIsCreateModalOpen(false);
@@ -565,6 +568,7 @@ export const Forum = () => {
 interface CreatePostModalProps {
   currentUserId: number;
   currentUserName: string;
+  currentUserAvatarUrl?: string | null;
   onClose: () => void;
   onPublished: () => void;
 }
@@ -572,6 +576,7 @@ interface CreatePostModalProps {
 const CreatePostModal = ({
   currentUserId,
   currentUserName,
+  currentUserAvatarUrl,
   onClose,
   onPublished,
 }: CreatePostModalProps) => {
@@ -713,7 +718,7 @@ const CreatePostModal = ({
             className={styles.modalAuthorAvatar}
             data-palette={String(paletteIndex)}
           >
-            {avatarInitials}
+            <AvatarVisual url={currentUserAvatarUrl} initials={avatarInitials} size={28} />
           </div>
           <div className={styles.modalAuthorInfo}>
             <span className={styles.modalAuthorName}>{currentUserName}</span>

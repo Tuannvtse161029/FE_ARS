@@ -31,6 +31,9 @@ import styles from './ResearcherPublicView.module.css';
 export interface ResearcherPublicViewProps {
   data: PublicProfileData;
   displayName: string;
+  avatarUrl?: string | null;
+  avatarInitials?: string;
+  topMedals?: import('./shared/PublicSectionShell').PublicSectionShellProps['topMedals'];
   showPrivacyFootnote: boolean;
 }
 
@@ -52,6 +55,9 @@ const publicationTypeChipLabel = (
 export const ResearcherPublicView = ({
   data,
   displayName,
+  avatarUrl,
+  avatarInitials,
+  topMedals,
   showPrivacyFootnote,
 }: ResearcherPublicViewProps) => {
   const { t } = useI18n();
@@ -76,6 +82,9 @@ export const ResearcherPublicView = ({
       <PublicSectionShell
         eyebrow={t('profile.publicView.eyebrow.researcher', 'ARS / PUBLIC RESEARCH INDEX')}
         title={displayName}
+        avatarUrl={avatarUrl}
+        avatarInitials={avatarInitials}
+        topMedals={topMedals}
         subtitle={profile?.academicTitle ?? t('profile.publicView.researcher.subtitle', 'Researcher on ARS')}
         action={
           <RoleBadgeChip

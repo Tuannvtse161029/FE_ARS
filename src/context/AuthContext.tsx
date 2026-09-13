@@ -1043,6 +1043,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           userId: authStore.user.id,
           username: authStore.user.username,
           email: authStore.user.email,
+          avatarUrl: authStore.user.avatarUrl ?? null,
           role: authStore.user.roleName,
           isActive: authStore.user.isActive ?? false,
           // Agent 30 (regression) — preserve the BE-supplied

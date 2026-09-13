@@ -154,6 +154,37 @@
   margin: 0;
 }
 
+.docSubtitle {
+  margin: var(--spacing-1) 0 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.fptLogo {
+  display: block;
+  width: 150px;
+  max-height: 52px;
+  object-fit: contain;
+  object-position: left center;
+  margin-bottom: var(--spacing-4);
+}
+
+.institutionLetter {
+  border-top: 4px solid var(--color-primary);
+}
+
+.signatureRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-4);
+  margin-top: var(--spacing-6);
+  padding-top: var(--spacing-6);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  text-align: center;
+}
+
 .docBadge {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);

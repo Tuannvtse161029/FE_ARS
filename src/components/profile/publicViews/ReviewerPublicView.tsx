@@ -24,12 +24,18 @@ import styles from './ReviewerPublicView.module.css';
 export interface ReviewerPublicViewProps {
   data: PublicProfileData;
   displayName: string;
+  avatarUrl?: string | null;
+  avatarInitials?: string;
+  topMedals?: import('./shared/PublicSectionShell').PublicSectionShellProps['topMedals'];
   showPrivacyFootnote: boolean;
 }
 
 export const ReviewerPublicView = ({
   data,
   displayName,
+  avatarUrl,
+  avatarInitials,
+  topMedals,
   showPrivacyFootnote,
 }: ReviewerPublicViewProps) => {
   const { t } = useI18n();
@@ -65,6 +71,9 @@ export const ReviewerPublicView = ({
       <PublicSectionShell
         eyebrow={t('profile.publicView.eyebrow.reviewer', 'ARS / PUBLIC PROFILE — REVIEWER')}
         title={displayName}
+        avatarUrl={avatarUrl}
+        avatarInitials={avatarInitials}
+        topMedals={topMedals}
         subtitle={t(
           'profile.publicView.reviewer.subtitle',
           'Public academic presence for peer review on the ARS platform.',

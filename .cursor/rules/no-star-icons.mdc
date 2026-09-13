@@ -1,0 +1,19 @@
+---
+description: Never use star icons or star-shaped decorative symbols in the ARS frontend
+alwaysApply: true
+---
+
+# No Star Icons
+
+Never use a star icon in the frontend UI because stars are reserved to indicate AI usage.
+
+This prohibition applies to:
+
+- Lucide star icons, including `Star`, `Sparkles`, `Stars`, and equivalent star-shaped variants
+- Other icon libraries or custom SVGs containing star shapes
+- Unicode star characters such as `*`, `★`, `☆`, or similar decorative star symbols when used as UI icons
+- Star-shaped decorative graphics, badges, buttons, empty states, or illustrations
+
+When an existing requirement suggests a star icon, choose a semantically appropriate non-star icon from the project's existing `lucide-react` library, such as `Info`, `CircleHelp`, `Check`, `Badge`, `Heart`, or `Bookmark`, depending on the meaning. Do not replace a star with an arbitrary icon; preserve the intended meaning and use the closest suitable alternative.
+
+Before completing frontend UI work, check changed files for star icon imports, star-shaped SVGs, and star symbols, and remove or replace them.

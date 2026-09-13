@@ -699,6 +699,7 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
+  overflow: hidden;
   background-color: var(--ars-ink);
   color: var(--ars-paper);
   display: inline-flex;
@@ -1377,6 +1378,7 @@
 .searchInput, .userPillName { color: var(--control-text); }
 .searchIcon, .userPillRole { color: var(--ink-muted); }
 .avatarCircleSmall { background: var(--accent-primary); color: var(--ink-on-paper); }
+.avatarCircleSmall img { width: 100%; height: 100%; object-fit: cover; }
 .profileDropdownMenu { background: var(--surface-raised); border-color: var(--border-strong); box-shadow: 0 14px 36px var(--shadow-color); }
 .dropdownItem { color: var(--ink-primary); }
 .dropdownItem:hover { background: var(--surface-selected); }

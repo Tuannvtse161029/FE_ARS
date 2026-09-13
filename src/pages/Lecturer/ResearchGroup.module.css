@@ -418,6 +418,125 @@
   font-weight: var(--font-weight-semibold);
 }
 
+/* ── Join-request preview ───────────────────────────────────── */
+.joinRequestPreviewBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--status-warning-border, var(--border-strong));
+  border-radius: var(--radius-md);
+  background: var(--status-warning-bg, var(--surface-paper-muted));
+  color: var(--status-warning-text, var(--ars-ink));
+}
+
+.joinRequestPreviewIcon {
+  display: inline-flex;
+  color: var(--ars-lecturer);
+  flex-shrink: 0;
+}
+
+.joinRequestPreviewContent {
+  min-width: 0;
+  flex: 1;
+}
+
+.joinRequestPreviewContent strong,
+.joinRequestPreviewContent p {
+  display: block;
+  margin: 0;
+}
+
+.joinRequestPreviewContent p {
+  margin-top: var(--space-1);
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+}
+
+.previewBadge {
+  flex-shrink: 0;
+  padding: 2px var(--space-2);
+  border: 1px solid var(--status-warning-border, var(--border-strong));
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  white-space: nowrap;
+}
+
+.joinRequestPreview {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  margin-bottom: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px dashed var(--ars-lecturer-mid);
+  border-radius: var(--radius-sm);
+  background: var(--ars-lecturer-light);
+  color: var(--ars-lecturer);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+
+.joinRequestPreview:hover,
+.joinRequestPreview:focus-visible {
+  border-style: solid;
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+.previewProfile {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--ars-network);
+}
+
+.previewProfile > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.previewProfileAvatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--ars-lecturer-light);
+  color: var(--ars-lecturer);
+  font-weight: var(--font-weight-bold);
+}
+
+.previewProfile > div span,
+.previewDetails span {
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-sm);
+}
+
+.previewDetails {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.previewApiNotice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--status-warning-border, var(--border-strong));
+  border-radius: var(--radius-sm);
+  background: var(--status-warning-bg, var(--surface-paper-muted));
+  color: var(--status-warning-text, var(--ars-ink));
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+}
+
 /* ── Modal styles ────────────────────────────────────────────── */
 .modalOverlay {
   position: fixed;

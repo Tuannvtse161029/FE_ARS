@@ -119,8 +119,13 @@ const billingCycleLabel = (
   return cycle;
 };
 
+const ROLE_FEATURES = {
+  Researcher: ['Research Papers', 'Seminars', 'Forum participation'],
+  Lecturer: ['Seminars', 'Research Topics', 'Research Groups', 'Phase Reports', 'Materials'],
+} as const;
+
 export const Subscription = () => {
-  const { user } = useAuth();
+  const { user, effectiveRole } = useAuth();
   const location = useLocation();
   const locale = useLocale();
   const {
@@ -141,6 +146,14 @@ export const Subscription = () => {
   const [historyLoading, setHistoryLoading] = useState(false);
 
   const userFullName = user?.username || user?.email || 'Account';
+  const currentRole =
+    effectiveRole === 'Researcher' || effectiveRole === 'Lecturer'
+      ? effectiveRole
+      : user?.role === 'Researcher' || user?.role === 'Lecturer'
+        ? user.role
+        : 'Researcher';
+  const roleFeatures = ROLE_FEATURES[currentRole];
+  const roleLabel = currentRole;
 
   const fetchPlans = useCallback(async () => {
     setPlansLoading(true);
@@ -250,11 +263,11 @@ export const Subscription = () => {
     <div className={styles.page} data-component="SubscriptionPage">
       <PageHeader
         eyebrow="ARS subscription"
-        title="Researcher / Lecturer access"
+        title={`${roleLabel} access`}
         description={
           hasActiveSubscription
-            ? `Signed in as ${userFullName}. Your subscription is active — all features are unlocked.`
-            : `Signed in as ${userFullName}. Subscribe to unlock full Researcher and Lecturer features.`
+            ? `Signed in as ${userFullName}. Your ${roleLabel} subscription is active — all features are unlocked.`
+            : `Signed in as ${userFullName}. Subscribe to unlock full ${roleLabel} features.`
         }
       />
 
@@ -265,9 +278,9 @@ export const Subscription = () => {
           aria-live="polite"
           data-testid="subscription-feature-disabled"
         >
-          Annual subscription is temporarily unavailable. Researcher and
-          Lecturer features are fully accessible. Subscription payment
-          integration will resume once the backend APIs are ready.
+          Annual subscription is temporarily unavailable. {roleLabel}
+          features are fully accessible. Subscription payment integration will
+          resume once the backend APIs are ready.
         </div>
       )}
 
@@ -301,7 +314,7 @@ export const Subscription = () => {
         >
           <CheckCircle2 size={20} style={{ flexShrink: 0 }} aria-hidden />
           <div>
-            <strong>Subscription active.</strong> All workspace features (Seminar, Research Topics, Research Groups, Phase Reports, Materials, and Research Papers) are fully accessible.
+            <strong>Subscription active.</strong> All {roleLabel} workspace features ({roleFeatures.join(', ')}) are fully accessible.
           </div>
         </div>
       )}
@@ -423,7 +436,7 @@ export const Subscription = () => {
                     <span className={styles.planRolePill}>{plan.userRole}</span>
                     <ul className={styles.planFeatures}>
                       <li className={styles.planFeature}>
-                        Full Researcher / Lecturer workspace access for{' '}
+                        Full {roleLabel} workspace access for{' '}
                         {billingCycleMonths(plan.billingCycle)} month
                         {billingCycleMonths(plan.billingCycle) !== 1 ? 's' : ''}
                       </li>
@@ -431,7 +444,7 @@ export const Subscription = () => {
                         Forum read + interact
                       </li>
                       <li className={styles.planFeature}>
-                        Submit, edit, and manage your materials and submissions
+                        Access {roleFeatures.join(', ')}
                       </li>
                     </ul>
                   </button>

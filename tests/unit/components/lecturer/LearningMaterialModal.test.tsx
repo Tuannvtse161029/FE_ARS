@@ -34,6 +34,8 @@ vi.mock('../../../../src/services/learningMaterial.service', () => ({
     getAll: getAllLearningMaterialsMock,
     create: createLearningMaterialMock,
   },
+  defaultLearningMaterialFolderPath: (lecturerId?: number | null) =>
+    `learning-materials/${lecturerId ?? 'unknown'}/`,
 }));
 
 const SEED_TOPIC = {

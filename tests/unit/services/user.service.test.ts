@@ -28,6 +28,7 @@ const userFixture = (id: number, isActive: boolean): User => ({
   isEmailVerified: true,
   verificationStatus: 'Pending',
   accountTier: 'Free',
+  avatarUrl: `https://cdn.example.com/user${id}.png`,
   createdAt: '2026-08-19T00:00:00Z',
 });
 
@@ -117,7 +118,7 @@ describe('userService.updateIsActive', () => {
 
     expect(axiosPutSpy).toHaveBeenCalledWith('/api/user/42', {
       fullName: 'User Number 42',
-      avatarUrl: 'user42',
+      avatarUrl: 'https://cdn.example.com/user42.png',
       isActive: false,
     });
   });

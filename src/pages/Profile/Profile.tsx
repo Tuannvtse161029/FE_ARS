@@ -30,8 +30,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
-import { Clock, RefreshCw, UserPlus } from 'lucide-react';
+import { Clock, Pen, RefreshCw, SlidersHorizontal, UserPlus } from 'lucide-react';
+import { AvatarPickerModal } from '../../components/profile/AvatarPickerModal';
+import { AvatarVisual } from '../../components/profile/AvatarVisual';
 import { useAuth } from '../../context/AuthContext';
+import { useAuthStore } from '../../store';
+import { storage } from '../../utils/storage';
 import { RequestAdditionalRoleModal } from '../../components/profile/RequestAdditionalRoleModal';
 import { roleRequestService, type UserPendingRoleRequest } from '../../services/roleRequest.service';
 import { userService } from '../../services/user.service';
@@ -56,6 +60,7 @@ import { ProfessionalProfileTab } from '../../components/profile/ProfessionalPro
 import { ProfileBadgesSection } from '../../components/profile/ProfileBadgesSection';
 import { useSearchParams } from 'react-router-dom';
 import { FeaturedFlairPicker } from '../../components/profile/FeaturedFlairPicker';
+import { TopMedalsModal } from '../../components/profile/TopMedalsModal';
 import { useAuthorFlair } from '../../hooks/useAuthorFlair';
 import { useProfileExtras } from '../../hooks/useProfileExtras';
 import { PageHeader } from '../../components/PageHeader';
@@ -287,6 +292,7 @@ function draftFromProfile(p: {
 export const Profile = () => {
   const { userId: routeUserId } = useParams<{ userId?: string }>();
   const { user } = useAuth();
+  const updateAuthUser = useAuthStore((state) => state.updateUser);
 
   // ── Admin role gate ─────────────────────────────────────────────
   // The Admin role does not own a profile surface — the sidebar entry
@@ -337,6 +343,8 @@ export const Profile = () => {
   // Errors are swallowed — the page must render even if `/api/User/{id}`
   // 404s (e.g. a suspended account).
   const [publicUserRole, setPublicUserRole] = useState<string | null>(null);
+  const [isAvatarPickerOpen, setIsAvatarPickerOpen] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
   useEffect(() => {
     if (isOwner || !targetUserId) {
       setPublicUserRole(null);
@@ -571,6 +579,7 @@ export const Profile = () => {
   const [flairOrder, setFlairOrder] = useState<string[]>(
     Array.isArray(profile?.flairOrder) ? profile.flairOrder : [],
   );
+  const [isTopMedalsModalOpen, setIsTopMedalsModalOpen] = useState(false);
 
   // Seed from localStorage on mount / when targetUserId changes. We
   // deliberately do NOT re-seed when `profile` changes — the user's local
@@ -605,6 +614,33 @@ export const Profile = () => {
     [],
   );
 
+  const selectedTopMedalIds = useMemo(() => {
+    const unlockedIds = new Set(
+      unlockedMedals.filter((item) => item.isUnlocked && item.medal).map((item) => item.medal.id),
+    );
+    const ordered = flairOrder.filter((id) => unlockedIds.has(id));
+    if (ordered.length > 0) return ordered.slice(0, 3);
+    return unlockedMedals
+      .filter((item) => item.isUnlocked && item.medal)
+      .map((item) => item.medal.id)
+      .slice(0, 3);
+  }, [flairOrder, unlockedMedals]);
+
+  const handleTopMedalsSave = (selectedIds: string[]) => {
+    const remaining = flairOrder.filter((id) => !selectedIds.includes(id));
+    handleFlairChange({
+      flairMedalId: selectedIds[0] ?? null,
+      flairOrder: [...selectedIds, ...remaining],
+    });
+  };
+
+  const selectedTopMedals = useMemo(
+    () => selectedTopMedalIds
+      .map((id) => unlockedMedals.find((item) => item.medal?.id === id))
+      .filter((item): item is typeof unlockedMedals[number] => Boolean(item)),
+    [selectedTopMedalIds, unlockedMedals],
+  );
+
   // Seed the draft whenever the BE profile resolves / changes.
   useEffect(() => {
     if (!profile) {
@@ -637,12 +673,14 @@ export const Profile = () => {
   const draftIsEmpty = isEmptyDraft(draft);
 
   const handleEnterEdit = () => {
+    setAvatarError(null);
     setMode('edit');
     setShowSuccess(false);
     clearSaveError();
   };
 
   const handleCancelEdit = () => {
+    setAvatarError(null);
     setDraft(savedDraft);
     setMode('view');
     clearSaveError();
@@ -670,6 +708,20 @@ export const Profile = () => {
   };
 
   const handleRefresh = async () => {
+    await refetch();
+  };
+
+  const handleAvatarSave = async (avatarUrl: string) => {
+    if (!authenticatedUserId || !user) throw new Error(t('profile.avatar.authRequired', 'You must be signed in to update your avatar.'));
+    setAvatarError(null);
+    const authoritative = await userService.getById(authenticatedUserId);
+    const updated = await userService.update(authenticatedUserId, {
+      fullName: authoritative.fullName.trim(),
+      avatarUrl,
+      isActive: authoritative.isActive,
+    });
+    storage.setUser(updated);
+    updateAuthUser(updated);
     await refetch();
   };
 
@@ -795,6 +847,7 @@ export const Profile = () => {
     profile?.fullName?.trim() || (isOwner ? (user?.username || user?.email) : '') || `User #${targetUserId ?? '?'}`;
   const displayEmail = profile?.email || (isOwner ? user?.email : '') || '';
   const avatarInitials = profile?.avatarInitials?.trim() || deriveInitials(displayName);
+  const avatarUrl = profile?.avatarUrl ?? user?.avatarUrl ?? null;
 
   return (
     <div className={styles.page} style={accentStyle}>
@@ -880,9 +933,17 @@ export const Profile = () => {
       />
 
       <section className={styles.identityCard} aria-label="Account identity">
-        <div className={styles.avatar} aria-label={`Avatar for ${displayName}`}>
-          {avatarInitials}
-        </div>
+        {isOwner && mode === 'edit' ? (
+          <button type="button" className={styles.avatar} onClick={() => setIsAvatarPickerOpen(true)} aria-label={t('profile.avatar.open', 'Change profile picture')}>
+            <AvatarVisual url={avatarUrl} initials={avatarInitials} size={56} />
+            <span className={styles.avatarEditHint} aria-hidden="true"><Pen size={16} strokeWidth={2.25} /></span>
+          </button>
+        ) : (
+          <div className={styles.avatar} aria-label={`Avatar for ${displayName}`}>
+            <AvatarVisual url={avatarUrl} initials={avatarInitials} size={56} />
+          </div>
+        )}
+        {avatarError ? <p className={styles.fieldError} role="alert">{avatarError}</p> : null}
         <div className={styles.identityText}>
           <h2 className={styles.identityName} data-testid="profile-display-name">
             {displayName}
@@ -893,25 +954,43 @@ export const Profile = () => {
           </h2>
           <p className={styles.identityRole}>
             <span className={styles.roleBadge}>{roleLabel}</span>
-            {unlockedMedals.filter((m) => m.isUnlocked && m.medal).length > 0 ? (
+            {selectedTopMedals.length > 0 ? (
               <span
                 className={styles.flairRow}
-                aria-label={t('badges.profile.tab', 'Badges')}
+                aria-label={t('badges.topMedals.aria', 'Top profile medals')}
               >
-                {unlockedMedals
-                  .filter((m) => m.isUnlocked && m.medal)
-                  .map((m) =>
-                    flairUserId != null ? (
-                      <UserFlairBadge
-                        key={m.medal.id}
-                        userId={flairUserId}
-                        forceMedalId={m.medal.id}
-                        size="xs"
-                        showTooltip
-                      />
-                    ) : null,
-                  )}
+                {selectedTopMedals.map((item) =>
+                  flairUserId != null ? (
+                    <UserFlairBadge
+                      key={item.medal.id}
+                      userId={flairUserId}
+                      forceMedalId={item.medal.id}
+                      size="xs"
+                      showTooltip
+                    />
+                  ) : null,
+                )}
+                {isOwner && mode === 'edit' ? (
+                  <button
+                    type="button"
+                    className={styles.editMedalsButton}
+                    onClick={() => setIsTopMedalsModalOpen(true)}
+                    aria-label={t('badges.topMedals.edit', 'Change top medals')}
+                    title={t('badges.topMedals.edit', 'Change top medals')}
+                  >
+                    <SlidersHorizontal size={15} aria-hidden="true" />
+                  </button>
+                ) : null}
               </span>
+            ) : isOwner && mode === 'edit' ? (
+              <button
+                type="button"
+                className={styles.editMedalsButton}
+                onClick={() => setIsTopMedalsModalOpen(true)}
+              >
+                <SlidersHorizontal size={15} aria-hidden="true" />
+                {t('badges.topMedals.edit', 'Choose top medals')}
+              </button>
             ) : null}
             {isEmptyProfile && isOwner ? (
               <span className={styles.emptyBadge}>{t('profile.emptyBadge', 'Profile not yet configured')}</span>
@@ -949,6 +1028,14 @@ export const Profile = () => {
           </div>
         </div>
       </section>
+
+      <TopMedalsModal
+        isOpen={isTopMedalsModalOpen}
+        medals={unlockedMedals}
+        selectedIds={selectedTopMedalIds}
+        onClose={() => setIsTopMedalsModalOpen(false)}
+        onSave={handleTopMedalsSave}
+      />
 
       {isOwner && isOrcidEligibleRole(roleName) && (
         <OrcidIdentityPanel required={roleName === 'Reviewer'} />
@@ -1112,6 +1199,9 @@ export const Profile = () => {
                   <ReviewerPublicView
                     data={publicProfileData}
                     displayName={displayName}
+                    avatarUrl={avatarUrl}
+                    avatarInitials={avatarInitials}
+                    topMedals={selectedTopMedals}
                     showPrivacyFootnote={!isOwner}
                   />
                 ) : null}
@@ -1119,6 +1209,9 @@ export const Profile = () => {
                   <ResearcherPublicView
                     data={publicProfileData}
                     displayName={displayName}
+                    avatarUrl={avatarUrl}
+                    avatarInitials={avatarInitials}
+                    topMedals={selectedTopMedals}
                     showPrivacyFootnote={!isOwner}
                   />
                 ) : null}
@@ -1126,6 +1219,9 @@ export const Profile = () => {
                   <LecturerPublicView
                     data={publicProfileData}
                     displayName={displayName}
+                    avatarUrl={avatarUrl}
+                    avatarInitials={avatarInitials}
+                    topMedals={selectedTopMedals}
                     showPrivacyFootnote={!isOwner}
                     locale={locale ?? 'en'}
                   />
@@ -1134,6 +1230,9 @@ export const Profile = () => {
                   <GraduateStudentPublicView
                     data={publicProfileData}
                     displayName={displayName}
+                    avatarUrl={avatarUrl}
+                    avatarInitials={avatarInitials}
+                    topMedals={selectedTopMedals}
                     showPrivacyFootnote={!isOwner}
                   />
                 ) : null}
@@ -1181,6 +1280,23 @@ export const Profile = () => {
           userId={targetUserId}
           onClose={() => setIsFollowModalOpen(false)}
           onCountsChanged={refetchCounts}
+        />
+      )}
+
+      {isOwner && (
+        <AvatarPickerModal
+          isOpen={isAvatarPickerOpen}
+          currentUrl={avatarUrl}
+          userId={authenticatedUserId ?? 0}
+          onClose={() => setIsAvatarPickerOpen(false)}
+          onSave={async (url) => {
+            try {
+              await handleAvatarSave(url);
+            } catch (saveError) {
+              setAvatarError(saveError instanceof Error ? saveError.message : t('profile.avatar.saveFailed', 'Could not update avatar.'));
+              throw saveError;
+            }
+          }}
         />
       )}
 

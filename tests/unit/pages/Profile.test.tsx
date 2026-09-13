@@ -24,6 +24,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { I18nProvider } from '../../../src/i18n/I18nContext';
 
 const serviceMock = vi.hoisted(() => ({
   getByUserId: vi.fn(),
@@ -56,9 +57,11 @@ import { Profile } from '../../../src/pages/Profile/Profile';
 
 const renderPage = () =>
   render(
-    <MemoryRouter initialEntries={['/profile']}>
-      <Profile />
-    </MemoryRouter>,
+    <I18nProvider>
+      <MemoryRouter initialEntries={['/profile']}>
+        <Profile />
+      </MemoryRouter>
+    </I18nProvider>,
   );
 
 const seedAuth = (overrides: Partial<typeof authMock.user> = {}) => {
@@ -269,7 +272,7 @@ describe('Profile page — wire & state contracts', () => {
     seedAuth({ userId: 7, role: 'Lecturer' });
 
     renderPage();
-    expect(await screen.findByText(/LECTURER WORKSPACE/i)).toBeInTheDocument();
+    expect(await screen.findAllByText(/LECTURER WORKSPACE/i)).not.toHaveLength(0);
     fireEvent.click(screen.getByTestId('profile-edit-button'));
 
     // Same set of fields is available regardless of role.

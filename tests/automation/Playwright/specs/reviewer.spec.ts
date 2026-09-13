@@ -86,20 +86,29 @@ test('Review Assignments page is reachable', async ({ page }) => {
 
 /**
  * @annotation role: Reviewer
- * @annotation feature: Professional Profile route
- * @annotation expected: /reviewer/professional-profile is reachable
+ * @annotation feature: Professional Profile tab
+ * @annotation expected: /profile opens the Professional Profile tab for a reviewer
  * @annotation owner: Frontend
  * @annotation confidence: High
  */
-test('Professional Profile page is reachable', async ({ page }) => {
+test('Professional Profile tab is reachable from Profile', async ({ page }) => {
   await authenticate(page, 'reviewer');
 
-  await test.step('Navigate to /reviewer/professional-profile', async () => {
-    await page.goto(ROUTES.PROFESSIONAL_PROFILE);
+  await test.step('Navigate to the Profile page', async () => {
+    await page.goto(ROUTES.PROFILE);
   });
 
-  await test.step('Verify page renders', async () => {
-    await expect(page).toHaveURL(/\/reviewer\/professional-profile/, { timeout: 15_000 });
+  await test.step('Open the Professional Profile tab', async () => {
+    await expect(page).toHaveURL(/\/profile/, { timeout: 15_000 });
+    await page.getByTestId('profile-tab-professional').click();
+  });
+
+  await test.step('Verify the professional tab panel renders', async () => {
+    await expect(page.getByTestId('profile-tab-professional')).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    await expect(page.getByTestId('profile-tabpanel-professional')).toBeVisible();
   });
 
   await test.step('Capture evidence', async () => {
