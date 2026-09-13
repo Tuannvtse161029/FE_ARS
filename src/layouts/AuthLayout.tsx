@@ -1,4 +1,5 @@
 import { Outlet } from 'react-router-dom';
+import { LanguageToggle } from '../components/i18n/LanguageToggle';
 import { useT } from '../i18n/I18nContext';
 import styles from './AuthLayout.module.css';
 
@@ -6,6 +7,9 @@ export const AuthLayout = () => {
   const t = useT();
   return (
     <div className={styles.authLayout}>
+      <div className={styles.authLanguageToggle}>
+        <LanguageToggle />
+      </div>
       <div className={styles.authCard}>
         <div className={styles.leftPanel}>
           {/* Editorial masthead — a quiet, journal-cover-like composition

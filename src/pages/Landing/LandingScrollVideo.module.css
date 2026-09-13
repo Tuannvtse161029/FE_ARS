@@ -39,17 +39,17 @@
      spotlight CTA) all stay. The RecognitionAct stays unchanged.
    ═══════════════════════════════════════════════════════════════════ */
 
-:root {
-  /* ── Semantic page surfaces (theme-aware) ─────────────── */
-  /* These four are the only surface colors the landing page uses.
-     They sit on top of --page-base, which is what the page root paints
-     so any uncovered pixel is intentional dark navy (or warm parchment
-     in paper-day), never --app-canvas. */
-  --page-base: #0a0d20;
-  --surface-act: #0d1326;
-  --surface-act-edge: #050a18;
-  --surface-act-card: #fdf6e3;
-  --surface-act-card-edge: #e8dcb8;
+/* Landing page always uses archive-dusk (dark mode) theme.
+   The page component sets data-theme="archive-dusk" on the root .page div,
+   so these tokens use the dark palette from the deployed site. */
+:root,
+.page {
+  /* ── Dark mode surfaces (from fe-ars.vercel.app) ─────────────── */
+  --page-base: #090d16;
+  --surface-act: #121a2d;
+  --surface-act-edge: #0a0d20;
+  --surface-act-card: #162035;
+  --surface-act-card-edge: #101726;
   --scrim-top: rgba(8, 12, 24, 0.92);
   --scrim-mid: rgba(8, 12, 24, 0.28);
   --scrim-bot: transparent;
@@ -59,44 +59,12 @@
   --shadow-card: rgba(0, 0, 0, 0.55);
   --shadow-card-heavy: rgba(0, 0, 0, 0.72);
 
-  /* Hero photo is dark in BOTH themes (same library shot), so the
-     hero copy ink stays near-white. */
+  /* Hero photo is dark, so hero copy ink stays near-white. */
   --ink-on-dark: #fffdf8;
   --ink-on-dark-soft: rgba(255, 253, 248, 0.78);
   --ink-on-dark-muted: rgba(255, 253, 248, 0.55);
 
-  /* Page chrome — solid dark in BOTH themes. Per design directive
-     (2026-09-13): header and footer use #1B1A17 with white text
-     regardless of which mode is active. The chrome is the
-     terminator rail that anchors the page's editorial frame. */
-  --chrome-bg: #1b1a17;
-  --chrome-text: #fffdf8;
-  --chrome-text-muted: rgba(255, 253, 248, 0.7);
-}
-
-:root[data-theme='paper-day'] {
-  --page-base: #f5ebc8;
-  --surface-act: #fdf6e3;
-  --surface-act-edge: #e8dcb8;
-  --surface-act-card: #fdf6e3;
-  --surface-act-card-edge: #e8dcb8;
-  --scrim-top: rgba(29, 28, 25, 0);
-  --scrim-mid: rgba(29, 28, 25, 0);
-  --scrim-bot: rgba(29, 28, 25, 0);
-  --glass-soft: rgba(255, 247, 220, 0.78);
-  --glass-strong: rgba(255, 247, 220, 0.92);
-  --pill-bg: rgba(15, 18, 28, 0.78);
-  --shadow-card: rgba(96, 72, 18, 0.14);
-  --shadow-card-heavy: rgba(96, 72, 18, 0.22);
-
-  /* In paper-day, ink-on-dark flips to dark ink so headings on
-     parchment read correctly. The heroCopy below restores the light
-     ink because the hero photo is still dark in paper-day. */
-  --ink-on-dark: #1d1c19;
-  --ink-on-dark-soft: rgba(29, 28, 25, 0.78);
-  --ink-on-dark-muted: rgba(29, 28, 25, 0.55);
-
-  /* Paper-day chrome stays solid dark per the design directive. */
+  /* Page chrome — solid dark header and footer with white text. */
   --chrome-bg: #1b1a17;
   --chrome-text: #fffdf8;
   --chrome-text-muted: rgba(255, 253, 248, 0.7);
@@ -107,7 +75,7 @@
    an act. Acts paint their own gradients on top. */
 .page {
   min-height: 100dvh;
-  color: var(--ink-primary);
+  color: var(--ink-on-dark);
   background: var(--page-base);
   scroll-behavior: smooth;
   scroll-padding-top: 80px;
@@ -269,7 +237,7 @@
 @keyframes sc-rise {
   from {
     opacity: 0;
-    transform: translateY(14px);
+    transform: translateY(18px);
   }
   to {
     opacity: 1;
@@ -282,14 +250,14 @@
 .page h3,
 .page p,
 .page .issueLine {
-  animation: sc-rise 700ms var(--motion-ease-standard, ease) backwards;
+  animation: sc-rise 520ms var(--motion-ease-standard, ease) backwards;
 }
 
 .page .heroCopy > *:nth-child(1) { animation-delay: 0ms; }
-.page .heroCopy > *:nth-child(2) { animation-delay: 80ms; }
-.page .heroCopy > *:nth-child(3) { animation-delay: 160ms; }
-.page .heroCopy > *:nth-child(4) { animation-delay: 240ms; }
-.page .heroCopy > *:nth-child(5) { animation-delay: 320ms; }
+.page .heroCopy > *:nth-child(2) { animation-delay: 60ms; }
+.page .heroCopy > *:nth-child(3) { animation-delay: 120ms; }
+.page .heroCopy > *:nth-child(4) { animation-delay: 180ms; }
+.page .heroCopy > *:nth-child(5) { animation-delay: 240ms; }
 
 @media (prefers-reduced-motion: reduce) {
   .page h1,
@@ -362,9 +330,14 @@
   transition: color var(--transition-fast);
 }
 
+/* Light mode - white text for navigation */
+:root[data-theme='paper-day'] .navigation a {
+  color: #ffffff;
+}
+
 .navigation a:hover,
 .navigation a:focus-visible {
-  color: var(--accent-primary);
+  color: #FACC15;
   text-decoration: underline;
 }
 
@@ -459,10 +432,9 @@
       rgba(8, 12, 24, 0.25) 100%);
 }
 
-/* Dark-mode hero: extra darkness on the photo so the existing
-   lamp-light glow layered on top reads as a defined beam instead
-   of blending into the photo's own warmth. */
-:global(html[data-theme='archive-dusk']) .heroStage .scene {
+/* Dark-mode hero: extra darkness on the photo so the lamp glow
+   reads as a defined beam. */
+.heroStage .scene {
   filter: brightness(0.55) saturate(0.85);
 }
 
@@ -502,6 +474,24 @@
    image. The lamp effect layers (z-index 4/5) handle the dark-mode
    warm overhead light.) */
 
+/* Light mode - reduce hero scrim for brighter background */
+:root[data-theme='paper-day'] .sceneScrim {
+  background: linear-gradient(180deg,
+    rgba(8, 12, 24, 0.18) 0%,
+    rgba(8, 12, 24, 0.12) 35%,
+    rgba(8, 12, 24, 0.08) 100%);
+}
+
+/* Dark mode - lighter scrim for better text readability */
+:root[data-theme='archive-dusk'] .sceneScrim {
+  background: linear-gradient(180deg,
+    rgba(8, 12, 24, 0.35) 0%,
+    rgba(8, 12, 24, 0.28) 42%,
+    rgba(8, 12, 24, 0.22) 43%,
+    transparent 46%,
+    transparent 100%);
+}
+
 .heroCopy {
   position: absolute;
   z-index: 5;
@@ -535,11 +525,8 @@
   text-wrap: balance;
 }
 
-/* The hero photo is dark in BOTH themes, so the hero copy ink stays
-   near-white regardless of theme. In paper-day `--ink-on-dark` flips
-   to dark ink for the parchment sections below — so we restore light
-   ink just for the heroCopy. */
-:global(:root[data-theme='paper-day']) .heroCopy {
+/* Hero copy always uses light ink on the dark photo background. */
+.heroCopy {
   --ink-on-dark: #fffdf8;
   --ink-on-dark-soft: rgba(255, 253, 248, 0.78);
   --ink-on-dark-muted: rgba(255, 253, 248, 0.55);
@@ -691,8 +678,7 @@
 }
 
 /* Lamp light effect (dark mode only) — ceiling spotlight from above.
-   Four stacked layers, gated by React's isDarkMode so they never
-   render in paper-day. */
+   Four stacked layers for the warm yellow glow effect. */
 .heroVignette {
   position: absolute;
   inset: 0;
@@ -807,32 +793,37 @@
 
 /* ══════════════════════════════════════════════════════════════════
    ACT 2 — TENSION: The cost of scattered tools
-   Beige parchment surface, no background image. Floating tag
-   labels drift gently through the act as it scrolls through the
-   viewport. The section reads as an editorial breather between
-   the dark hero above and the dark workflow below.
+   Dark surface with floating tag labels that drift through the act.
+   Matches the dark theme of the hero and workflow sections.
    ══════════════════════════════════════════════════════════════════ */
 .tensionAct {
   position: relative;
   min-height: 100dvh;
-  /* Warm beige parchment surface — the same family as the deployed
-     "The problem" section. We use a saturated tan so the section
-     reads as a deliberate breather, not paper-cream (#fff9e8)
-     bleeding from a neighbouring act. */
+  /* Dark surface matching the overall dark theme */
   background:
     radial-gradient(70% 60% at 50% 50%,
-      color-mix(in srgb, var(--accent-primary) 8%, #d4c08c) 0%,
-      #c9b582 70%,
-      #bfa874 100%);
-  color: var(--ink-on-paper);
+      color-mix(in srgb, var(--accent-primary) 8%, #1a1f36) 0%,
+      #141829 70%,
+      #0f1320 100%);
+  color: var(--ink-on-dark);
   display: flex;
   align-items: stretch;
   overflow: hidden;
-  /* Beige parchment sits between the dark hero above and the dark
-     workflow below — slight inset border at the top keeps the
-     colour transitions intentional rather than accidental. */
-  border-top: 1px solid color-mix(in srgb, var(--ink-primary) 8%, transparent);
-  border-bottom: 1px solid color-mix(in srgb, var(--ink-primary) 8%, transparent);
+  border-top: 1px solid color-mix(in srgb, var(--ink-on-dark) 8%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--ink-on-dark) 8%, transparent);
+}
+
+/* Light mode yellow spotlight */
+:root[data-theme='paper-day'] .tensionAct {
+  background:
+    radial-gradient(70% 60% at 50% 50%,
+      rgba(250, 204, 21, 0.35) 0%,
+      rgba(250, 204, 21, 0.18) 18%,
+      rgba(252, 211, 77, 0.08) 45%,
+      rgba(253, 224, 71, 0.02) 70%,
+      transparent 95%),
+    var(--page-base);
+  color: var(--ink-primary);
 }
 
 /* Copy sits above the chip layer. */
@@ -848,13 +839,12 @@
   text-align: right;
 }
 
-/* Beige surface uses dark ink so the headline + body sit on the
-   parchment as ink, not as light text on a tan wash. */
+/* Dark surface uses light ink. */
 .tensionKicker {
   position: relative;
   margin: 0;
   padding-right: 14px;
-  color: color-mix(in srgb, var(--ink-primary) 86%, transparent);
+  color: color-mix(in srgb, var(--ink-on-dark) 86%, transparent);
   font-family: var(--font-family-mono);
   font-size: 0.74rem;
   font-weight: 800;
@@ -882,16 +872,15 @@
   font-weight: 750;
   letter-spacing: -0.012em;
   line-height: 1.04;
-  /* Dark ink on parchment — the same deep navy the rest of the
-     page uses so the headline reads as ink, not as light text. */
-  color: var(--ink-primary);
+  /* Light ink on dark surface */
+  color: var(--ink-on-dark);
   text-wrap: balance;
 }
 
 .tensionBody {
   margin: 22px 0 0;
   margin-left: auto;
-  color: color-mix(in srgb, var(--ink-primary) 78%, transparent);
+  color: color-mix(in srgb, var(--ink-on-dark) 78%, transparent);
   font-size: 1.02rem;
   line-height: 1.72;
   max-width: 50ch;
@@ -935,16 +924,14 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  /* Dark ink on a warm-tinted translucent wash so the chips read
-     as paper labels stuck to the parchment rather than as glass
-     pills floating over a dark photo. */
-  color: var(--ink-primary);
-  background: color-mix(in srgb, #fff8e8 65%, transparent);
-  border: 1px solid color-mix(in srgb, var(--ink-primary) 12%, transparent);
+  /* Light text on dark glass background for dark mode */
+  color: color-mix(in srgb, var(--ink-on-dark) 84%, transparent);
+  background: rgba(13, 19, 38, 0.72);
+  border: 1px solid color-mix(in srgb, var(--ink-on-dark) 10%, transparent);
   backdrop-filter: blur(6px) saturate(140%);
   box-shadow:
-    0 6px 18px color-mix(in srgb, var(--ink-primary) 14%, transparent),
-    inset 0 1px 0 color-mix(in srgb, #fff8e8 70%, transparent);
+    0 6px 18px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
   will-change: transform;
 }
 
@@ -982,6 +969,19 @@
   background: var(--page-base);
   color: var(--ink-on-dark);
   overflow: hidden;
+}
+
+/* Light mode yellow spotlight */
+:root[data-theme='paper-day'] .turnAct {
+  background:
+    radial-gradient(70% 60% at 50% 50%,
+      rgba(250, 204, 21, 0.35) 0%,
+      rgba(250, 204, 21, 0.18) 18%,
+      rgba(252, 211, 77, 0.08) 45%,
+      rgba(253, 224, 71, 0.02) 70%,
+      transparent 95%),
+    var(--page-base);
+  color: var(--ink-primary);
 }
 
 .turnInner {
@@ -1076,10 +1076,10 @@
      parchment space at the top. */
   min-height: 100dvh;
   padding-block: clamp(40px, 8dvh, 80px);
-  background:
-    radial-gradient(60% 50% at 90% 30%, color-mix(in srgb, var(--accent-primary) 14%, transparent), transparent 70%),
-    radial-gradient(50% 50% at 5% 80%, color-mix(in srgb, var(--ars-reviewer) 12%, transparent), transparent 70%),
-    linear-gradient(180deg, var(--page-base) 0%, var(--surface-act) 100%);
+  /* Photo background now lives on .scene + .sceneScrim (rendered as
+     direct children by the JSX). The act paints --page-base so any
+     uncovered pixel is intentional navy, never --app-canvas. */
+  background: var(--page-base);
   color: var(--ink-on-dark);
   display: flex;
   flex-direction: column;
@@ -1134,12 +1134,13 @@
   min-height: 0;
   max-height: clamp(460px, 64dvh, 560px);
   padding: 0;
-  border: 1px solid color-mix(in srgb, var(--ink-on-dark) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ink-on-dark) 22%, transparent);
   border-radius: 16px;
   background:
     linear-gradient(180deg,
-      color-mix(in srgb, var(--accent-role, var(--accent-primary)) 12%, var(--surface-act)) 0%,
-      color-mix(in srgb, var(--surface-act) 88%, var(--surface-act-edge) 12%) 100%);
+      color-mix(in srgb, var(--accent-role, var(--accent-primary)) 8%, var(--surface-act)) 0%,
+      color-mix(in srgb, var(--surface-act) 92%, var(--surface-act-edge) 8%) 100%);
+  backdrop-filter: blur(14px) saturate(120%);
   display: flex;
   flex-direction: column;
   position: relative;
@@ -1148,8 +1149,8 @@
   color: inherit;
   transition: box-shadow 360ms var(--motion-ease-standard), border-color 360ms var(--motion-ease-standard);
   box-shadow:
-    0 24px 48px var(--shadow-card),
-    inset 0 1px 0 color-mix(in srgb, var(--ink-on-dark) 14%, transparent);
+    0 24px 48px var(--shadow-card-heavy),
+    inset 0 1px 0 color-mix(in srgb, var(--ink-on-dark) 18%, transparent);
 }
 
 .substanceCard::before {
@@ -1387,14 +1388,29 @@
 /* Boundaries — public access, carefully defined. */
 .boundariesSection {
   padding-block: clamp(60px, 9dvh, 100px);
-  background:
-    radial-gradient(80% 60% at 50% 50%, var(--surface-act) 0%, var(--page-base) 100%);
-  color: var(--ink-primary);
-  border-top: 1px solid var(--border-subtle);
-  border-bottom: 1px solid var(--border-subtle);
+  background: var(--page-base);
+  color: var(--ink-on-dark);
+  border-top: 1px solid color-mix(in srgb, var(--ink-on-dark) 12%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--ink-on-dark) 12%, transparent);
   opacity: 1;
   transform: translateY(0);
-  transition: opacity 700ms var(--motion-ease-standard), transform 700ms var(--motion-ease-standard);
+  transition: opacity 520ms var(--motion-ease-standard), transform 520ms var(--motion-ease-standard);
+}
+
+/* Light mode - white background with lowered opacity and black text */
+:root[data-theme='paper-day'] .boundariesSection {
+  background: rgba(255, 255, 255, 0.75);
+  color: #000000;
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+:root[data-theme='paper-day'] .boundariesTitle {
+  color: #000000;
+}
+
+:root[data-theme='paper-day'] .boundariesItem {
+  color: rgba(0, 0, 0, 0.75);
 }
 
 .boundariesSection:not(.revealed) {
@@ -1424,7 +1440,7 @@
   font-weight: 750;
   letter-spacing: 0;
   line-height: 1.06;
-  color: var(--ink-primary);
+  color: var(--ink-on-dark);
   max-width: 600px;
 }
 
@@ -1467,7 +1483,7 @@
   color: var(--ink-on-dark);
   opacity: 1;
   transform: translateY(0);
-  transition: opacity 700ms var(--motion-ease-standard) 80ms, transform 700ms var(--motion-ease-standard) 80ms;
+  transition: opacity 520ms var(--motion-ease-standard) 80ms, transform 520ms var(--motion-ease-standard) 80ms;
 }
 
 /* Testimonial scrim — distinct from the universal .sceneScrim because
@@ -1484,6 +1500,16 @@
       rgba(8, 12, 24, 0.45) 35%,
       rgba(8, 12, 24, 0.55) 65%,
       rgba(8, 12, 24, 0.78) 100%);
+}
+
+/* Light mode - lighter testimonial scrim for brighter background */
+:root[data-theme='paper-day'] .testimonialScrim {
+  background:
+    linear-gradient(180deg,
+      rgba(8, 12, 24, 0.35) 0%,
+      rgba(8, 12, 24, 0.25) 35%,
+      rgba(8, 12, 24, 0.30) 65%,
+      rgba(8, 12, 24, 0.45) 100%);
 }
 
 .testimonialSection:not(.revealed) {
@@ -1547,10 +1573,20 @@
 .faqSection {
   padding-block: clamp(60px, 9dvh, 100px);
   background: var(--page-base);
-  color: var(--ink-primary);
+  color: var(--ink-on-dark);
   opacity: 1;
   transform: translateY(0);
-  transition: opacity 700ms var(--motion-ease-standard), transform 700ms var(--motion-ease-standard);
+  transition: opacity 520ms var(--motion-ease-standard), transform 520ms var(--motion-ease-standard);
+}
+
+/* Light mode - white background with black text */
+:root[data-theme='paper-day'] .faqSection {
+  background: #ffffff;
+  color: #000000;
+}
+
+:root[data-theme='paper-day'] .faqTitle {
+  color: #000000;
 }
 
 .faqSection:not(.revealed) {
@@ -1575,7 +1611,7 @@
   font-weight: 750;
   letter-spacing: 0;
   line-height: 1.06;
-  color: var(--ink-primary);
+  color: var(--ink-on-dark);
 }
 
 .faqList {
@@ -1595,8 +1631,13 @@
   font-weight: 750;
   line-height: 1.35;
   list-style: none;
-  color: var(--ink-primary);
+  color: var(--ink-on-dark);
   transition: color var(--transition-fast);
+}
+
+/* Light mode - black text for FAQ items */
+:root[data-theme='paper-day'] .faqItem summary {
+  color: #000000;
 }
 
 .faqItem summary::-webkit-details-marker {
@@ -1643,11 +1684,21 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  background: var(--surface-act-edge);
+  background: var(--page-base);
   color: var(--ink-on-dark);
   opacity: 1;
   transform: translateY(0);
-  transition: opacity 700ms var(--motion-ease-standard), transform 700ms var(--motion-ease-standard);
+  transition: opacity 520ms var(--motion-ease-standard), transform 520ms var(--motion-ease-standard);
+}
+
+/* Light mode - white background with black text */
+:root[data-theme='paper-day'] .ctaSection {
+  background: #ffffff;
+  color: #000000;
+}
+
+:root[data-theme='paper-day'] .ctaTitle {
+  color: #000000;
 }
 
 .ctaSection:not(.revealed) {
@@ -1685,7 +1736,7 @@
 }
 
 .ctaSection .textLink {
-  color: color-mix(in srgb, var(--ink-on-dark) 78%, transparent);
+  color: var(--ink-secondary);
 }
 
 .ctaSection .textLink:hover {

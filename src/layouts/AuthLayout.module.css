@@ -10,6 +10,21 @@
   width: 100%;
   background-color: var(--surface-canvas);
   font-family: var(--font-family-ui);
+  position: relative;
+}
+
+.authLanguageToggle {
+  position: fixed;
+  top: var(--space-4);
+  right: var(--space-4);
+  z-index: 10;
+}
+
+@media (max-width: 640px) {
+  .authLanguageToggle {
+    top: var(--space-3);
+    right: var(--space-3);
+  }
 }
 
 .authCard {

@@ -39,14 +39,18 @@ import { ThemeToggle } from '../../components/i18n/ThemeToggle';
 import { useThemeToggle } from '../../hooks/useThemeToggle';
 import { smoothScrollTo } from '../../utils/smoothScroll';
 import arsLogo from '../../assets/images/ARS_Logo.png';
-// Bright library scene with arched windows — used as the Opening hero
-// photo so the page reads as a warm reading room from first paint.
-import heroScene from '../../assets/images/Codex Image Sep 9, 2026, 05_17_43 PM.png';
-// Dark desk-lamp library scene — used for the Workflow section so
-// the dark scene appears at the moment the page introduces process
-// and the lamp reads as a single point of focus.
-import turnScene from '../../assets/images/Codex Image Sep 11, 2026, 04_21_02 PM.png';
-import testimonialScene from '../../assets/images/Codex Image Sep 11, 2026, 04_22_37 PM.png';
+// Hero photograph — library reading room, used as the full-bleed
+// background of the opening act so the page reads as a warm,
+// book-lined interior from first paint.
+import heroScene from '../../assets/images/Hero_bg.jpg';
+// The review record — dark photographic scene that sits behind the
+// five-stage workflow cards in Act 3 (Turn). Pairs with the existing
+// .scene + .sceneScrim stack so the light overlay stays readable.
+import turnScene from '../../assets/images/The_review_record.png';
+// Role-specific work — image used as the full-bleed background for
+// Act 4 (Substance) so the four workspace cards read on the photo.
+import substanceScene from '../../assets/images/Role_specific_work.png';
+import testimonialScene from '../../assets/images/reviewer_said.png';
 
 import styles from './LandingScrollVideo.module.css';
 import { RecognitionAct } from './RecognitionAct';
@@ -741,6 +745,13 @@ const SubstanceAct = ({ t }: { t: Translator }) => {
       className={styles.substanceAct}
       aria-labelledby="substance-title"
     >
+      <img
+        className={styles.scene}
+        src={substanceScene}
+        alt=""
+        aria-hidden="true"
+      />
+      <div className={styles.sceneScrim} aria-hidden="true" />
       <header className={styles.substanceHeader}>
         <p className={styles.issueLine}>
           {t('landing.workspacesKicker', 'Role-specific work')}
@@ -1010,6 +1021,7 @@ const Footer = ({ t }: { t: Translator }) => (
 // ════════════════════════════════════════════════════════════════
 export const LandingScrollVideo = () => {
   const t = useT() as Translator;
+  const { theme } = useThemeToggle();
   const pageRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -1031,7 +1043,7 @@ export const LandingScrollVideo = () => {
   }, []);
 
   return (
-    <div ref={pageRef} className={styles.page}>
+    <div ref={pageRef} className={styles.page} data-theme={theme}>
       <a className={styles.skipLink} href="#turn">
         {t('landing.skipToContent', 'Skip to main content')}
       </a>

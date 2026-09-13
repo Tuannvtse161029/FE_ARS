@@ -25,7 +25,7 @@
    ═══════════════════════════════════════════════════════════════════ */
 
 .act {
-  background: var(--surface-paper);
+  background: #ffffff;
   padding: clamp(64px, 9dvh, 104px) 0 clamp(56px, 8dvh, 96px);
   /* Flush top margin so the act seats against the bottom of the
      substance act with no canvas-color gap. The page root paints
@@ -41,8 +41,18 @@
   opacity: 1;
   transform: translateY(0);
   transition:
-    opacity 700ms var(--motion-ease-standard),
-    transform 700ms var(--motion-ease-standard);
+    opacity 520ms var(--motion-ease-standard),
+    transform 520ms var(--motion-ease-standard);
+}
+
+/* Dark mode - use dark navy background */
+:root[data-theme='archive-dusk'] .act {
+  background: var(--surface-act);
+  color: var(--ink-on-dark);
+}
+
+:root[data-theme='archive-dusk'] .title {
+  color: var(--ink-on-dark);
 }
 
 .act:not(.revealed) {
