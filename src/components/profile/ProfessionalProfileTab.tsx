@@ -20,7 +20,6 @@ import { useI18n } from '../../i18n/I18nContext';
 import { useAuth } from '../../context/AuthContext';
 import { useReviewerAvailability, useReviewerProfiles } from '../../hooks/useReviewerProfiles';
 import { reviewerService } from '../../services/reviewer.service';
-import { userService } from '../../services/user.service';
 import { useMajorFields, useSubFields } from '../../hooks/useMajorFields';
 import { parseEntityId } from '../../utils/entityId';
 import styles from './ProfessionalProfileTab.module.css';
@@ -43,7 +42,6 @@ interface RoleSurfaceConfig {
   accentLightVar: string;
   showAvailability: boolean;
   showAcademicMetrics: boolean;
-  fallbackInitial: string;
   expertiseHeading: string;
   expertiseSubheading: string;
   saveButtonLabel: string;
@@ -59,7 +57,6 @@ const buildRoleSurfaceConfig = (t: (k: string, fb?: string) => string): Record<S
     accentLightVar: 'var(--ars-reviewer-light, #d1fae5)',
     showAvailability: true,
     showAcademicMetrics: true,
-    fallbackInitial: 'R',
     expertiseHeading: t('profile.professional.expertise.heading'),
     expertiseSubheading: t('profile.professional.expertise.subheading.reviewer'),
     saveButtonLabel: t('profile.professional.saveExpertise'),
@@ -73,7 +70,6 @@ const buildRoleSurfaceConfig = (t: (k: string, fb?: string) => string): Record<S
     accentLightVar: 'var(--ars-researcher-light, #fef3c7)',
     showAvailability: false,
     showAcademicMetrics: true,
-    fallbackInitial: 'R',
     expertiseHeading: t('profile.professional.expertise.heading'),
     expertiseSubheading: t('profile.professional.expertise.subheading.researcher'),
     saveButtonLabel: t('profile.professional.saveExpertise'),
@@ -87,7 +83,6 @@ const buildRoleSurfaceConfig = (t: (k: string, fb?: string) => string): Record<S
     accentLightVar: 'var(--ars-lecturer-light, #fef2f2)',
     showAvailability: false,
     showAcademicMetrics: false,
-    fallbackInitial: 'L',
     expertiseHeading: t('profile.professional.expertise.heading'),
     expertiseSubheading: t('profile.professional.expertise.subheading.lecturer'),
     saveButtonLabel: t('profile.professional.saveExpertise'),
@@ -101,15 +96,6 @@ const formatUpdatedAt = (value: string | undefined, locale: string): string => {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? 'Not available' : date.toLocaleString(locale);
 };
-
-const getInitials = (value: string, fallback: string): string =>
-  value
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((part) => part[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase() || fallback;
 
 /**
  * Narrow an arbitrary string from the auth store / BE into one of the
@@ -150,8 +136,6 @@ export const ProfessionalProfileTab = ({
     [profiles, authenticatedUserId],
   );
   const [isRetrying, setIsRetrying] = useState(false);
-  const [account, setAccount] = useState<{ fullName?: string; email?: string } | null>(null);
-
   // Research Expertise state
   const [selectedMajorId, setSelectedMajorId] = useState<number | null>(null);
   const [selectedSubId, setSelectedSubId] = useState<number | null>(null);
@@ -169,22 +153,6 @@ export const ProfessionalProfileTab = ({
       setSelectedSubId(professionalProfile.subFieldId ?? null);
     }
   }, [professionalProfile?.userId, professionalProfile?.majorFieldId, professionalProfile?.subFieldId]);
-
-  useEffect(() => {
-    if (authenticatedUserId === null || authenticatedUserId === undefined) return;
-
-    let cancelled = false;
-    userService.getById(authenticatedUserId).then((nextAccount) => {
-      if (cancelled) return;
-      setAccount(nextAccount);
-    }).catch(() => {
-      if (cancelled) return;
-      setAccount(null);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [authenticatedUserId]);
 
   // Expertise validation
   const isExpertiseValid = selectedMajorId !== null && selectedSubId !== null;
@@ -305,8 +273,6 @@ export const ProfessionalProfileTab = ({
     );
   }
 
-  const fullName = account?.fullName || user?.username || roleConfig.badgeLabel;
-  const email = account?.email || user?.email || t('profile.professional.emailUnavailable');
   const displayAvailability = !roleConfig.showAvailability
     ? '—'
     : isAvailabilityLoading
@@ -335,22 +301,7 @@ export const ProfessionalProfileTab = ({
 
   return (
     <div className={styles.tabBody} style={accentStyle} data-role={roleKey}>
-      <section className={styles.profileCard} aria-labelledby="professional-profile-summary-title">
-        <div className={styles.identity}>
-          <div className={styles.avatar} aria-label={`${fullName} avatar`} data-testid="professional-profile-avatar">
-            {getInitials(fullName, roleConfig.fallbackInitial)}
-          </div>
-          <div>
-            <h2 id="professional-profile-summary-title">{fullName}</h2>
-            <p>{email}</p>
-            <span
-              className={styles.reviewerBadge}
-              data-testid="professional-profile-role-badge"
-            >
-              {roleConfig.badgeLabel}
-            </span>
-          </div>
-        </div>
+      <section className={styles.profileDetailsSection} aria-label={t('profile.professional.title')}>
         <dl className={styles.profileDetails}>
           {profileDetailRows.map((row) => (
             <div key={row.label}>

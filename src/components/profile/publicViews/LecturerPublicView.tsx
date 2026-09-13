@@ -26,6 +26,9 @@ import styles from './LecturerPublicView.module.css';
 export interface LecturerPublicViewProps {
   data: PublicProfileData;
   displayName: string;
+  avatarUrl?: string | null;
+  avatarInitials?: string;
+  topMedals?: import('./shared/PublicSectionShell').PublicSectionShellProps['topMedals'];
   showPrivacyFootnote: boolean;
   locale: 'en' | 'vi';
 }
@@ -96,6 +99,9 @@ const groupStatusTone = (active: boolean | null): string =>
 export const LecturerPublicView = ({
   data,
   displayName,
+  avatarUrl,
+  avatarInitials,
+  topMedals,
   showPrivacyFootnote,
   locale,
 }: LecturerPublicViewProps) => {
@@ -111,6 +117,9 @@ export const LecturerPublicView = ({
       <PublicSectionShell
         eyebrow={t('profile.publicView.eyebrow.lecturer', 'ARS / ACADEMIC COORDINATION BOARD')}
         title={displayName}
+        avatarUrl={avatarUrl}
+        avatarInitials={avatarInitials}
+        topMedals={topMedals}
         subtitle={
           profile?.academicTitle ??
           t('profile.publicView.lecturer.subtitle', 'Lecturer / Research Group Coordinator')

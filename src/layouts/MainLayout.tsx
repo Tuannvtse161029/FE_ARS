@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { AvatarVisual } from '../components/profile/AvatarVisual';
 import { ROUTES } from '../routes/paths';
 import { reviewerService } from '../services/reviewer.service';
 import type { UserRole } from '../types/auth';
@@ -99,6 +100,7 @@ const ProfileDropdown = ({
   username,
   activeRole,
   avatarInitials,
+  avatarUrl,
   accountTier,
   onLogout,
   onProfileClick,
@@ -108,6 +110,7 @@ const ProfileDropdown = ({
   username: string;
   activeRole: string;
   avatarInitials: string;
+  avatarUrl?: string | null;
   accountTier?: string;
   onLogout: () => void;
   onProfileClick: () => void;
@@ -164,7 +167,7 @@ const ProfileDropdown = ({
         aria-expanded={isOpen}
         aria-controls={menuId}
       >
-        <div className={styles.avatarCircleSmall}>{avatarInitials}</div>
+        <div className={styles.avatarCircleSmall}><AvatarVisual url={avatarUrl} initials={avatarInitials} size={18} /></div>
         <div className={styles.userInfoText}>
           <div className={styles.userPillName}>{username}</div>
           <div className={styles.userPillRole}>
@@ -530,6 +533,7 @@ export const MainLayout = () => {
 
   // Display name and avatar initials are derived from the authenticated user.
   const displayName = user?.username || user?.email || 'Account';
+  const avatarUrl = user?.avatarUrl ?? null;
   const avatarInitials = (user?.username || user?.email || 'U')
     .split(/\s+/)
     .map((n) => n[0] ?? '')
@@ -1072,6 +1076,7 @@ export const MainLayout = () => {
               username={displayName}
               activeRole={formatRole(displayedRole)}
               avatarInitials={avatarInitials}
+              avatarUrl={avatarUrl}
               accountTier={accountTier}
               onLogout={handleLogout}
               showProfileAction={activeRole !== 'Admin'}

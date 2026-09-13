@@ -38,69 +38,13 @@
   animation: fadeIn 0.25s ease-out;
 }
 
-/* ── Profile Card ─────────────────────────────────────────── */
-.profileCard {
+/* ── Professional details ─────────────────────────────────── */
+.profileDetailsSection {
   background: var(--ars-paper-alt);
   border: var(--border-thin);
   border-radius: var(--radius-xl);
-  padding: var(--space-5) var(--space-6);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
+  padding: var(--space-4) var(--space-6);
   animation: fadeIn 0.3s ease-out;
-}
-
-.identity {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-}
-
-.avatar {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: var(--profile-accent, var(--ars-reviewer, #065f46));
-  color: #ffffff;
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-bold);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.identity > div {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.identity > div > h2 {
-  font-family: var(--font-family-serif);
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-bold);
-  color: var(--ars-ink);
-  margin: 0;
-}
-
-.identity > div > p {
-  font-size: var(--font-size-sm);
-  color: var(--ars-ink-muted);
-  margin: 0;
-}
-
-.reviewerBadge {
-  display: inline-flex;
-  align-items: center;
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  padding: 2px var(--space-2);
-  border-radius: var(--radius-sm);
-  background: var(--profile-accent-light, var(--ars-reviewer-light, #d1fae5));
-  border: 1px solid var(--profile-accent, var(--ars-reviewer, #065f46));
-  color: var(--profile-accent, var(--ars-reviewer, #065f46));
-  width: fit-content;
 }
 
 .profileDetails {
@@ -426,19 +370,14 @@
 @media (max-width: 768px) {
   .expertiseSection,
   .metricSection,
-  .profileCard {
+  .profileDetailsSection {
     padding: var(--space-5) var(--space-4);
-  }
-
-  .identity {
-    flex-direction: column;
-    align-items: flex-start;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .tabBody,
-  .profileCard,
+  .profileDetailsSection,
   .expertiseSection,
   .metricSection {
     animation: none;

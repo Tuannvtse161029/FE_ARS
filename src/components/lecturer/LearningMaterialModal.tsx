@@ -69,7 +69,6 @@ export const LearningMaterialModal = ({
 
   const [newTitle, setNewTitle] = useState('');
   const [newSource, setNewSource] = useState<MaterialSourceValue | null>(null);
-  const [newSubFieldId, setNewSubFieldId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [pickerError, setPickerError] = useState<string | null>(null);
@@ -91,7 +90,6 @@ export const LearningMaterialModal = ({
     if (!isOpen) {
       setNewTitle('');
       setNewSource(null);
-      setNewSubFieldId('');
       setFormError(null);
       setPickerError(null);
       setBanner({ visible: false, text: '', variant: 'success' });
@@ -141,9 +139,6 @@ export const LearningMaterialModal = ({
       return;
     }
     setPickerError(null);
-    const subFieldIdNum = newSubFieldId.trim().length
-      ? Number(newSubFieldId.trim())
-      : undefined;
     setIsSubmitting(true);
     setFormError(null);
     try {
@@ -152,10 +147,7 @@ export const LearningMaterialModal = ({
         title,
         fileUrl: resolvedUrl,
         description: null,
-        subFieldId:
-          typeof subFieldIdNum === 'number' && Number.isFinite(subFieldIdNum)
-            ? subFieldIdNum
-            : null,
+        subFieldId: null,
       });
       // We do NOT pass `topicId` because the BE has no column for it yet
       // (gap ticket §C.1.1 / §E.11). The "topic-attached" semantics live
@@ -163,7 +155,6 @@ export const LearningMaterialModal = ({
       // owns. The header note documents the limit.
       setNewTitle('');
       setNewSource(null);
-      setNewSubFieldId('');
       setBanner({
         visible: true,
         text: 'Material added to your library. Topic-scoped grouping ships once BE adds a topicId column.',
@@ -309,11 +300,6 @@ export const LearningMaterialModal = ({
                           {m.description}
                         </span>
                       )}
-                      {m.subFieldId != null && (
-                        <span className={styles.itemSubField}>
-                          Sub-field #{m.subFieldId}
-                        </span>
-                      )}
                     </div>
                     <div className={styles.itemActions}>
                       {m.fileUrl && safeHref(m.fileUrl) && (
@@ -365,7 +351,7 @@ export const LearningMaterialModal = ({
             />
           </div>
           <div className={styles.formRow}>
-            <label className={styles.formLabel}>
+            <label className={styles.formLabel} htmlFor="lmMaterialSourceUrl">
               * File URL
             </label>
             <MaterialSourcePicker
@@ -382,20 +368,6 @@ export const LearningMaterialModal = ({
               library — the file URL is what students will open.
             </span>
           </div>
-          <div className={styles.formRow}>
-            <label className={styles.formLabel} htmlFor="mat-subfield">
-              Sub-field ID (optional)
-            </label>
-            <input
-              id="mat-subfield"
-              type="number"
-              className={styles.formInput}
-              value={newSubFieldId}
-              onChange={(e) => setNewSubFieldId(e.target.value)}
-              placeholder="42"
-            />
-          </div>
-
           {formError && (
             <div className={styles.formErrorBanner} role="alert">
               <AlertTriangle size={14} aria-hidden />

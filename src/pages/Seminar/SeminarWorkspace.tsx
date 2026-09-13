@@ -11,6 +11,8 @@ import {
   Clock,
   Video,
   Eye,
+  Lock,
+  Upload,
   ClipboardList,
   Mail,
   AlertTriangle,
@@ -1166,15 +1168,11 @@ export const SeminarWorkspace = () => {
               sem.effectiveStatus === 'UPCOMING' ||
               sem.effectiveStatus === 'IN PROGRESS';
             const owns = ownsSeminar(sem, currentUserId, currentRole);
-            // Two flavors of the "View Notes" button:
-            //   showAiCompleted → full upload + AI summary flow. Only
-            //     available after the meeting is over, because that is
-            //     when there is a real recording to summarize.
-            //   showAiUpcoming  → read-only info popup that explains the
-            //     workflow ("record the meeting first, then upload here
-            //     once it's done"). Showing this on UPCOMING / IN PROGRESS
-            //     cards makes the feature discoverable so organizers know
-            //     they should be recording the meeting in preparation.
+            // Meeting Summary action states:
+            //   UPCOMING / IN PROGRESS → locked guidance modal.
+            //   COMPLETED without a summary → upload flow.
+            //   COMPLETED with a summary → summary view.
+            const hasMeetingSummary = Boolean(sem.aiSummary?.trim());
             const showAiCompleted = canModify && owns && isCompleted;
             const showAiUpcoming = canModify && owns && isUpcomingish;
             const showAi = showAiCompleted || showAiUpcoming;
@@ -1293,9 +1291,16 @@ export const SeminarWorkspace = () => {
                               type="button"
                               className={styles.actionBtnOutline}
                               onClick={() => handleOpenAiSummary(sem)}
+                              aria-label={
+                                hasMeetingSummary
+                                  ? copy('View Summary', 'Xem bản tóm tắt')
+                                  : copy('Meeting Summary', 'Tóm tắt cuộc họp')
+                              }
                             >
-                              <Eye size={14} aria-hidden />
-                              {copy('View Notes', 'Xem ghi chú')}
+                              {hasMeetingSummary ? <Eye size={14} aria-hidden /> : <Upload size={14} aria-hidden />}
+                              {hasMeetingSummary
+                                ? copy('View Summary', 'Xem bản tóm tắt')
+                                : copy('Meeting Summary', 'Tóm tắt cuộc họp')}
                             </button>
                           )}
                           {showFeedbackOrganizer ? (
@@ -1364,22 +1369,18 @@ export const SeminarWorkspace = () => {
                             <Video size={14} aria-hidden />
                             {copy('Join Google Meet', 'Tham gia Google Meet')}
                           </button>
-                          {/* "View Notes" on UPCOMING / IN PROGRESS cards opens
-                              a read-only info modal that explains the
-                              meeting-recording workflow. The full upload +
-                              AI summary experience is reserved for the
-                              COMPLETED branch above; here we just want to
-                              teach organizers to record the meeting so they
-                              have footage to upload later. */}
+                          {/* Upcoming and in-progress meetings cannot have a
+                              summary yet; keep the existing guidance modal. */}
                           {showAiUpcoming && (
                             <button
                               type="button"
                               className={styles.actionBtnOutline}
                               onClick={() => handleOpenAiInfoForUpcoming(sem)}
                               data-testid="seminar-view-notes-info-button"
+                              aria-label={copy('Meeting Summary', 'Tóm tắt cuộc họp')}
                             >
-                              <Eye size={14} aria-hidden />
-                              {copy('View Notes', 'Xem ghi chú')}
+                              <Lock size={14} aria-hidden />
+                              {copy('Meeting Summary', 'Tóm tắt cuộc họp')}
                             </button>
                           )}
                           {canModify && owns && (

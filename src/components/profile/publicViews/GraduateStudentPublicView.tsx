@@ -35,6 +35,9 @@ import styles from './GraduateStudentPublicView.module.css';
 export interface GraduateStudentPublicViewProps {
   data: PublicProfileData;
   displayName: string;
+  avatarUrl?: string | null;
+  avatarInitials?: string;
+  topMedals?: import('./shared/PublicSectionShell').PublicSectionShellProps['topMedals'];
   showPrivacyFootnote: boolean;
 }
 
@@ -88,6 +91,9 @@ const contributionMarkers = (
 export const GraduateStudentPublicView = ({
   data,
   displayName,
+  avatarUrl,
+  avatarInitials,
+  topMedals,
   showPrivacyFootnote,
 }: GraduateStudentPublicViewProps) => {
   const { t } = useI18n();
@@ -121,6 +127,9 @@ export const GraduateStudentPublicView = ({
       <PublicSectionShell
         eyebrow={t('profile.publicView.eyebrow.gradStudent', 'ARS / RESEARCH JOURNEY LOG')}
         title={displayName}
+        avatarUrl={avatarUrl}
+        avatarInitials={avatarInitials}
+        topMedals={topMedals}
         subtitle={
           profile?.academicTitle ??
           t('profile.publicView.gradStudent.subtitle', 'Graduate Student on ARS')

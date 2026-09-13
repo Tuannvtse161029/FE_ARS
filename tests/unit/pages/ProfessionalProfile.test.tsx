@@ -1,9 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { ProfessionalProfile } from '../../../src/pages/Reviewer/ProfessionalProfile';
-import { RoleRouteGuard } from '../../../src/routes/RoleRouteGuard';
-import { ROUTES } from '../../../src/routes/paths';
+import { MemoryRouter } from 'react-router-dom';
+import { I18nProvider } from '../../../src/i18n/I18nContext';
+import { ProfessionalProfileTab } from '../../../src/components/profile/ProfessionalProfileTab';
 
 const mocks = vi.hoisted(() => ({
   profiles: [] as Array<{
@@ -64,9 +63,11 @@ const profile = (overrides: Partial<(typeof mocks.profiles)[number]> = {}) => ({
 
 const renderPage = () =>
   render(
-    <MemoryRouter initialEntries={[ROUTES.PROFESSIONAL_PROFILE]}>
-      <ProfessionalProfile />
-    </MemoryRouter>,
+    <I18nProvider>
+      <MemoryRouter initialEntries={['/profile?tab=professional']}>
+        <ProfessionalProfileTab />
+      </MemoryRouter>
+    </I18nProvider>,
   );
 
 const setAuthRole = (role: string | null, userId: number = 42) => {
@@ -92,12 +93,14 @@ beforeEach(() => {
 describe('Reviewer Professional Profile — five vital contracts', () => {
   it('selects the profile matching the authenticated reviewer, not the first API row', async () => {
     mocks.profiles = [
-      profile({ userId: 7, orcidId: 'first-profile' }),
-      profile({ userId: 42, orcidId: 'authenticated-profile' }),
+      profile({ userId: 7, majorFieldId: 99, subFieldId: 199 }),
+      profile({ userId: 42, majorFieldId: 4, subFieldId: 9 }),
     ];
     renderPage();
-    expect(await screen.findByText('authenticated-profile')).toBeInTheDocument();
-    expect(screen.queryByText('first-profile')).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByTestId('major-field-select')).toHaveValue('4'),
+    );
+    expect(screen.getByTestId('sub-field-select')).toHaveValue('9');
   });
 
   it('saves reviewer expertise with the authenticated profile userId', async () => {
@@ -137,12 +140,10 @@ describe('Professional Profile — role-aware surface (Researcher / Reviewer / L
     // the page subtitle ("Manage your reviewer availability and...") which
     // ALSO contains the word "availability" — we only care that the dl row
     // label is present.
-    expect(screen.getByText('ORCID')).toBeInTheDocument();
+    expect(screen.getByText(/ORCID/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Availability/i).length).toBeGreaterThan(0);
     expect(screen.getByTestId('academic-metrics-section')).toBeInTheDocument();
     expect(screen.getByTestId('research-expertise-section')).toBeInTheDocument();
-    expect(screen.getByTestId('professional-profile-role-badge')).toHaveTextContent('Reviewer');
-    expect(screen.getByTestId('professional-profile-eyebrow')).toHaveTextContent('REVIEWER WORKSPACE');
   });
 
   it('lets a Researcher see Academic Metrics + expertise but hides Availability', () => {
@@ -158,8 +159,6 @@ describe('Professional Profile — role-aware surface (Researcher / Reviewer / L
     expect(screen.getByTestId('academic-metrics-section')).toBeInTheDocument();
     // Research expertise still applies to researchers.
     expect(screen.getByTestId('research-expertise-section')).toBeInTheDocument();
-    expect(screen.getByTestId('professional-profile-role-badge')).toHaveTextContent('Researcher');
-    expect(screen.getByTestId('professional-profile-eyebrow')).toHaveTextContent('RESEARCHER WORKSPACE');
   });
 
   it('lets a Lecturer see only the research-expertise section (no Availability, no Academic Metrics)', () => {
@@ -172,8 +171,6 @@ describe('Professional Profile — role-aware surface (Researcher / Reviewer / L
     expect(screen.queryByTestId('academic-metrics-section')).not.toBeInTheDocument();
     // Research expertise remains for lecturer.
     expect(screen.getByTestId('research-expertise-section')).toBeInTheDocument();
-    expect(screen.getByTestId('professional-profile-role-badge')).toHaveTextContent('Lecturer');
-    expect(screen.getByTestId('professional-profile-eyebrow')).toHaveTextContent('LECTURER WORKSPACE');
   });
 
   it('saves expertise on behalf of a Researcher the same way as a Reviewer', async () => {
@@ -219,47 +216,5 @@ describe('Professional Profile — role-aware surface (Researcher / Reviewer / L
         subFieldId: 9,
       }),
     );
-  });
-});
-
-describe('Professional Profile — route guard expansion', () => {
-  const Location = () => {
-    const location = useLocation();
-    return <div data-testid="current-location">{location.pathname}</div>;
-  };
-
-  const renderGuardedRoute = () =>
-    render(
-      <MemoryRouter initialEntries={[ROUTES.PROFESSIONAL_PROFILE]}>
-        <Routes>
-          <Route
-            element={<RoleRouteGuard allow={['Researcher', 'Reviewer', 'Lecturer']} />}
-          >
-            <Route path={ROUTES.PROFESSIONAL_PROFILE} element={<ProfessionalProfile />} />
-          </Route>
-          <Route path={ROUTES.FORUM} element={<Location />} />
-          <Route path="*" element={<Navigate to={ROUTES.FORUM} replace />} />
-        </Routes>
-      </MemoryRouter>,
-    );
-
-  it('lets a Researcher through to the Professional Profile page', () => {
-    setAuthRole('Researcher');
-    renderGuardedRoute();
-    // The page renders the role badge, which only appears inside the
-    // mounted page — i.e. the guard let the Researcher in.
-    expect(screen.getByTestId('professional-profile-role-badge')).toHaveTextContent('Researcher');
-  });
-
-  it('lets a Lecturer through to the Professional Profile page', () => {
-    setAuthRole('Lecturer');
-    renderGuardedRoute();
-    expect(screen.getByTestId('professional-profile-role-badge')).toHaveTextContent('Lecturer');
-  });
-
-  it('still redirects unsupported roles (e.g. Graduate Student) to /forum', () => {
-    setAuthRole('Graduate Student');
-    renderGuardedRoute();
-    expect(screen.getByTestId('current-location')).toHaveTextContent(ROUTES.FORUM);
   });
 });

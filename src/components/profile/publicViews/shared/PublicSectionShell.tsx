@@ -9,6 +9,9 @@
  */
 import type { ReactNode } from 'react';
 import { ChevronRight } from 'lucide-react';
+import { AvatarVisual } from '../../AvatarVisual';
+import { SafeMedalBadge } from '../../../../features/admin/components/SafeMedalBadge';
+import type { UserMedal } from '../../../../services/medal.service';
 import styles from './PublicSectionShell.module.css';
 
 export interface PublicSectionShellProps {
@@ -16,6 +19,12 @@ export interface PublicSectionShellProps {
   eyebrow: string;
   /** Optional section heading rendered in serif. */
   title?: string;
+  /** Profile avatar displayed beside the public identity heading. */
+  avatarUrl?: string | null;
+  /** Initials shown when no uploaded or symbolic avatar is available. */
+  avatarInitials?: string;
+  /** Up to three medals selected for the public identity header. */
+  topMedals?: UserMedal[];
   /** One-line description under the heading. */
   subtitle?: string;
   /** Action slot — typically a "View all" link. */
@@ -32,6 +41,9 @@ export interface PublicSectionShellProps {
 export const PublicSectionShell = ({
   eyebrow,
   title,
+  avatarUrl,
+  avatarInitials,
+  topMedals,
   subtitle,
   action,
   children,
@@ -46,14 +58,37 @@ export const PublicSectionShell = ({
       data-testid={testId}
     >
       <header className={styles.header}>
-        <div className={styles.titleBlock}>
-          <p className={styles.eyebrow}>{eyebrow}</p>
-          {title ? (
-            <h2 className={styles.title} id={testId ? `${testId}-title` : undefined}>
-              {title}
-            </h2>
+        <div className={styles.identityHeading}>
+          {title && (avatarUrl !== undefined || avatarInitials !== undefined) ? (
+            <div className={styles.avatar} aria-label={`${title} avatar`} data-testid="public-profile-avatar">
+              <AvatarVisual url={avatarUrl} initials={avatarInitials ?? ''} alt="" size={48} />
+            </div>
           ) : null}
-          {subtitle ? <p className={styles.subtitle}>{subtitle}</p> : null}
+          <div className={styles.titleBlock}>
+            <p className={styles.eyebrow}>{eyebrow}</p>
+            {title ? (
+              <h2 className={styles.title} id={testId ? `${testId}-title` : undefined}>
+                {title}
+              </h2>
+            ) : null}
+            {subtitle ? <p className={styles.subtitle}>{subtitle}</p> : null}
+            {topMedals && topMedals.length > 0 ? (
+              <div className={styles.topMedals} aria-label="Top profile medals">
+                {topMedals.slice(0, 3).map((item) => (
+                  <span key={item.medal.id} className={styles.topMedal}>
+                    <SafeMedalBadge
+                      imageUrl={item.medal.imageUrl}
+                      code={item.medal.code}
+                      criteriaMetric={item.medal.criteriaMetric}
+                      tier={item.medal.tier}
+                      size={28}
+                      alt={item.medal.title}
+                    />
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </div>
         </div>
         {action ? <div className={styles.action}>{action}</div> : null}
         {viewAllHref && viewAllLabel ? (

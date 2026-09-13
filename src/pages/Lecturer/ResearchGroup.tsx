@@ -13,6 +13,7 @@ import {
   Check,
   X,
   Users,
+  UserRound,
   Trash2,
   Loader,
   AlertTriangle,
@@ -185,6 +186,15 @@ export const ResearchGroup = () => {
   const [isRefreshingGroups, setIsRefreshingGroups] = useState(false);
   const [statusFilter, setStatusFilter] = useState<GroupFilterTab>('all');
   const [togglingGroupIds, setTogglingGroupIds] = useState<Set<number>>(new Set());
+
+  // Frontend-only preview until BE ships the pending-membership API.
+  const [showJoinRequestPreview, setShowJoinRequestPreview] = useState(false);
+  const demoJoinRequest = {
+    applicantName: 'Nguyen Minh Anh',
+    applicantEmail: 'minhanh@example.edu',
+    applicantMajor: 'Computer Science',
+    groupName: groups[0]?.name ?? 'AI Research Group',
+  };
 
   /** Controls the delete-confirmation modal */
   const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -545,6 +555,21 @@ export const ResearchGroup = () => {
         </div>
       )}
 
+      <div className={styles.joinRequestPreviewBanner} role="status" aria-live="polite">
+        <div className={styles.joinRequestPreviewIcon}>
+          <UserRound size={18} aria-hidden />
+        </div>
+        <div className={styles.joinRequestPreviewContent}>
+          <strong>{t('lecturer.researchGroups.joinRequestPreviewTitle')}</strong>
+          <p>
+            {t('lecturer.researchGroups.joinRequestPreviewDescription')}
+          </p>
+        </div>
+        <span className={styles.previewBadge}>
+          {t('lecturer.researchGroups.backendPending')}
+        </span>
+      </div>
+
       {errorBannerList.length > 0 && (
         <ErrorBanner
           tone="error"
@@ -655,7 +680,7 @@ export const ResearchGroup = () => {
         />
       ) : (
         <div className={styles.grid}>
-          {pagedGroups.map((grp) => {
+          {pagedGroups.map((grp, groupIndex) => {
             const gid = typeof grp.id === 'number' ? grp.id : -1;
             const idLabel = gid >= 0 ? formatGroupId(gid) : '—';
             const topic = grp.topicId ? topicById.get(grp.topicId) : null;
@@ -729,6 +754,19 @@ export const ResearchGroup = () => {
                   <span className={styles.membersLabel}>
                     {t('lecturer.researchGroups.membersLabel')} ({roster.length})
                   </span>
+                  {groupIndex === 0 && (
+                    <button
+                      type="button"
+                      className={styles.joinRequestPreview}
+                      onClick={() => setShowJoinRequestPreview(true)}
+                      aria-label={t('lecturer.researchGroups.openJoinRequest')}
+                    >
+                      <UserRound size={14} aria-hidden />
+                      <span>
+                        {`${demoJoinRequest.applicantName} ${t('lecturer.researchGroups.joinRequestFrom')}`}
+                      </span>
+                    </button>
+                  )}
                   <div className={styles.memberPills}>
                     {isLoadingMembers && roster.length === 0 ? (
                       <span className={styles.memberPill}>{t('common.loading')}</span>
@@ -855,6 +893,91 @@ export const ResearchGroup = () => {
           onPage={setGroupPage}
           itemLabel="groups"
         />
+      )}
+
+      {/* FRONTEND-ONLY JOIN REQUEST PREVIEW */}
+      {showJoinRequestPreview && (
+        <div
+          className={styles.modalOverlay}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="join-request-preview-title"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) setShowJoinRequestPreview(false);
+          }}
+        >
+          <div className={styles.modalCard}>
+            <div className={styles.modalHeader}>
+              <div className={styles.modalTitleBlock}>
+                <span className={styles.modalIconCircle}>
+                  <UserRound size={18} aria-hidden />
+                </span>
+                <div>
+                  <h3 id="join-request-preview-title" className={styles.modalTitle}>
+                    {t('lecturer.researchGroups.joinRequestModalTitle')}
+                  </h3>
+                  <span className={styles.modalSubtitle}>
+                    {demoJoinRequest.groupName}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                className={styles.closeBtn}
+                onClick={() => setShowJoinRequestPreview(false)}
+                aria-label={t('common.cancel')}
+              >
+                <X size={18} aria-hidden />
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              <div className={styles.previewProfile}>
+                <span className={styles.previewProfileAvatar}>{initialsOf(demoJoinRequest.applicantName)}</span>
+                <div>
+                  <strong>{demoJoinRequest.applicantName}</strong>
+                  <span>{demoJoinRequest.applicantEmail}</span>
+                </div>
+              </div>
+              <div className={styles.previewDetails}>
+                <span>{t('lecturer.researchGroups.applicantMajor')}</span>
+                <strong>{demoJoinRequest.applicantMajor}</strong>
+              </div>
+              <div className={styles.previewApiNotice} role="note">
+                <AlertTriangle size={16} aria-hidden />
+                <span>{t('lecturer.researchGroups.joinRequestModalNotice')}</span>
+              </div>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel} htmlFor="join-request-rejection-note">
+                  {t('lecturer.researchGroups.rejectionNoteLabel')}
+                </label>
+                <textarea
+                  id="join-request-rejection-note"
+                  className={styles.formTextarea}
+                  placeholder={t('lecturer.researchGroups.rejectionNotePlaceholder')}
+                  rows={3}
+                  disabled
+                />
+              </div>
+            </div>
+            <div className={styles.modalFooter}>
+              <Button
+                variant="outline"
+                size="md"
+                onClick={() => setShowJoinRequestPreview(false)}
+              >
+                {t('common.cancel')}
+              </Button>
+              <Button variant="danger" size="md" disabled>
+                <X size={14} aria-hidden />
+                {t('lecturer.researchGroups.rejectRequest')}
+              </Button>
+              <Button variant="primary" size="md" disabled>
+                <Check size={14} aria-hidden />
+                {t('lecturer.researchGroups.acceptRequest')}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* CREATE GROUP MODAL */}

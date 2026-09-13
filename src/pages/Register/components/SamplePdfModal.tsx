@@ -4,10 +4,8 @@ import { Button } from '../../../components/Button';
 import { useI18n } from '../../../i18n/I18nContext';
 import styles from './SamplePdfModal.module.css';
 import { X } from '../../../assets/icons/XIcon';
-import {
-  REGISTRATION_ROLES,
-  type RequestableRole,
-} from '../../../utils/registrationRoles';
+import FptLogo from '../../../assets/logo/Logo_FPT_Education.png';
+import { REGISTRATION_ROLES, type RequestableRole } from '../../../utils/registrationRoles';
 
 interface SamplePdfModalProps {
   isOpen: boolean;
@@ -15,134 +13,92 @@ interface SamplePdfModalProps {
   initialRole?: RequestableRole;
 }
 
+interface EvidenceRow {
+  label: string;
+  value: string;
+}
+
 interface DocumentProfile {
   fullName: string;
   affiliation: string;
-  orcidId: string;
-  metrics: { value: string; label: string }[];
+  evidence: EvidenceRow[];
   records: { title: string; meta: string }[];
+  isInstitutionLetter?: boolean;
 }
 
 const PROFILES: Record<RequestableRole, DocumentProfile> = {
   Researcher: {
     fullName: 'Dr. Nguyen Van A',
     affiliation: 'Vietnam National University, Ho Chi Minh City',
-    orcidId: '0000-0002-1825-0097',
-    metrics: [
-      { value: '47', label: 'Publications' },
-      { value: '1,283', label: 'Citations' },
-      { value: '12', label: 'h-index' },
+    evidence: [
+      { label: 'Major / research field', value: 'Computer Vision and Machine Learning' },
+      { label: 'ORCID / scholarly profile', value: 'https://orcid.org/0000-0002-1825-0097' },
+      { label: 'Google Scholar profile', value: 'https://scholar.google.com/citations?user=Example' },
+      { label: 'Published research', value: 'https://doi.org/10.1109/TPAMI.2024.123456' },
     ],
     records: [
-      {
-        title: 'Deep Learning for Vietnamese Sign Language Recognition',
-        meta: 'IEEE Transactions on Pattern Analysis - 2024 - DOI: 10.1109/TPAMI.2024.123456',
-      },
-      {
-        title: 'A Survey on Transformer-Based NLP in Low-Resource Languages',
-        meta: 'ACL Findings - 2023 - DOI: 10.18653/v1/2023.findings-acl.456',
-      },
-      {
-        title:
-          'Federated Learning Framework for Healthcare Data Privacy Preservation',
-        meta: 'Nature Scientific Reports - 2023 - DOI: 10.1038/s41598-023-12345',
-      },
+      { title: 'Deep Learning for Vietnamese Sign Language Recognition', meta: 'IEEE TPAMI · 2024 · DOI link above' },
+      { title: 'Transformer-Based NLP in Low-Resource Languages', meta: 'ACL Findings · 2023 · Public publication link' },
     ],
   },
   Reviewer: {
     fullName: 'Dr. Tran Thi B',
     affiliation: 'Hanoi University of Science and Technology',
-    orcidId: '0000-0001-8765-4321',
-    metrics: [
-      { value: '128', label: 'Reviews' },
-      { value: '24', label: 'Journals' },
-      { value: '4.8', label: 'Rating' },
+    evidence: [
+      { label: 'Major / subject expertise', value: 'Natural Language Processing and Information Retrieval' },
+      { label: 'ORCID / scholarly profile', value: 'https://orcid.org/0000-0001-8765-4321' },
+      { label: 'Google Scholar profile', value: 'https://scholar.google.com/citations?user=Example' },
+      { label: 'Published research', value: 'https://doi.org/10.18653/v1/2023.findings-acl.456' },
     ],
     records: [
-      {
-        title: 'Peer Reviewer - Journal of Machine Learning Research',
-        meta: '2022 - Present - 18 papers reviewed',
-      },
-      {
-        title: 'Reviewer Board - IEEE Access',
-        meta: '2021 - Present - 32 papers reviewed',
-      },
-      {
-        title: 'Program Committee - NeurIPS 2023',
-        meta: '2023 - 12 papers reviewed',
-      },
+      { title: 'Peer-reviewed publication portfolio', meta: 'Public DOI or publisher links for administrator verification' },
+      { title: 'Peer-review service evidence', meta: 'Journal or conference reviewer profile link, if available' },
     ],
   },
   Lecturer: {
     fullName: 'Dr. Le Van C',
-    affiliation: 'University of Technology, Ho Chi Minh City',
-    orcidId: '0000-0003-2468-1357',
-    metrics: [
-      { value: '8', label: 'Years Teaching' },
-      { value: '12', label: 'Courses' },
-      { value: '350+', label: 'Students' },
+    affiliation: 'FPT University · School of Business and Technology',
+    evidence: [
+      { label: 'Teaching status', value: 'Currently teaching at FPT University' },
+      { label: 'Department / teaching period', value: 'Information Technology · 2024–2026' },
+      { label: 'Courses / programme', value: 'Artificial Intelligence · Undergraduate programme' },
+      { label: 'Authorized signatory', value: 'School or institution representative · Signature and stamp' },
     ],
     records: [
-      {
-        title: 'Course Instructor - CS401: Artificial Intelligence',
-        meta: 'Undergraduate Program - Fall 2024 - 85 students enrolled',
-      },
-      {
-        title: 'Course Instructor - CS502: Advanced Machine Learning',
-        meta: 'Graduate Program - Spring 2024 - 42 students enrolled',
-      },
-      {
-        title: 'Curriculum Developer - Bachelor of Data Science Program',
-        meta: '2023 - NEW PROGRAM launched Fall 2023',
-      },
+      { title: 'Institutional confirmation', meta: 'Official letterhead, issue date, signature, and institutional stamp' },
+      { title: 'Employment or teaching confirmation', meta: 'Must identify the applicant and current teaching relationship' },
     ],
+    isInstitutionLetter: true,
   },
   'Graduate Student': {
     fullName: 'Pham Thi D',
-    affiliation: 'VNU-HCM University of Science',
-    orcidId: '0000-0004-3691-2580',
-    metrics: [
-      { value: '3', label: 'Publications' },
-      { value: '21', label: 'Citations' },
-      { value: 'M.Sc.', label: 'Program' },
+    affiliation: 'FPT University · Graduate Programme',
+    evidence: [
+      { label: 'Enrollment status', value: 'Currently enrolled at FPT University' },
+      { label: 'Programme / department', value: 'Master of Information Technology · Computing' },
+      { label: 'Study period', value: 'Academic year 2024–2026' },
+      { label: 'Authorized signatory', value: 'Registrar or institution representative · Signature and stamp' },
     ],
     records: [
-      {
-        title:
-          'Master Thesis: "Graph Neural Networks for Molecular Property Prediction"',
-        meta: 'Defended June 2024 - Advisor: Prof. Hoang Van E',
-      },
-      {
-        title:
-          'Comparing Self-Supervised Learning Approaches for Medical Imaging',
-        meta: 'Workshop at ICCV 2024 - DOI: 10.1109/ICCVW.2024.0012',
-      },
-      {
-        title: 'Research Internship at VinAI Research',
-        meta: 'Summer 2023 - Computer Vision Lab',
-      },
+      { title: 'Institutional enrollment confirmation', meta: 'Official FPT letterhead, issue date, signature, and institutional stamp' },
+      { title: 'Current student status', meta: 'Must identify the applicant, programme, and active study period' },
     ],
+    isInstitutionLetter: true,
   },
 };
 
-export const SamplePdfModal = ({
-  isOpen,
-  onClose,
-  initialRole = 'Researcher',
-}: SamplePdfModalProps) => {
+export const SamplePdfModal = ({ isOpen, onClose, initialRole = 'Researcher' }: SamplePdfModalProps) => {
   const { t } = useI18n();
   const [activeRole, setActiveRole] = useState<RequestableRole>(initialRole);
 
   useEffect(() => {
-    if (isOpen) {
-      setActiveRole(initialRole);
-    }
+    if (isOpen) setActiveRole(initialRole);
   }, [isOpen, initialRole]);
 
   useEffect(() => {
-    if (!isOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+    if (!isOpen) return undefined;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', onKey);
     document.body.style.overflow = 'hidden';
@@ -153,128 +109,49 @@ export const SamplePdfModal = ({
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
-
   const profile = PROFILES[activeRole];
 
-  // Render at document.body so the fixed overlay covers the FULL screen —
-  // not just the AuthLayout right panel. This is the standard portal
-  // pattern for modals that need to escape constrained parent containers.
   return createPortal(
-    <div
-      className={styles.overlay}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="sample-pdf-title"
-    >
+    <div className={styles.overlay} onClick={(event) => event.target === event.currentTarget && onClose()} role="dialog" aria-modal="true" aria-labelledby="sample-pdf-title">
       <div className={styles.modal}>
         <div className={styles.header}>
-          <h2 id="sample-pdf-title" className={styles.title}>
-            {t('register.samplePdf.title', 'Sample PDF Verification Document')}
-          </h2>
-          <button
-            type="button"
-            className={styles.closeBtn}
-            onClick={onClose}
-            aria-label={t('common.close', 'Close')}
-          >
-            <X size={20} />
-          </button>
+          <h2 id="sample-pdf-title" className={styles.title}>{t('register.samplePdf.title', 'Sample PDF Verification Document')}</h2>
+          <button type="button" className={styles.closeBtn} onClick={onClose} aria-label={t('common.close', 'Close')}><X size={20} /></button>
         </div>
-
         <div className={styles.tabs} role="tablist">
           {REGISTRATION_ROLES.map((role) => (
-            <button
-              key={role}
-              type="button"
-              role="tab"
-              aria-selected={activeRole === role}
-              className={`${styles.tab} ${activeRole === role ? styles['tab--active'] : ''}`}
-              onClick={() => setActiveRole(role)}
-            >
+            <button key={role} type="button" role="tab" aria-selected={activeRole === role} className={`${styles.tab} ${activeRole === role ? styles['tab--active'] : ''}`} onClick={() => setActiveRole(role)}>
               {t(`role.${role}`, role)}
             </button>
           ))}
         </div>
-
         <div className={styles.content}>
-          <div className={styles.documentWrapper}>
-            <div className={styles.watermark} aria-hidden="true">
-              <span className={styles.watermarkText}>
-                {t('register.samplePdf.watermark', 'SAMPLE VERIFICATION DOCUMENT')}
-              </span>
-            </div>
-
+          <div className={`${styles.documentWrapper} ${profile.isInstitutionLetter ? styles.institutionLetter : ''}`}>
+            <div className={styles.watermark} aria-hidden="true"><span className={styles.watermarkText}>{t('register.samplePdf.watermark', 'SAMPLE VERIFICATION DOCUMENT')}</span></div>
+            {profile.isInstitutionLetter ? <img className={styles.fptLogo} src={FptLogo} alt="FPT Education" /> : null}
             <div className={styles.docHeader}>
-              <h3 className={styles.docTitle}>{t('register.samplePdf.summaryTitle', 'Academic Profile Summary')}</h3>
+              <div>
+                <h3 className={styles.docTitle}>{profile.isInstitutionLetter ? t('register.samplePdf.confirmationTitle', 'Institutional Confirmation Letter') : t('register.samplePdf.summaryTitle', 'Academic Profile Summary')}</h3>
+                <p className={styles.docSubtitle}>{profile.affiliation}</p>
+              </div>
               <span className={styles.docBadge}>{t(`role.${activeRole}`, activeRole)}</span>
             </div>
-
             <div className={styles.section}>
-              <h4 className={styles.sectionTitle}>{t('register.samplePdf.profile', 'Profile')}</h4>
-              <div className={styles.fieldRow}>
-                <span className={styles.fieldLabel}>{t('register.samplePdf.fullName', 'Full Name')}</span>
-                <span className={styles.fieldValue}>{profile.fullName}</span>
-              </div>
-              <div className={styles.fieldRow}>
-                <span className={styles.fieldLabel}>{t('register.samplePdf.affiliation', 'Affiliation')}</span>
-                <span className={styles.fieldValue}>{profile.affiliation}</span>
-              </div>
-              <div className={styles.fieldRow}>
-                <span className={styles.fieldLabel}>{t('register.samplePdf.orcidId', 'ORCID iD')}</span>
-                <span className={styles.fieldValue}>{profile.orcidId}</span>
-              </div>
+              <h4 className={styles.sectionTitle}>{t('register.samplePdf.profile', 'Applicant details')}</h4>
+              <div className={styles.fieldRow}><span className={styles.fieldLabel}>{t('register.samplePdf.fullName', 'Full Name')}</span><span className={styles.fieldValue}>{profile.fullName}</span></div>
+              {profile.evidence.map((row) => <div className={styles.fieldRow} key={row.label}><span className={styles.fieldLabel}>{row.label}</span><span className={styles.fieldValue}>{row.value}</span></div>)}
             </div>
-
             <div className={styles.section}>
-              <h4 className={styles.sectionTitle}>{t('register.samplePdf.metrics', 'Academic Metrics')}</h4>
-              <div className={styles.metricsGrid}>
-                {profile.metrics.map((m) => (
-                  <div key={m.label} className={styles.metricCard}>
-                    <p className={styles.metricValue}>{m.value}</p>
-                    <p className={styles.metricLabel}>{t(`register.samplePdf.metric.${m.label.replace(/ /g, '')}`, m.label)}</p>
-                  </div>
-                ))}
-              </div>
+              <h4 className={styles.sectionTitle}>{profile.isInstitutionLetter ? t('register.samplePdf.confirmationRequirements', 'Confirmation requirements') : t('register.samplePdf.verifiableEvidence', 'Verifiable evidence')}</h4>
+              <ul className={styles.recordList}>{profile.records.map((record) => <li key={record.title} className={styles.recordItem}>{record.title}<div className={styles.recordMeta}>{record.meta}</div></li>)}</ul>
             </div>
-
-            <div className={styles.section}>
-              <h4 className={styles.sectionTitle}>
-                {activeRole === 'Reviewer'
-                  ? t('register.samplePdf.recordReviewer', 'Review Service Record')
-                  : activeRole === 'Lecturer'
-                  ? t('register.samplePdf.recordLecturer', 'Teaching & Curriculum Record')
-                  : activeRole === 'Graduate Student'
-                  ? t('register.samplePdf.recordGraduate', 'Academic & Research Record')
-                  : t('register.samplePdf.recordResearcher', 'Publication Record')}
-              </h4>
-              <ul className={styles.recordList}>
-                {profile.records.map((r, idx) => (
-                  <li key={idx} className={styles.recordItem}>
-                    {r.title}
-                    <div className={styles.recordMeta}>{r.meta}</div>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            {profile.isInstitutionLetter ? <div className={styles.signatureRow}><span>Authorized signature</span><span>Official stamp</span><span>Issue date</span></div> : null}
           </div>
         </div>
-
-        <div className={styles.footer}>
-          <Button
-            variant="primary"
-            size="md"
-            onClick={onClose}
-            className={styles.footerBtn}
-          >
-            {t('register.samplePdf.backBtn', 'Got It, Back to Registration')}
-          </Button>
-        </div>
+        <div className={styles.footer}><Button variant="primary" size="md" onClick={onClose} className={styles.footerBtn}>{t('register.samplePdf.backBtn', 'Got It, Back to Registration')}</Button></div>
       </div>
     </div>,
-    document.body
+    document.body,
   );
 };
 

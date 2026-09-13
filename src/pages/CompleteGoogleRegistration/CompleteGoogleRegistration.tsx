@@ -66,11 +66,24 @@ import { useOrcidIdentity } from '../../hooks/useOrcidIdentity';
 import ARSLogo from '../../assets/images/ARS_Logo.png';
 import styles from './CompleteGoogleRegistration.module.css';
 import { reviewerOrcidBypassAllowed } from '../../config/featureFlags';
+import { isRequestableRole, type RequestableRole } from '../../utils/registrationRoles';
+import { useI18n } from '../../i18n/I18nContext';
 
 // Sentinel sessionStorage key. Set on successful submit; cleared on logout.
 const SUBMITTED_KEY = 'ars_google_onboarding_submitted';
 // Profile loaded from storage / auth store is required to render.
 const PHONE_REGEX = /^[+\d\s\-()]{8,20}$/;
+
+const ROLE_REQUIREMENTS: Record<RequestableRole, string> = {
+  Researcher: 'Describe your research area and attach verifiable ORCID, Google Scholar, DOI, or university profile links plus links to published work. Do not self-report h-index or citation totals.',
+  Reviewer: 'Describe your subject expertise and provide verifiable scholarly profile links plus published research or peer-review evidence. Do not self-report ratings, h-index, or citation totals.',
+  Lecturer: 'Provide an official institution-issued confirmation letter showing your current teaching role, department, teaching period, and authorized signatory. FPT applicants should use an FPT-branded letter.',
+  'Graduate Student': 'Provide an official institution-issued confirmation letter showing current enrollment, programme, department, study period, and authorized signatory. FPT applicants should use an FPT-branded letter.',
+};
+
+function getRoleRequirement(role: RequestableRole): string {
+  return ROLE_REQUIREMENTS[role];
+}
 
 interface FormState {
   phoneNumber: string;
@@ -98,6 +111,7 @@ function buildInitials(name: string): string {
 }
 
 export const CompleteGoogleRegistration = () => {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const updateUser = useAuthStore((state) => state.updateUser);
   const logoutStore = useAuthStore((state) => state.logout);
@@ -551,6 +565,11 @@ export const CompleteGoogleRegistration = () => {
               The role you select is reviewed by an administrator before
               you can access role-restricted areas.
             </p>
+            {isRequestableRole(form.role) ? (
+              <p className={styles.hint} data-testid="role-requirement">
+                {t(`register.roleRequirement.${form.role}`, getRoleRequirement(form.role))}
+              </p>
+            ) : null}
           </div>
 
           {form.role === 'Reviewer' && (

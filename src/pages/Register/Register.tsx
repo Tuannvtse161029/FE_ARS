@@ -68,13 +68,13 @@ const initialForm: FormState = {
 // approves the role request.
 const ROLE_REQUIREMENTS: Record<UserRole, string> = {
   Researcher:
-    'Upload a PDF containing your academic profile, ORCID iD, publication record, and citation metrics. Once an administrator approves your role, your account is automatically granted a complimentary 7-day Researcher trial so you can start exploring the platform right away.',
+    'Describe your research area and attach links that let administrators verify your scholarly identity and published work, such as ORCID, Google Scholar, DOI, or a university research profile. Do not self-report h-index or citation totals.',
   Reviewer:
-    'Upload a PDF summarizing your academic background, areas of expertise, and prior peer review service record. Administrator review is required before Reviewer privileges are activated.',
+    'Describe your subject expertise and provide verifiable scholarly profile links plus published research or peer-review evidence. Administrators will assess the sources directly; do not self-report ratings, h-index, or citation totals.',
   Lecturer:
-    'Upload a PDF that includes your teaching record, affiliated institution, and courses instructed. Once an administrator approves your role, your account is automatically granted a complimentary 7-day Lecturer trial so you can start exploring the platform right away.',
+    'Provide an official institution-issued confirmation letter showing that you currently teach at the institution, including your department, teaching period, and authorized signatory. FPT applicants should use an FPT-branded confirmation letter.',
   'Graduate Student':
-    'Upload a PDF showing your current enrollment status, advisor, affiliated university, and academic record. Administrator approval is required to finalize your Graduate Student role.',
+    'Provide an official institution-issued confirmation letter showing current enrollment, programme, department, study period, and authorized signatory. FPT applicants should use an FPT-branded confirmation letter.',
   Admin:
     'Administrator accounts are provisioned directly in the database and cannot be self-registered.',
 };

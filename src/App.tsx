@@ -231,9 +231,13 @@ const App = () => {
                     <Route path={ROUTES.LECTURER_LEARNING_MATERIALS} element={<Navigate to={ROUTES.LECTURER_MATERIALS} replace />} />
                     <Route path={ROUTES.LECTURER_SHARED_MATERIALS} element={<Navigate to={ROUTES.LECTURER_MATERIALS} replace />} />
                   </Route>
-                  {/* Subscription management routes — always reachable for
-                      Lecturer, even when the subscription is missing / expired.
-                      This is the page the gate redirects users TO. */}
+                </Route>
+
+                {/* Subscription management is shared by both paid roles and
+                    must sit behind one combined role guard. Keeping these
+                    routes inside the Lecturer-only block would redirect a
+                    Researcher to /home before the Researcher route branch. */}
+                <Route element={<RoleRouteGuard allow={['Researcher', 'Lecturer']} />}>
                   <Route path={ROUTES.SUBSCRIPTION} element={<Subscription />} />
                   <Route path={ROUTES.SUBSCRIPTION_RETURN} element={<SubscriptionReturn />} />
                 </Route>
@@ -281,10 +285,6 @@ const App = () => {
                     <Route path={ROUTES.RESEARCHER_SUBMISSION_DETAIL} element={<ResearcherSubmissionDetail />} />
                     <Route path={ROUTES.REVIEWERS} element={<Navigate to={ROUTES.RESEARCHER_SUBMISSIONS} replace />} />
                   </Route>
-                  {/* Subscription management routes — always reachable for
-                      Researcher, even when the subscription is missing / expired. */}
-                  <Route path={ROUTES.SUBSCRIPTION} element={<Subscription />} />
-                  <Route path={ROUTES.SUBSCRIPTION_RETURN} element={<SubscriptionReturn />} />
                 </Route>
 
                 {/* Reviewer-only publication routes. Reviewers cannot publish or assign. */}

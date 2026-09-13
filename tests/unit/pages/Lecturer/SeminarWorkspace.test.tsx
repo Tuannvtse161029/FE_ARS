@@ -5,7 +5,7 @@
  *   T1: Page renders real API data (loading / empty / with seminars)
  *   T2: Create seminar shows onlineLink from BE response; Join Meet button gated by isValidMeetLink
  *   T3: Reminder button sends PUT /api/Seminar/{id} and updates badge
- *   T6: Meeting Summary button shown only for COMPLETED seminars
+ *   T6: Meeting Summary action changes by seminar status and summary state
  *
  * All seminar data is provided via mocked hooks so the component tests are
  * isolated from the network layer.
@@ -269,22 +269,38 @@ describe('SeminarWorkspace', () => {
 
   // ── T6: Meeting Summary button visibility ──────────────────────────────────
 
-  it('shows View Notes button for COMPLETED seminars', () => {
+  it('shows Upload + Meeting Summary for COMPLETED seminars without a summary', () => {
     renderPage(
       mockUseSeminars({
         seminars: [mockSeminarCard({ status: 'COMPLETED', effectiveStatus: 'COMPLETED' })],
       })
     );
-    expect(screen.getByRole('button', { name: /view notes/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /meeting summary/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /view summary/i })).not.toBeInTheDocument();
   });
 
-  it('does NOT show View Notes button for UPCOMING seminars', () => {
+  it('shows Eye + View Summary for COMPLETED seminars with a summary', () => {
+    renderPage(
+      mockUseSeminars({
+        seminars: [mockSeminarCard({
+          status: 'COMPLETED',
+          effectiveStatus: 'COMPLETED',
+          aiSummary: 'The meeting covered the research timeline.',
+        })],
+      })
+    );
+    expect(screen.getByRole('button', { name: /view summary/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /meeting summary/i })).not.toBeInTheDocument();
+  });
+
+  it('shows Lock + Meeting Summary for UPCOMING seminars', () => {
     renderPage(
       mockUseSeminars({
         seminars: [mockSeminarCard({ status: 'UPCOMING', effectiveStatus: 'UPCOMING' })],
       })
     );
-    expect(screen.queryByRole('button', { name: /view notes/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /meeting summary/i })).toBeInTheDocument();
+    expect(screen.getByTestId('seminar-view-notes-info-button')).toBeInTheDocument();
   });
 
   it('does NOT show View Notes button for DRAFT seminars', () => {

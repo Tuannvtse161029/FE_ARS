@@ -20,6 +20,7 @@
 // fallback inline.
 
 import type { ReactNode } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { useSubscription } from '../../hooks/useSubscription';
 
 export interface SubscriptionAccessGuardProps {
@@ -34,7 +35,15 @@ export const SubscriptionLockedState = ({
   redirectPath = '/subscription',
 }: {
   redirectPath?: string;
-}) => (
+}) => {
+  const { user, effectiveRole } = useAuth();
+  const role = effectiveRole === 'Researcher' || effectiveRole === 'Lecturer'
+    ? effectiveRole
+    : user?.role === 'Researcher' || user?.role === 'Lecturer'
+      ? user.role
+      : 'Researcher';
+
+  return (
   <div
     role="alert"
     data-component="SubscriptionLockedState"
@@ -54,7 +63,7 @@ export const SubscriptionLockedState = ({
   >
     <h2 style={{ margin: 0 }}>Your ARS subscription is inactive or has expired.</h2>
     <p style={{ margin: 0 }}>
-      Renew your subscription to continue using Researcher / Lecturer features.
+      Renew your subscription to continue using {role} features.
     </p>
     <a
       href={redirectPath}
@@ -73,7 +82,8 @@ export const SubscriptionLockedState = ({
       View subscription plans
     </a>
   </div>
-);
+  );
+};
 
 const defaultLoading = (
   <div
