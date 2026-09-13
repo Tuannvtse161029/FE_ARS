@@ -4,8 +4,8 @@
  *
  * Two surfaces:
  *  - Overview: list of joined groups with an invitation banner
- *  - Workspace (per group): milestone progress, learning materials, group
- *    members, and the milestone-reports table
+ *  - Workspace (per group): learning materials, group members, and phase
+ *    reports
  *
  * Design rules applied:
  *  - PageHeader + role accent `--ars-gradstudent`
@@ -47,7 +47,6 @@ import InvitationBanner from '../../components/gradstudent/InvitationBanner';
 import RejectionFeedbackBanner from '../../components/gradstudent/RejectionFeedbackBanner';
 import SubmitReportModal from '../../components/gradstudent/SubmitReportModal';
 import PhaseReportDetailModal from '../../components/gradstudent/PhaseReportDetailModal';
-import MilestoneProgress from '../../components/research/MilestoneProgress';
 import { PageHeader } from '../../components/PageHeader';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorBanner } from '../../components/ErrorBanner';
@@ -57,7 +56,6 @@ import { StatusBadge } from '../../components/lecturer/StatusBadge';
 import { TableToolbar } from '../../components/table/TableToolbar';
 import { TablePagination } from '../../components/table/TablePagination';
 import { SortableHeader } from '../../components/table/SortableHeader';
-import BackendGapBanner from '../../components/BackendGapBanner';
 import { usePagination } from '../../hooks/usePagination';
 import { useTableSort } from '../../hooks/useTableSort';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
@@ -197,10 +195,13 @@ export const StudentResearchGroups = (): JSX.Element => {
     if (!studentId || !user) return;
     const memberCount = group.memberCount ?? (group.members?.length ?? 0);
     if (memberCount >= 5) {
-      alert(copy(
-        `This research group already has ${memberCount} members and cannot accept another application.`,
-        `Nhóm nghiên cứu này đã đủ ${memberCount} thành viên, không thể xin tham gia.`,
-      ));
+      setApplyFeedback({
+        type: 'error',
+        message: copy(
+          `This research group already has ${memberCount} members and cannot accept another application.`,
+          `Nhóm nghiên cứu đã đủ ${memberCount} thành viên và không thể nhận thêm đơn xin gia nhập.`,
+        ),
+      });
       return;
     }
     const groupId = group.id ?? group.researchGroupId;
@@ -910,11 +911,6 @@ function WorkspaceView({
         }
       />
 
-      <BackendGapBanner
-        field="ProjectGuideline and phase-group task"
-        feature="Guidelines and group-specific phase instructions"
-      />
-
       {latestRejected ? (
         <RejectionFeedbackBanner
           report={latestRejected}
@@ -922,10 +918,6 @@ function WorkspaceView({
           onResubmit={isCurrentUserLeader ? onOpenSubmit : undefined}
         />
       ) : null}
-
-      <section className={styles.card}>
-        <MilestoneProgress reports={reports} />
-      </section>
 
       <section className={styles.card}>
         <div className={styles.sectionHeader}>
