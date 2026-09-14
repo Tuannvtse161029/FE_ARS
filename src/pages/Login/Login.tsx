@@ -8,6 +8,10 @@ import { useAuth } from '../../context/AuthContext';
 import { loginSchema, type LoginFormData } from '../../utils/validation';
 import { ROUTES } from '../../routes/paths';
 import RoleSelectionModal from './components/RoleSelectionModal';
+import {
+  DevQuickLoginPanel,
+  type DevQuickLoginAccount,
+} from './components/DevQuickLoginPanel';
 import styles from './Login.module.css';
 import ARSLogo from '../../assets/images/ARS_Logo.png';
 import { Eye, EyeOff, Moon, Sun } from 'lucide-react';
@@ -127,6 +131,21 @@ const Login = () => {
       storage.removeSavedEmail();
     }
     await login(data);
+  };
+
+  /**
+   * Dev-only quick login. A pill click pre-fills the React Hook Form
+   * values and submits via the existing `onSubmit` pipeline so the
+   * dev panel reuses the same AuthContext routing as a real user. The
+   * panel itself is only rendered on localhost in dev builds (see
+   * `shouldRenderDevQuickLogin`); the handler is a no-op in production
+   * because the component returns null before any pill can be clicked.
+   */
+  const handleDevQuickLogin = (account: DevQuickLoginAccount) => {
+    setValue('email', account.email, { shouldValidate: true, shouldDirty: true });
+    setValue('password', account.password, { shouldValidate: true, shouldDirty: true });
+    setValue('selectedRole', '', { shouldDirty: true });
+    void handleSubmit(onSubmit)();
   };
 
   // ── GIS credential Google sign-in handler ───────────────────────────────
@@ -419,6 +438,11 @@ const Login = () => {
             </Link>
           </p>
         </div>
+
+        {/* Dev-only quick login — renders nothing in production builds
+            (see DevQuickLoginPanel). Sits inside the form column so it
+            inherits the same vertical rhythm as the other footer chrome. */}
+        <DevQuickLoginPanel onSelect={handleDevQuickLogin} isLoading={isLoading} />
       </form>
 
       {/* Multi-role selection modal — appears after BE login returns > 1 role */}

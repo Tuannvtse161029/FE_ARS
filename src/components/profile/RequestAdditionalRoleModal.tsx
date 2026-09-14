@@ -8,10 +8,6 @@ import {
   AlertCircle,
   Clock,
   ExternalLink,
-  BookOpen,
-  Award,
-  GraduationCap,
-  ShieldCheck,
   Loader2,
 } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nContext';
@@ -20,6 +16,7 @@ import {
   REGISTRATION_ROLES,
   type RequestableRole,
 } from '../../utils/registrationRoles';
+import { ROLE_INFO } from '../../utils/roleInfo';
 import {
   roleRequestService,
   type UserPendingRoleRequest,
@@ -41,54 +38,6 @@ export interface RequestAdditionalRoleModalProps {
   onSubmitted?: (requestedRole: RequestableRole) => void;
 }
 
-const ROLE_INFO: Record<
-  RequestableRole,
-  {
-    icon: React.ComponentType<any>;
-    descEn: string;
-    descVi: string;
-    reqEn: string;
-    reqVi: string;
-  }
-> = {
-  Reviewer: {
-    icon: Award,
-    descEn: 'Evaluate research submissions, conduct peer reviews, and verify academic standards.',
-    descVi: 'Đánh giá các bài báo nghiên cứu, thực hiện phản biện học thuật và thẩm định tiêu chuẩn.',
-    reqEn: 'Upload a PDF summarizing your academic background, areas of expertise, and peer review history.',
-    reqVi: 'Tải lên tài liệu PDF lý lịch học thuật, chuyên môn nghiên cứu hoặc kinh nghiệm phản biện.',
-  },
-  Lecturer: {
-    icon: BookOpen,
-    descEn: 'Mentor student research groups, approve topic proposals, and curate learning materials.',
-    descVi: 'Hướng dẫn các nhóm sinh viên nghiên cứu, phê duyệt đề tài và quản lý tài liệu học tập.',
-    reqEn: 'Upload a PDF verifying your teaching credentials, affiliated faculty, and academic appointment.',
-    reqVi: 'Tải lên tài liệu PDF chứng minh vị trí giảng viên, khoa/trường công tác và chuyên môn giảng dạy.',
-  },
-  Researcher: {
-    icon: ShieldCheck,
-    descEn: 'Author and submit scientific publications, host academic seminars, and link ORCID metrics.',
-    descVi: 'Tác giả và công bố các bài báo khoa học, tổ chức hội thảo và liên kết chỉ số ORCID.',
-    reqEn: 'Upload a PDF profile with your publications, citation record, and verified academic identity.',
-    reqVi: 'Tải lên PDF hồ sơ công bố khoa học, bài báo đã xuất bản hoặc trích dẫn nghiên cứu.',
-  },
-  'Graduate Student': {
-    icon: GraduationCap,
-    descEn: 'Join student research groups, complete milestone reports, and collaborate on topics.',
-    descVi: 'Tham gia các nhóm nghiên cứu, hoàn thành báo cáo tiến độ các giai đoạn và bảo vệ đề tài.',
-    reqEn: 'Upload proof of current enrollment, academic transcript, or advisor recommendation letter.',
-    reqVi: 'Tải lên thẻ học viên / sinh viên, giấy xác nhận đào tạo hoặc thư giới thiệu của giảng viên hướng dẫn.',
-  },
-};
-
-/**
- * Role progression & transition matrix:
- * Defines which additional roles an existing role is eligible to request.
- * - Graduate Student: can only request Researcher (cannot request Reviewer or Lecturer).
- * - Lecturer: can request Researcher, Reviewer.
- * - Researcher: can request Lecturer, Reviewer.
- * - Reviewer: can request Lecturer, Researcher.
- */
 const ELIGIBLE_ADDITIONAL_ROLES_MAP: Record<string, RequestableRole[]> = {
   'Graduate Student': ['Researcher'],
   GraduateStudent: ['Researcher'],

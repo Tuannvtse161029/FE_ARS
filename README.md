@@ -12,21 +12,32 @@
 
 ## Table of Contents
 
+<!-- toc -->
+
 - [What is ARS?](#what-is-ars)
 - [Repository Scope](#repository-scope)
 - [Tech Stack](#tech-stack)
 - [Quick Start](#quick-start)
+  * [Prerequisites](#prerequisites)
 - [Environment Variables](#environment-variables)
 - [Available Scripts](#available-scripts)
 - [Project Structure](#project-structure)
+  * [Barrel Files](#barrel-files)
 - [Feature Surfaces by Role](#feature-surfaces-by-role)
 - [Internationalization](#internationalization)
 - [API Reference](#api-reference)
 - [Project Integration](#project-integration)
+  * [API integration surface](#api-integration-surface)
+  * [Service layer](#service-layer)
+  * [Internationalization](#internationalization-1)
+  * [Third-party libraries](#third-party-libraries)
+  * [Recent incident reports](#recent-incident-reports)
 - [Testing](#testing)
 - [Contributing](#contributing)
 - [License](#license)
 - [Related Repositories](#related-repositories)
+
+<!-- tocstop -->
 
 ---
 
@@ -137,6 +148,247 @@ All env vars are **public** values consumed at build time via `import.meta.env.V
 | `npm run node:check` | List Node processes and memory |
 | `npm run node:clean` | Dry-run stale-process cleanup |
 | `npm run node:clean:apply` | Kill stale Node processes |
+| `npm run docs:toc` | Refresh the README table of contents in place |
+| `npm run docs:tree:check` | Report drift between the README tree and `src/` |
+| `npm run docs:tree:write` | Overwrite the README tree with a plain (un-annotated) regeneration |
+| `npm run docs:sync` | Run `docs:toc` then `docs:tree:check` |
+
+---
+
+## Project Structure
+
+```
+src/
+├── assets/
+│   ├── badges/
+│   ├── icons/
+│   ├── images/
+│   ├── logo/
+│   ├── pdf/
+│   ├── pdf_sample/
+│   └── videos/
+├── components/
+│   ├── Button/
+│   ├── FieldError/
+│   ├── InlineNotice/
+│   ├── Input/
+│   ├── LoadingTaskWidget/
+│   ├── PdfViewer/
+│   ├── RoleExploreModal/
+│   ├── WelcomeBackBanner/
+│   ├── admin/
+│   ├── auth/
+│   ├── common/
+│   ├── forum/
+│   ├── gradstudent/
+│   ├── i18n/
+│   ├── identity/
+│   ├── lecturer/
+│   ├── medals/
+│   ├── notification/
+│   ├── openalex/
+│   ├── orcid/
+│   ├── profile/
+│   ├── research/
+│   ├── researcher/
+│   ├── reviewer/
+│   ├── seminar/
+│   ├── shortcuts/
+│   ├── subscription/
+│   ├── table/
+│   └── workspace/
+├── config/
+├── context/
+├── features/
+│   ├── admin/
+│   ├── guidance/
+│   ├── publication/
+│   └── seminars/
+├── hooks/
+├── i18n/
+│   └── dictionaries/
+├── layouts/
+├── lib/
+├── pages/
+│   ├── Admin/
+│   ├── Auth/
+│   ├── CompleteGoogleRegistration/
+│   ├── Forum/
+│   ├── GoogleCallback/
+│   ├── GraduateStudent/
+│   ├── Landing/
+│   ├── Lecturer/
+│   ├── Legal/
+│   ├── Login/
+│   ├── Notifications/
+│   ├── OrcidCallback/
+│   ├── Profile/
+│   ├── Register/
+│   ├── ResetPassword/
+│   ├── Reviewer/
+│   ├── Seminar/
+│   └── Subscription/
+├── routes/
+├── scrollcraft/
+├── services/
+├── store/
+├── styles/
+├── types/
+├── utils/
+# ARS Platform — Frontend
+
+> Academic Research Sharing (ARS) — the web client for managing research papers, peer reviews, seminars, research groups, and student supervision in a multi-role academic environment.
+
+[![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Vite](https://img.shields.io/badge/Vite-6-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev)
+[![License](https://img.shields.io/badge/License-Proprietary-orange?style=flat-square)](LICENSE)
+[![Status](https://img.shields.io/badge/Status-Active-success?style=flat-square)]()
+
+---
+
+## Table of Contents
+
+<!-- toc -->
+
+- [What is ARS?](#what-is-ars)
+- [Repository Scope](#repository-scope)
+- [Tech Stack](#tech-stack)
+- [Quick Start](#quick-start)
+  * [Prerequisites](#prerequisites)
+- [Environment Variables](#environment-variables)
+- [Available Scripts](#available-scripts)
+- [Project Structure](#project-structure)
+  * [Barrel Files](#barrel-files)
+- [Feature Surfaces by Role](#feature-surfaces-by-role)
+- [Internationalization](#internationalization)
+- [API Reference](#api-reference)
+- [Project Integration](#project-integration)
+  * [API integration surface](#api-integration-surface)
+  * [Service layer](#service-layer)
+  * [Internationalization](#internationalization-1)
+  * [Third-party libraries](#third-party-libraries)
+  * [Recent incident reports](#recent-incident-reports)
+- [Testing](#testing)
+- [Contributing](#contributing)
+- [License](#license)
+- [Related Repositories](#related-repositories)
+
+<!-- tocstop -->
+
+---
+
+## What is ARS?
+
+The **Academic Research Sharing Platform** is a capstone-grade academic collaboration tool that connects five user roles — **System Admins**, **Lecturers**, **Researchers**, **Reviewers**, and **Graduate Students** — around the lifecycle of a research paper: from manuscript submission, through peer review, to a defended seminar and follow-up research group work.
+
+This repository hosts the **frontend web client** built with React, TypeScript, and Vite. It talks to a separate .NET Core REST backend (MySQL + Firebase Cloud Storage) over JSON.
+
+---
+
+## Repository Scope
+
+This repo is the **frontend only**. We deliberately keep the following out of scope — they live in separate repos or are owned by the backend team:
+
+- Database schema, migrations, and ORM code
+- ASP.NET Core controllers, business logic, JWT issuance
+- Firebase Admin SDK (this client uploads PDFs to Storage via the public web SDK)
+- CI / CD pipelines, Dockerfiles, server infra
+- API contract definitions (we **consume** the Swagger contract — we do not author it)
+
+If you find yourself reaching for one of the above, double-check before you do.
+
+---
+
+## Tech Stack
+
+| Concern | Choice |
+| --- | --- |
+| UI framework | React 18 |
+| Language | TypeScript 5.6 (strict) |
+| Build tool | Vite 6 |
+| Routing | React Router DOM 7 |
+| State management | Zustand |
+| Forms | React Hook Form + Yup |
+| HTTP | Axios |
+| PDF rendering | PDF.js, pdf-lib |
+| File storage | Firebase Cloud Storage (browser SDK) |
+| Charts | Recharts |
+| Icons | Lucide React |
+| Styling | CSS Modules (no global utility framework) |
+| Unit tests | Vitest + Testing Library |
+| E2E tests | Playwright |
+
+---
+
+## Quick Start
+
+```bash
+# 1. Clone
+git clone <repository-url>
+cd ARS_FE
+
+# 2. Install dependencies
+npm install
+
+# 3. Configure environment (see Environment Variables below)
+cp .env.example .env.local
+# …then edit .env.local with your local values
+
+# 4. Start the dev server
+npm run dev
+
+# 5. Visit the printed URL (default: http://localhost:5173)
+```
+
+You will need a reachable backend (or a local mock). The default `VITE_API_BASE_URL` points at the public Swagger host — see [API Reference](#api-reference).
+
+### Prerequisites
+
+- **Node.js** 24 LTS (or newer)
+- **npm** ≥ 11 (or pnpm / yarn with equivalent lockfiles)
+
+---
+
+## Environment Variables
+
+All env vars are **public** values consumed at build time via `import.meta.env.VITE_*`. No real secrets should ever be committed — the `.env.example` file documents every key with empty placeholders.
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `VITE_API_BASE_URL` | ✅ | Backend REST root (e.g. `https://arsplatform.onrender.com`) |
+| `VITE_FIREBASE_API_KEY` | ✅ | Firebase web SDK API key |
+| `VITE_FIREBASE_AUTH_DOMAIN` | ✅ | Firebase auth domain |
+| `VITE_FIREBASE_PROJECT_ID` | ✅ | Firebase project id |
+| `VITE_FIREBASE_STORAGE_BUCKET` | ✅ | Firebase Storage bucket |
+| `VITE_FIREBASE_MESSAGING_SENDER_ID` | ✅ | Firebase messaging sender id |
+| `VITE_FIREBASE_APP_ID` | ✅ | Firebase app id |
+| `VITE_GOOGLE_CLIENT_ID` | ⚠️ | Google OAuth (only if Google sign-in is enabled) |
+
+> **Never** commit `.env.local`, `.env.*.local`, `appsettings.Development.json`, or any file containing real credentials. See [SECURITY](docs/local-only/SECURITY.md) (if present locally) for the credential-handling checklist.
+
+---
+
+## Available Scripts
+
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Start the dev server with memory-optimized settings |
+| `npm run dev:raw` | Start raw Vite dev server (no memory helpers) |
+| `npm run build` | Production build → `dist/` |
+| `npm run preview` | Preview the production build locally |
+| `npm run lint` | ESLint over the project |
+| `npm test` | Vitest unit tests |
+| `npm run test:integration` | Integration test suite |
+| `npm run test:coverage` | Generate coverage report |
+| `npm run test:e2e` | Playwright end-to-end tests |
+| `npm run node:check` | List Node processes and memory |
+| `npm run node:clean` | Dry-run stale-process cleanup |
+| `npm run node:clean:apply` | Kill stale Node processes |
+| `npm run docs:toc` | Refresh the README table of contents in place |
+| `npm run docs:tree:check` | Report drift between the README tree and `src/` |
+| `npm run docs:tree:write` | Overwrite the README tree with a plain (un-annotated) regeneration |
+| `npm run docs:sync` | Run `docs:toc` then `docs:tree:check` |
 
 ---
 

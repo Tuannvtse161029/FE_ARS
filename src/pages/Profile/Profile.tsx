@@ -72,6 +72,7 @@ import { OrcidIdentityPanel } from '../../components/orcid/OrcidIdentityPanel';
 import { OrcidIdentityMarker } from '../../components/identity/OrcidIdentityMarker';
 import { isOrcidEligibleRole } from '../../utils/registrationRoles';
 import { UserFlairBadge } from '../../components/medals/UserFlairBadge';
+import { GENDER_OPTIONS, GENDER_LABEL_FALLBACK, isGenderCode } from '../../utils/genders';
 import { useI18n } from '../../i18n/I18nContext';
 import { ReviewerPublicView } from '../../components/profile/publicViews/ReviewerPublicView';
 import { ResearcherPublicView } from '../../components/profile/publicViews/ResearcherPublicView';
@@ -560,6 +561,36 @@ export const Profile = () => {
     [unlockedMedals],
   );
 
+  // ── Gender — localStorage-backed override ────────────────
+  // The BE's `ProfileUpdateRequest` accepts `gender` (free-form string)
+  // but its `ProfileResponse` does NOT echo it back. We therefore:
+  //   1. Read the user's previous pick from localStorage on mount and
+  //      use it as the draft value if the BE didn't return one (the BE
+  //      never does, so this is the normal path).
+  //   2. Mirror every selection into localStorage so reload preserves it.
+  // When the BE formally ships `gender` in the response schema, delete
+  // this block and the `ars_gender_<userId>` writes. No central
+  // sign-out cleanup exists for `ars_*` keys (see `ars_flair_<userId>` —
+  // same model) so a stale entry simply overwrites on the next save.
+  const genderStorageKey = (uid: number): string => `ars_gender_${uid}`;
+
+  // Mirror changes into localStorage.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const uid = targetUserId ?? authenticatedUserId;
+    if (!uid) return;
+    try {
+      if (draft.gender && isGenderCode(draft.gender)) {
+        window.localStorage.setItem(genderStorageKey(uid), draft.gender);
+      } else if (!draft.gender) {
+        // Empty selection — clear the cached pick so the next mount is honest.
+        window.localStorage.removeItem(genderStorageKey(uid));
+      }
+    } catch {
+      /* ignore quota / privacy-mode errors */
+    }
+  }, [draft.gender, targetUserId, authenticatedUserId]);
+
   // ── Featured flair (Phase 2.5) ────────────────────────────────
   // Flair persists in localStorage (`ars_flair_<userId>`), NOT in the BE
   // profile row. The live Swagger `ProfileUpdateRequest` schema does not
@@ -649,12 +680,30 @@ export const Profile = () => {
       return;
     }
     const next = draftFromProfile(profile);
+    // FE_GENDER_LOCAL_PERSISTENCE — the BE's `ProfileResponse` doesn't echo
+    // `gender` back, so the draft seeded from the profile will always be
+    // empty for this field. Re-hydrate from localStorage on every profile
+    // change so the user's last pick survives reloads, targetUserId swaps,
+    // and stale cache invalidations. We deliberately re-seed on `updatedAt`
+    // too (not just `userId`) so a fresh PUT that DOES happen to echo the
+    // value still wins over localStorage for that one render.
+    const uid = targetUserId ?? authenticatedUserId;
+    if (uid && typeof window !== 'undefined') {
+      try {
+        const raw = window.localStorage.getItem(genderStorageKey(uid));
+        if (raw && isGenderCode(raw) && !next.gender) {
+          next.gender = raw;
+        }
+      } catch {
+        /* ignore */
+      }
+    }
     setDraft(next);
     setSavedDraft(next);
     // Don't auto-flip out of edit mode here — the user might still be typing
     // after a successful save, in which case the hook has already pushed the
     // freshest profile back through `profile`. We re-seed only on id change.
-  }, [profile?.userId, profile?.updatedAt]);
+  }, [profile?.userId, profile?.updatedAt, targetUserId, authenticatedUserId]);
 
   // Auto-dismiss the success banner after a few seconds.
   useEffect(() => {
@@ -715,13 +764,20 @@ export const Profile = () => {
     if (!authenticatedUserId || !user) throw new Error(t('profile.avatar.authRequired', 'You must be signed in to update your avatar.'));
     setAvatarError(null);
     const authoritative = await userService.getById(authenticatedUserId);
-    const updated = await userService.update(authenticatedUserId, {
+    await userService.update(authenticatedUserId, {
       fullName: authoritative.fullName.trim(),
       avatarUrl,
       isActive: authoritative.isActive,
     });
-    storage.setUser(updated);
-    updateAuthUser(updated);
+    // Re-read the user so the header dropdown reflects the new avatar. The
+    // PUT response (`UserResponse`) omits identity fields like `username`,
+    // so trusting it would strip those from the auth store and break the
+    // header. `GET /api/User/{id}` returns the full, authoritative row —
+    // including the just-saved `avatarUrl` — and matches the `User` shape
+    // `storage.setUser` and `useAuthStore` expect.
+    const refreshed = await userService.getById(authenticatedUserId);
+    storage.setUser(refreshed);
+    updateAuthUser(refreshed);
     await refetch();
   };
 
@@ -1376,7 +1432,14 @@ const AccountContactStrip = ({
         {savedDraft.gender?.trim() ? (
           <div className={styles.accountStripField}>
             <dt>{t('profile.accountContact.gender', 'Gender')}</dt>
-            <dd>{savedDraft.gender}</dd>
+            <dd>
+              {isGenderCode(savedDraft.gender)
+                ? t(
+                    `profile.view.genderLabel.${savedDraft.gender}`,
+                    GENDER_LABEL_FALLBACK[savedDraft.gender] ?? savedDraft.gender,
+                  )
+                : savedDraft.gender}
+            </dd>
           </div>
         ) : null}
       </dl>
@@ -1452,7 +1515,12 @@ const ProfileView = ({ draft, avatarInitials, updatedAt, isEmpty, profile, isOwn
             <div className={styles.viewItem}>
               <span className={styles.viewLabel}>{t('profile.view.gender', 'Gender')}</span>
               <p className={styles.viewValue} data-testid="view-gender">
-                {showValue(draft.gender)}
+                {isGenderCode(draft.gender)
+                  ? t(
+                      `profile.view.genderLabel.${draft.gender}`,
+                      GENDER_LABEL_FALLBACK[draft.gender] ?? draft.gender,
+                    )
+                  : showValue(draft.gender)}
               </p>
             </div>
             <div className={styles.viewItem}>
@@ -1714,15 +1782,28 @@ const ProfileEditForm = ({
           <label className={styles.label} htmlFor="gender-input">
             {t('profile.view.gender', 'Gender')}
           </label>
-          <input
+          <select
             id="gender-input"
             data-testid="profile-input-gender"
-            className={styles.input}
-            type="text"
+            className={`${styles.input} ${styles.select}`}
             value={draft.gender}
             onChange={(event) => onChange('gender', event.target.value)}
             {...fieldProps('gender')}
-          />
+          >
+            <option value="">
+              {t('profile.edit.gender.placeholder', '— Select —')}
+            </option>
+            {GENDER_OPTIONS.map((option) => (
+              <option key={option.code} value={option.code}>
+                {t(
+                  `profile.edit.gender.options.${option.labelKey}`,
+                  // English fallback so a partially-translated dictionary
+                  // still surfaces sensible copy.
+                  GENDER_LABEL_FALLBACK[option.code] ?? option.code,
+                )}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className={`${styles.field} ${styles.formGridFull}`}>
