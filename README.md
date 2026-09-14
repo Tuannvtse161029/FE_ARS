@@ -2,17 +2,8 @@
 
 > Academic Research Sharing (ARS) — the web client for managing research papers, peer reviews, seminars, research groups, and student supervision in a multi-role academic environment.
 
-[![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![Vite](https://img.shields.io/badge/Vite-6-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev)
-[![License](https://img.shields.io/badge/License-Proprietary-orange?style=flat-square)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-Active-success?style=flat-square)](SOMETHING)
-
----
-
 ## Table of Contents
 
-<!-- toc -->
 - [What is ARS?](#what-is-ars)
 - [Repository Scope](#repository-scope)
 - [Tech Stack](#tech-stack)
@@ -34,7 +25,6 @@
 - [Contributing](#contributing)
 - [License](#license)
 - [Related Repositories](#related-repositories)
-<!-- tocstop -->
 
 ---
 
@@ -62,22 +52,22 @@ If you find yourself reaching for one of the above, double-check before you do.
 
 ## Tech Stack
 
-| Concern | Choice |
-| --- | --- |
-| UI framework | React 18 |
-| Language | TypeScript 5.6 (strict) |
-| Build tool | Vite 6 |
-| Routing | React Router DOM 7 |
-| State management | Zustand |
-| Forms | React Hook Form + Yup |
-| HTTP | Axios |
-| PDF rendering | PDF.js, pdf-lib |
-| File storage | Firebase Cloud Storage (browser SDK) |
-| Charts | Recharts |
-| Icons | Lucide React |
-| Styling | CSS Modules (no global utility framework) |
-| Unit tests | Vitest + Testing Library |
-| E2E tests | Playwright |
+| Concern              | Tech Stack Used                            |
+| -------------------- | ------------------------------------------ |
+| UI Framework         | React 18                                   |
+| Language             | TypeScript 5.6 (strict)                    |
+| Build Tool           | Vite 6                                     |
+| Routing              | React Router DOM 7                         |
+| State Management     | Zustand                                    |
+| Forms                | React Hook Form + Yup                      |
+| HTTP                 | Axios                                      |
+| PDF Rendering        | PDF.js, pdf-lib                            |
+| File Storage         | Firebase Cloud Storage (browser SDK)       |
+| Charts               | Recharts                                   |
+| Icons                | Lucide React                               |
+| Styling              | CSS Modules (no global utility framework)  |
+| Unit Tests           | Vitest + Testing Library                   |
+| E2E Tests            | Playwright                                 |
 
 ---
 
@@ -98,7 +88,7 @@ cp .env.example .env.local
 # 4. Start the dev server
 npm run dev
 
-# 5. Visit the printed URL (default: http://localhost:5173)
+# 5. Visit the printed URL (default: http://localhost:3000)
 ```
 
 You will need a reachable backend (or a local mock). The default `VITE_API_BASE_URL` points at the public Swagger host — see [API Reference](#api-reference).
@@ -336,7 +326,7 @@ cp .env.example .env.local
 # 4. Start the dev server
 npm run dev
 
-# 5. Visit the printed URL (default: http://localhost:5173)
+# 5. Visit the printed URL (default: http://localhost:3000)
 ```
 
 You will need a reachable backend (or a local mock). The default `VITE_API_BASE_URL` points at the public Swagger host — see [API Reference](#api-reference).
