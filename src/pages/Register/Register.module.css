@@ -115,6 +115,18 @@
   margin-top: calc(-1 * var(--space-2));
 }
 
+/* ── Two-column row: Title + Full Name ─────────────────── */
+.nameRow {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.nameRow .fieldGroup {
+  min-width: 0;
+}
+
 .passwordRow {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -344,6 +356,92 @@
   border-left: 3px solid var(--accent-primary);
   border-radius: 0 var(--radius-md) var(--radius-md) 0;
   background-color: color-mix(in srgb, var(--accent-primary) 5%, transparent);
+}
+
+/* ── Role Capabilities (what the role can do) ─────────────
+   Lives directly below the role <select> so the registrant
+   sees what they're signing up for the instant they pick a
+   role. Distinct visual treatment from `roleBanner` so it
+   never competes with the verification banner lower down. */
+.roleCapabilities {
+  margin-top: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background-color: color-mix(in srgb, var(--accent-primary) 8%, var(--surface-default, transparent));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.roleCapabilitiesHeader {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent-ochre, var(--accent-primary));
+}
+
+.roleCapabilitiesIcon {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent-primary) 18%, transparent);
+  color: var(--accent-ochre, var(--accent-primary));
+}
+
+.roleCapabilitiesEyebrow {
+  /* Inherits header styles; sits next to the icon chip. */
+}
+
+.roleCapabilitiesTitle {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  color: var(--ink-primary);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.roleCapabilitiesDescription {
+  font-size: var(--font-size-sm);
+  color: var(--ink-secondary);
+  margin: 0;
+  line-height: 1.55;
+}
+
+.roleCapabilitiesList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.roleCapabilitiesItem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  font-size: var(--font-size-sm);
+  color: var(--ink-secondary);
+  line-height: 1.5;
+}
+
+.roleCapabilitiesBullet {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  margin-top: 2px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent-primary) 18%, transparent);
+  color: var(--accent-ochre, var(--accent-primary));
 }
 
 .roleBannerIcon {
@@ -639,6 +737,10 @@
   .passwordRow {
     grid-template-columns: 1fr;
     gap: var(--space-3);
+  }
+
+  .nameRow {
+    grid-template-columns: 1fr;
   }
 
   .orcidConnection {

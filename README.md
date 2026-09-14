@@ -2,6 +2,231 @@
 
 > Academic Research Sharing (ARS) — the web client for managing research papers, peer reviews, seminars, research groups, and student supervision in a multi-role academic environment.
 
+## Table of Contents
+
+- [What is ARS?](#what-is-ars)
+- [Repository Scope](#repository-scope)
+- [Tech Stack](#tech-stack)
+- [Quick Start](#quick-start)
+- [Prerequisites](#prerequisites)
+- [Environment Variables](#environment-variables)
+- [Available Scripts](#available-scripts)
+- [Project Structure](#project-structure)
+- [Barrel Files](#barrel-files)
+- [Feature Surfaces by Role](#feature-surfaces-by-role)
+- [Internationalization](#internationalization)
+- [API Reference](#api-reference)
+- [Project Integration](#project-integration)
+- [API integration surface](#api-integration-surface)
+- [Service layer](#service-layer)
+- [Third-party libraries](#third-party-libraries)
+- [Recent incident reports](#recent-incident-reports)
+- [Testing](#testing)
+- [Contributing](#contributing)
+- [License](#license)
+- [Related Repositories](#related-repositories)
+
+---
+
+## What is ARS?
+
+The **Academic Research Sharing Platform** is a capstone-grade academic collaboration tool that connects five user roles — **System Admins**, **Lecturers**, **Researchers**, **Reviewers**, and **Graduate Students** — around the lifecycle of a research paper: from manuscript submission, through peer review, to a defended seminar and follow-up research group work.
+
+This repository hosts the **frontend web client** built with React, TypeScript, and Vite. It talks to a separate .NET Core REST backend (MySQL + Firebase Cloud Storage) over JSON.
+
+---
+
+## Repository Scope
+
+This repo is the **frontend only**. We deliberately keep the following out of scope — they live in separate repos or are owned by the backend team:
+
+- Database schema, migrations, and ORM code
+- ASP.NET Core controllers, business logic, JWT issuance
+- Firebase Admin SDK (this client uploads PDFs to Storage via the public web SDK)
+- CI / CD pipelines, Dockerfiles, server infra
+- API contract definitions (we **consume** the Swagger contract — we do not author it)
+
+If you find yourself reaching for one of the above, double-check before you do.
+
+---
+
+## Tech Stack
+
+| Concern              | Tech Stack Used                            |
+| -------------------- | ------------------------------------------ |
+| UI Framework         | React 18                                   |
+| Language             | TypeScript 5.6 (strict)                    |
+| Build Tool           | Vite 6                                     |
+| Routing              | React Router DOM 7                         |
+| State Management     | Zustand                                    |
+| Forms                | React Hook Form + Yup                      |
+| HTTP                 | Axios                                      |
+| PDF Rendering        | PDF.js, pdf-lib                            |
+| File Storage         | Firebase Cloud Storage (browser SDK)       |
+| Charts               | Recharts                                   |
+| Icons                | Lucide React                               |
+| Styling              | CSS Modules (no global utility framework)  |
+| Unit Tests           | Vitest + Testing Library                   |
+| E2E Tests            | Playwright                                 |
+
+---
+
+## Quick Start
+
+```bash
+# 1. Clone
+git clone <repository-url>
+cd ARS_FE
+
+# 2. Install dependencies
+npm install
+
+# 3. Configure environment (see Environment Variables below)
+cp .env.example .env.local
+# …then edit .env.local with your local values
+
+# 4. Start the dev server
+npm run dev
+
+# 5. Visit the printed URL (default: http://localhost:3000)
+```
+
+You will need a reachable backend (or a local mock). The default `VITE_API_BASE_URL` points at the public Swagger host — see [API Reference](#api-reference).
+
+### Prerequisites
+
+- **Node.js** 24 LTS (or newer)
+- **npm** ≥ 11 (or pnpm / yarn with equivalent lockfiles)
+
+---
+
+## Environment Variables
+
+All env vars are **public** values consumed at build time via `import.meta.env.VITE_*`. No real secrets should ever be committed — the `.env.example` file documents every key with empty placeholders.
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `VITE_API_BASE_URL` | ✅ | Backend REST root (e.g. `https://arsplatform.onrender.com`) |
+| `VITE_FIREBASE_API_KEY` | ✅ | Firebase web SDK API key |
+| `VITE_FIREBASE_AUTH_DOMAIN` | ✅ | Firebase auth domain |
+| `VITE_FIREBASE_PROJECT_ID` | ✅ | Firebase project id |
+| `VITE_FIREBASE_STORAGE_BUCKET` | ✅ | Firebase Storage bucket |
+| `VITE_FIREBASE_MESSAGING_SENDER_ID` | ✅ | Firebase messaging sender id |
+| `VITE_FIREBASE_APP_ID` | ✅ | Firebase app id |
+| `VITE_GOOGLE_CLIENT_ID` | ⚠️ | Google OAuth (only if Google sign-in is enabled) |
+
+> **Never** commit `.env.local`, `.env.*.local`, `appsettings.Development.json`, or any file containing real credentials. See [SECURITY](docs/local-only/SECURITY.md) (if present locally) for the credential-handling checklist.
+
+---
+
+## Available Scripts
+
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Start the dev server with memory-optimized settings |
+| `npm run dev:raw` | Start raw Vite dev server (no memory helpers) |
+| `npm run build` | Production build → `dist/` |
+| `npm run preview` | Preview the production build locally |
+| `npm run lint` | ESLint over the project |
+| `npm test` | Vitest unit tests |
+| `npm run test:integration` | Integration test suite |
+| `npm run test:coverage` | Generate coverage report |
+| `npm run test:e2e` | Playwright end-to-end tests |
+| `npm run node:check` | List Node processes and memory |
+| `npm run node:clean` | Dry-run stale-process cleanup |
+| `npm run node:clean:apply` | Kill stale Node processes |
+| `npm run docs:toc` | Refresh the README table of contents in place |
+| `npm run docs:tree:check` | Report drift between the README tree and `src/` |
+| `npm run docs:tree:write` | Overwrite the README tree with a plain (un-annotated) regeneration |
+| `npm run docs:sync` | Run `docs:toc` then `docs:tree:check` |
+
+---
+
+## Project Structure
+
+```bash
+# ARS Platform — Frontend
+src/
+├── assets/
+│   ├── badges/
+│   ├── icons/
+│   ├── images/
+│   ├── logo/
+│   ├── pdf/
+│   ├── pdf_sample/
+│   └── videos/
+├── components/
+│   ├── Button/
+│   ├── FieldError/
+│   ├── InlineNotice/
+│   ├── Input/
+│   ├── LoadingTaskWidget/
+│   ├── PdfViewer/
+│   ├── RoleExploreModal/
+│   ├── WelcomeBackBanner/
+│   ├── admin/
+│   ├── auth/
+│   ├── common/
+│   ├── forum/
+│   ├── gradstudent/
+│   ├── i18n/
+│   ├── identity/
+│   ├── lecturer/
+│   ├── medals/
+│   ├── notification/
+│   ├── openalex/
+│   ├── orcid/
+│   ├── profile/
+│   ├── research/
+│   ├── researcher/
+│   ├── reviewer/
+│   ├── seminar/
+│   ├── shortcuts/
+│   ├── subscription/
+│   ├── table/
+│   └── workspace/
+├── config/
+├── context/
+├── features/
+│   ├── admin/
+│   ├── guidance/
+│   ├── publication/
+│   └── seminars/
+├── hooks/
+├── i18n/
+│   └── dictionaries/
+├── layouts/
+├── lib/
+├── pages/
+│   ├── Admin/
+│   ├── Auth/
+│   ├── CompleteGoogleRegistration/
+│   ├── Forum/
+│   ├── GoogleCallback/
+│   ├── GraduateStudent/
+│   ├── Landing/
+│   ├── Lecturer/
+│   ├── Legal/
+│   ├── Login/
+│   ├── Notifications/
+│   ├── OrcidCallback/
+│   ├── Profile/
+│   ├── Register/
+│   ├── ResetPassword/
+│   ├── Reviewer/
+│   ├── Seminar/
+│   └── Subscription/
+├── routes/
+├── scrollcraft/
+├── services/
+├── store/
+├── styles/
+├── types/
+├── utils/
+# ARS Platform — Frontend
+
+> Academic Research Sharing (ARS) — the web client for managing research papers, peer reviews, seminars, research groups, and student supervision in a multi-role academic environment.
+
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Vite](https://img.shields.io/badge/Vite-6-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev)
@@ -12,21 +237,32 @@
 
 ## Table of Contents
 
+<!-- toc -->
+
 - [What is ARS?](#what-is-ars)
 - [Repository Scope](#repository-scope)
 - [Tech Stack](#tech-stack)
 - [Quick Start](#quick-start)
+- [Prerequisites](#prerequisites)
 - [Environment Variables](#environment-variables)
 - [Available Scripts](#available-scripts)
 - [Project Structure](#project-structure)
+- [Barrel Files](#barrel-files)
 - [Feature Surfaces by Role](#feature-surfaces-by-role)
 - [Internationalization](#internationalization)
 - [API Reference](#api-reference)
 - [Project Integration](#project-integration)
+- [API integration surface](#api-integration-surface)
+- [Service layer](#service-layer)
+- [Internationalization](#internationalization-1)
+- [Third-party libraries](#third-party-libraries)
+- [Recent incident reports](#recent-incident-reports)
 - [Testing](#testing)
 - [Contributing](#contributing)
 - [License](#license)
 - [Related Repositories](#related-repositories)
+
+<!-- tocstop -->
 
 ---
 
@@ -90,171 +326,17 @@ cp .env.example .env.local
 # 4. Start the dev server
 npm run dev
 
-# 5. Visit the printed URL (default: http://localhost:5173)
+# 5. Visit the printed URL (default: http://localhost:3000)
 ```
 
 You will need a reachable backend (or a local mock). The default `VITE_API_BASE_URL` points at the public Swagger host — see [API Reference](#api-reference).
-
-### Prerequisites
-
-- **Node.js** 24 LTS (or newer)
-- **npm** ≥ 11 (or pnpm / yarn with equivalent lockfiles)
-
----
-
-## Environment Variables
-
-All env vars are **public** values consumed at build time via `import.meta.env.VITE_*`. No real secrets should ever be committed — the `.env.example` file documents every key with empty placeholders.
-
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `VITE_API_BASE_URL` | ✅ | Backend REST root (e.g. `https://arsplatform.onrender.com`) |
-| `VITE_FIREBASE_API_KEY` | ✅ | Firebase web SDK API key |
-| `VITE_FIREBASE_AUTH_DOMAIN` | ✅ | Firebase auth domain |
-| `VITE_FIREBASE_PROJECT_ID` | ✅ | Firebase project id |
-| `VITE_FIREBASE_STORAGE_BUCKET` | ✅ | Firebase Storage bucket |
-| `VITE_FIREBASE_MESSAGING_SENDER_ID` | ✅ | Firebase messaging sender id |
-| `VITE_FIREBASE_APP_ID` | ✅ | Firebase app id |
-| `VITE_GOOGLE_CLIENT_ID` | ⚠️ | Google OAuth (only if Google sign-in is enabled) |
-
-> **Never** commit `.env.local`, `.env.*.local`, `appsettings.Development.json`, or any file containing real credentials. See [SECURITY](docs/local-only/SECURITY.md) (if present locally) for the credential-handling checklist.
-
----
-
-## Available Scripts
-
-| Command | Description |
-| --- | --- |
-| `npm run dev` | Start the dev server with memory-optimized settings |
-| `npm run dev:raw` | Start raw Vite dev server (no memory helpers) |
-| `npm run build` | Production build → `dist/` |
-| `npm run preview` | Preview the production build locally |
-| `npm run lint` | ESLint over the project |
-| `npm test` | Vitest unit tests |
-| `npm run test:integration` | Integration test suite |
-| `npm run test:coverage` | Generate coverage report |
-| `npm run test:e2e` | Playwright end-to-end tests |
-| `npm run node:check` | List Node processes and memory |
-| `npm run node:clean` | Dry-run stale-process cleanup |
-| `npm run node:clean:apply` | Kill stale Node processes |
-
----
-
-## Project Structure
-
-```
-src/
-├── app/                  # App bootstrap (main.tsx, App.tsx, firebase.ts)
-├── assets/               # Static assets
-│   ├── icons/           # Lucide icon re-exports and custom icons
-│   ├── badges/          # Badge assets and definitions
-│   ├── logo/            # Logo images (ARS, OpenAlex)
-│   └── videos/          # Video assets
-├── components/          # Reusable UI components (organized by feature/domain)
-│   ├── Button/          # Primary button primitive with variants
-│   ├── Input/           # Form input primitives
-│   ├── FieldError/      # Field-level error display
-│   ├── InlineNotice/    # Inline notice/warning component
-│   ├── PdfViewer/       # PDF viewer with thumbnails and lazy loading
-│   ├── SkeletonRow/     # Loading skeleton placeholder
-│   ├── EmptyState/      # Empty list placeholder
-│   ├── ErrorBanner/     # Inline error display
-│   ├── PageHeader/      # Page title and description
-│   ├── GlobalLoadingOverlay/   # Global loading overlay
-│   ├── DelayedLoadingOverlay/  # Delayed loading indicator
-│   ├── BackendGapBanner/      # Backend unavailable notice
-│   ├── WelcomeBackBanner/     # Returning user banner
-│   ├── admin/           # Admin-specific components
-│   ├── auth/            # Authentication components (Google Sign-In)
-│   ├── forum/           # Forum post and comment components
-│   ├── gradstudent/     # Graduate student components
-│   ├── identity/        # ORCID identity components
-│   ├── i18n/            # Language toggle
-│   ├── lecturer/        # Lecturer-specific components
-│   ├── medals/          # Medal/flair badge components
-│   ├── notification/    # Notification center
-│   ├── openalex/        # OpenAlex brand logo
-│   ├── orcid/           # ORCID brand components
-│   ├── profile/         # Profile section components
-│   ├── research/        # Research workflow components (milestones, timelines)
-│   ├── researcher/      # Researcher-specific components
-│   ├── reviewer/        # Reviewer-specific components
-│   ├── seminar/         # Seminar components (feedback, audio, Google Meet)
-│   ├── shortcuts/       # Keyboard shortcuts help modal
-│   ├── subscription/    # Subscription access guard
-│   ├── table/           # Table components (toolbar, pagination, sortable header)
-│   └── workspace/       # Workspace header and activity components
-├── config/              # Application configuration
-│   ├── app.ts           # Feature flags and app config
-│   ├── env.ts           # Environment variable helpers
-│   └── featureFlags.ts # Feature flag definitions
-├── context/             # React context providers
-│   └── AuthContext.tsx  # Authentication context
-├── features/            # Feature modules (co-located by domain)
-│   └── publication/     # Publication workflow feature
-│       ├── admin/       # Admin publication management
-│       ├── api/         # API adapters and transformers
-│       ├── components/   # Shared publication components
-│       ├── demo/        # Demo/mock data
-│       ├── home/        # Public research catalog
-│       ├── researcher/  # Researcher submission workflow
-│       ├── reviewer/    # Reviewer assignment workflow
-│       └── types/       # Publication-specific types
-├── hooks/               # Custom React hooks
-│   └── index.ts        # Hooks barrel export
-├── i18n/                # Internationalization
-│   ├── I18nContext.tsx # i18n provider and hooks
-│   ├── translations.ts  # Locale metadata + translator (no inline dicts)
-│   └── dictionaries/   # Per-locale lazy chunks (`en.ts`, `vi.ts`)
-├── layouts/             # App layout components
-│   ├── AuthLayout.tsx  # Auth pages layout (login, register)
-│   └── MainLayout.tsx  # Main app layout with sidebar/header
-├── lib/                 # Library utilities
-│   └── queryClient.tsx  # React Query client configuration
-├── pages/               # Route-level pages (organized by route domain)
-│   ├── Admin/          # Admin dashboard and management pages
-│   ├── Auth/           # Email verification landing
-│   ├── CompleteGoogleRegistration/  # Google onboarding
-│   ├── Forum/          # Discussion forum
-│   ├── GoogleCallback/ # Google OAuth callback
-│   ├── GraduateStudent/ # Student dashboard and reports
-│   ├── Landing/        # Public landing page
-│   ├── Lecturer/       # Lecturer workspace
-│   ├── Legal/          # Privacy policy, terms of service
-│   ├── Login/          # Sign-in page
-│   ├── OrcidCallback/  # ORCID OAuth callback
-│   ├── Profile/        # User profile
-│   ├── Register/       # Sign-up page
-│   ├── ResetPassword/  # Password reset flow
-│   ├── Reviewer/       # Reviewer professional profile
-│   └── Subscription/   # Subscription management
-├── routes/              # Routing configuration
-│   ├── paths.ts        # Route constants and types
-│   ├── PrivateRoute.tsx    # Authentication guard
-│   ├── RoleRouteGuard.tsx  # Role-based access control
-│   └── SubscriptionRouteGuard.tsx  # Subscription gate
-├── services/            # API service modules (one per resource)
-├── store/              # Zustand state stores
-│   ├── authSlice.ts    # Auth state slice
-│   ├── welcomeSignal.ts # Welcome banner signal
-│   └── index.ts        # Store barrel export
-├── styles/             # Global styles
-│   ├── ars-tokens.css # Design tokens (Paper Day theme)
-│   ├── globals.css     # Global styles
-│   ├── variables.css   # CSS custom properties
-│   └── reset.css       # CSS reset
-├── types/               # TypeScript domain types
-├── utils/               # Pure utility functions
-├── firebase.ts          # Firebase web SDK initialization
-└── App.tsx             # Root component
-```
 
 ### Barrel Files
 
 The following folders maintain index barrel files for clean re-exports:
 
 | Folder | Barrel | Purpose |
-|--------|--------|---------|
+| -------- | -------- | --------- |
 | `src/hooks/` | `index.ts` | Re-exports all hooks |
 | `src/store/` | `index.ts` | Re-exports store slices |
 | `src/components/Button/` | `index.ts` | Button component exports |
@@ -313,7 +395,7 @@ t('materials.usage', 'Fallback', { count: 3 });     // → "Used by 3 items" wit
 
 The backend is documented via Swagger:
 
-**https://arsplatform.onrender.com/swagger/index.html**
+**<https://arsplatform.onrender.com/swagger/index.html>**
 
 Always cross-check the database schema in `docs/local-only/erd-schema-reference.md` (kept out of git) before assuming an endpoint payload is final. When Swagger and the DB diverge, **flag it** in your PR and ask the backend team.
 
@@ -404,10 +486,6 @@ Each entry below is a live API client wrapper in `src/services/`:
 | `subscription.service` | Backend integration for Subscription |
 | `user.service` | Backend integration for User |
 | `userRole.service` | Backend integration for User role |
-
-### Internationalization
-
-Active locales: `en`, `vi` (2).
 
 ### Third-party libraries
 

@@ -10,6 +10,7 @@ import { AuthLayout } from './layouts/AuthLayout';
 import { MainLayout } from './layouts/MainLayout';
 import { DelayedLoadingOverlay } from './components/DelayedLoadingOverlay';
 import { GlobalLoadingOverlay } from './components/GlobalLoadingOverlay';
+import { LoadingBubbles } from './components/LoadingBubbles';
 import './styles/globals.css';
 
 // Public auth pages — kept as eager imports because every cold-load starts
@@ -151,6 +152,7 @@ const App = () => {
     <BrowserRouter>
       <AuthProvider>
         <GlobalLoadingOverlay />
+        <LoadingBubbles />
         <Suspense fallback={<RouteFallback />}>
           <Routes>
             {/* Public project introduction. It intentionally sits outside

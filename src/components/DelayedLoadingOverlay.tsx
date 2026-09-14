@@ -16,12 +16,12 @@ export interface DelayedLoadingOverlayProps {
    */
   minimizeAfter?: number;
   /**
-   * Fired once the minimize animation finishes so the parent can unmount
-   * the overlay element. The overlay starts with `pointer-events: none`
-   * the moment the animation begins, so this is mostly cleanup so we
-   * stop holding the backdrop paint layers open.
+   * Fired the moment the minimize animation begins (the overlay shrinks
+   * down and releases pointer-events). Use this to surface a toast that
+   * tells the user they can keep exploring — the widget is now showing
+   * the spinner in the header.
    */
-  onMinimized?: () => void;
+  onMinimize?: () => void;
 }
 
 /**
@@ -29,7 +29,7 @@ export interface DelayedLoadingOverlayProps {
  * This avoids a distracting flash for responsive requests while preserving
  * clear feedback for slower API calls.
  *
- * When a request outlasts `minimizeAfter` (default 3 s), the overlay plays
+ * When a request outlasts `minimizeAfter` (default 4 s), the overlay plays
  * a scale-down + fade and releases pointer-events so the user can keep
  * navigating. The header `LoadingTaskWidget` carries the spinner from that
  * point on until the task actually completes.
@@ -38,8 +38,8 @@ export const DelayedLoadingOverlay = ({
   isLoading,
   label = 'Loading your workspace',
   delay = 1000,
-  minimizeAfter = 3000,
-  onMinimized,
+  minimizeAfter = 4000,
+  onMinimize,
 }: DelayedLoadingOverlayProps) => {
   const [isVisible, setIsVisible] = useState(false);
   const [isMinimizing, setIsMinimizing] = useState(false);
@@ -74,29 +74,11 @@ export const DelayedLoadingOverlay = ({
 
     const minimizeTimer = window.setTimeout(() => {
       setIsMinimizing(true);
+      onMinimize?.();
     }, minimizeAfter);
 
     return () => window.clearTimeout(minimizeTimer);
-  }, [isVisible, minimizeAfter]);
-
-  // Once the minimize animation finishes, notify the parent so it can
-  // unmount the overlay node entirely. We listen for `animationend`
-  // rather than relying on a fixed timeout so the cleanup is robust
-  // against animation-duration changes (e.g. `prefers-reduced-motion`
-  // zeroes the duration in CSS).
-  useEffect(() => {
-    if (!isMinimizing) return undefined;
-
-    const handleAnimationEnd = (event: AnimationEvent) => {
-      if (event.target instanceof Element && event.target.classList.contains(styles.backdrop)) {
-        setShouldRender(false);
-        onMinimized?.();
-      }
-    };
-
-    window.document.addEventListener('animationend', handleAnimationEnd);
-    return () => window.document.removeEventListener('animationend', handleAnimationEnd);
-  }, [isMinimizing, onMinimized]);
+  }, [isVisible, minimizeAfter, onMinimize]);
 
   if (!shouldRender) return null;
 

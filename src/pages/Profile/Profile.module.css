@@ -336,6 +336,26 @@ button.avatar:focus-visible { outline: 3px solid var(--ars-yellow, #f2c94c); out
   resize: vertical;
 }
 
+/* Native <select> elements share `.input` styling but need a slightly
+   different height + a caret indicator so users can tell it's a dropdown.
+   Padding-x is preserved; the arrow is rendered via the background SVG
+   so we don't depend on a particular OS look-and-feel. */
+.select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: calc(var(--space-3) + 22px);
+  cursor: pointer;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right var(--space-3) center;
+  background-size: 14px 14px;
+}
+
+.select:disabled {
+  cursor: not-allowed;
+}
+
 .input::placeholder,
 .textarea::placeholder {
   color: var(--ars-ink-muted);

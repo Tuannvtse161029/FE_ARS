@@ -1,0 +1,139 @@
+/* ── Dev Quick Login Panel ───────────────────────────────────────────
+ * Localhost-only convenience surface rendered beneath the Login form.
+ * Production builds never reach this file because the component short-
+ * circuits to `null` when `import.meta.env.DEV` is false (Vite tree-
+ * shakes the whole module, leaving only a no-op import).
+ *
+ * The styling deliberately echoes the existing Login chrome — neutral
+ * parchment surfaces with an amber eyebrow so it reads as a developer
+ * console, not a user-facing control. ──────────────────────────────────────── */
+
+.panel {
+  margin-top: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  background-color: color-mix(in srgb, var(--control-bg) 70%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  position: relative;
+}
+
+.panel::before {
+  /* Subtle diagonal stripe so the panel is unmistakable as dev-only. */
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-md);
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 8px,
+    color-mix(in srgb, var(--accent-ochre) 6%, transparent) 8px,
+    color-mix(in srgb, var(--accent-ochre) 6%, transparent) 16px
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+.header {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--accent-ochre);
+}
+
+.headerIcon {
+  flex-shrink: 0;
+}
+
+.eyebrow {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.pillRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.pill {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-strong);
+  background-color: var(--control-bg);
+  color: var(--ink-primary);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  line-height: 1.2;
+  min-width: 120px;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.pill:hover:not(:disabled) {
+  border-color: var(--accent-primary);
+  background-color: var(--control-bg-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px var(--shadow-color, rgba(15, 23, 42, 0.08));
+}
+
+.pill:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.pill:active:not(:disabled) {
+  transform: translateY(0.5px);
+}
+
+.pill:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.pillLabel {
+  font-weight: 700;
+  font-size: var(--font-size-sm);
+  color: var(--ink-primary);
+}
+
+.pillEmail {
+  font-size: var(--font-size-xs);
+  color: var(--ink-muted);
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  word-break: break-all;
+}
+
+.hint {
+  font-size: var(--font-size-xs);
+  color: var(--ink-muted);
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .pillRow {
+    flex-direction: column;
+  }
+
+  .pill {
+    width: 100%;
+  }
+}

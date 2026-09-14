@@ -4,7 +4,7 @@ import { Button } from '../../components/Button';
 import { authService } from '../../services/auth.service';
 import { roleService } from '../../services/role.service';
 import { useAuth } from '../../context/AuthContext';
-import { useI18n } from '../../i18n/I18nContext';
+import { useI18n, useLocale } from '../../i18n/I18nContext';
 import { GoogleLoginError } from '../../services/googleAuth.service';
 import type { GoogleCredentialResponse } from '../../types/googleAuth';
 import { ROUTES } from '../../routes/paths';
@@ -19,6 +19,7 @@ import styles from './Register.module.css';
 import { Info } from 'lucide-react';
 import { startRegistrationOrcidLink } from '../../services/orcid.service';
 import { isOrcidEligibleRole, type RequestableRole } from '../../utils/registrationRoles';
+import { ROLE_INFO, roleDescription } from '../../utils/roleInfo';
 import { FieldError } from '../../components/FieldError';
 import { reviewerOrcidBypassAllowed } from '../../config/featureFlags';
 import {
@@ -30,8 +31,10 @@ import {
   validatePassword,
 } from '../../utils/validationRules';
 import { useShortcuts } from '../../hooks/useShortcuts';
+import { TITLE_OPTIONS, prefixTitle } from '../../utils/honorifics';
 
 interface FormState {
+  title: string;
   fullName: string;
   email: string;
   phoneNumber: string;
@@ -42,6 +45,7 @@ interface FormState {
 }
 
 const initialForm: FormState = {
+  title: '',
   fullName: '',
   email: '',
   phoneNumber: '',
@@ -81,6 +85,7 @@ const ROLE_REQUIREMENTS: Record<UserRole, string> = {
 
 export const Register = () => {
   const { t } = useI18n();
+  const locale = useLocale();
   const navigate = useNavigate();
   const { loginWithGoogle, pendingOrcidTicket, setPendingOrcidTicket } = useAuth();
   const [form, setForm] = useState<FormState>(initialForm);
@@ -333,7 +338,7 @@ export const Register = () => {
       const payload: RegisterPayload = {
         email: form.email.trim(),
         password: form.password,
-        fullName: form.fullName.trim(),
+        fullName: prefixTitle(form.title, form.fullName),
         phoneNumber: form.phoneNumber.trim().replace(/[\s\-()]/g, ''),
         role: form.role,
         pdfUrl,
@@ -386,7 +391,7 @@ export const Register = () => {
         replace: true,
         state: {
           email: form.email.trim(),
-          fullName: form.fullName.trim(),
+          fullName: prefixTitle(form.title, form.fullName),
         },
       });
     } catch (err) {
@@ -487,32 +492,60 @@ export const Register = () => {
           </div>
         )}
 
-        <div className={styles.fieldGroup}>
-          <label
-            htmlFor="fullName"
-            className={`${styles.fieldLabel} ${styles['fieldLabel--required']}`}
-          >
-            {t('register.fullName', 'Full Name')}
-          </label>
-          <input
-            id="fullName"
-            name="fullName"
-            type="text"
-            className={`${styles.nativeInput} ${errors.fullName ? styles['nativeInput--error'] : ''}`}
-            placeholder={t('register.fullNamePlaceholder', 'e.g., Dr. Nguyen Van A')}
-            value={form.fullName}
-            onChange={handleChange}
-            onBlur={() => handleBlur('fullName')}
-            disabled={isSubmitting || isUploadingPdf || availableRoles.length === 0}
-            autoComplete="name"
-            aria-invalid={Boolean(errors.fullName)}
-            aria-describedby={errors.fullName ? 'fullName-error' : undefined}
-          />
-          <FieldError
-            id="fullName-error"
-            message={errors.fullName}
-            testId="register-error-fullName"
-          />
+        {/* Full Name — two-column row: Title select + Name input */}
+        <div className={styles.nameRow}>
+          <div className={styles.fieldGroup}>
+            <label
+              htmlFor="title"
+              className={styles.fieldLabel}
+            >
+              {t('register.title', 'Title')}
+            </label>
+            <select
+              id="title"
+              name="title"
+              className={`${styles.nativeSelect} ${errors.title ? styles['nativeSelect--error'] : ''}`}
+              value={form.title}
+              onChange={handleChange}
+              disabled={isSubmitting || isUploadingPdf || availableRoles.length === 0}
+              aria-label={t('register.title', 'Title')}
+            >
+              <option value="">{t('register.titlePlaceholder', '— Optional —')}</option>
+              {TITLE_OPTIONS.map((option) => (
+                <option key={option.code} value={option.code}>
+                  {t(`register.title.options.${option.labelKey}`, option.code)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className={styles.fieldGroup}>
+            <label
+              htmlFor="fullName"
+              className={`${styles.fieldLabel} ${styles['fieldLabel--required']}`}
+            >
+              {t('register.fullName', 'Full Name')}
+            </label>
+            <input
+              id="fullName"
+              name="fullName"
+              type="text"
+              className={`${styles.nativeInput} ${errors.fullName ? styles['nativeInput--error'] : ''}`}
+              placeholder={t('register.fullNamePlaceholder', 'e.g., Nguyen Van A')}
+              value={form.fullName}
+              onChange={handleChange}
+              onBlur={() => handleBlur('fullName')}
+              disabled={isSubmitting || isUploadingPdf || availableRoles.length === 0}
+              autoComplete="name"
+              aria-invalid={Boolean(errors.fullName)}
+              aria-describedby={errors.fullName ? 'fullName-error' : undefined}
+            />
+            <FieldError
+              id="fullName-error"
+              message={errors.fullName}
+              testId="register-error-fullName"
+            />
+          </div>
         </div>
 
         <div className={styles.fieldGroup}>
@@ -658,6 +691,42 @@ export const Register = () => {
           <FieldError id="role-error" message={errors.role} />
           {rolesError && <FieldError id="role-load-error" message={rolesError} />}
         </div>
+
+        {/* FE_ROLE_INFO_PANEL — short role description surfaced directly
+            below the role <select> so registrants see what each role does
+            on ARS the moment they pick it. Copy is sourced from the shared
+            `utils/roleInfo` module — the same source the
+            `RequestAdditionalRoleModal` already uses — so both surfaces
+            stay in lockstep. Admin is excluded because it is
+            DB-provisioned and never appears in the role select. */}
+        <section
+          className={styles.roleCapabilities}
+          aria-labelledby="registration-role-capabilities-title"
+          data-testid="register-role-capabilities"
+        >
+          <header className={styles.roleCapabilitiesHeader}>
+            {(() => {
+              const Icon = ROLE_INFO[form.role]?.icon;
+              return Icon ? (
+                <span className={styles.roleCapabilitiesIcon} aria-hidden="true">
+                  <Icon size={18} />
+                </span>
+              ) : null;
+            })()}
+            <span className={styles.roleCapabilitiesEyebrow}>
+              {t('register.roleInfoTag', 'Role at a glance')}
+            </span>
+          </header>
+          <h3
+            id="registration-role-capabilities-title"
+            className={styles.roleCapabilitiesTitle}
+          >
+            {t(`role.${form.role}`, form.role)}
+          </h3>
+          <p className={styles.roleCapabilitiesDescription}>
+            {roleDescription(form.role, locale === 'vi')}
+          </p>
+        </section>
 
         {isOrcidEligibleRole(form.role) && (
           <section
