@@ -3,6 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ReviewerAssignments } from '../../../../src/features/publication/reviewer/ReviewerAssignments';
 import { publicationAdapter } from '../../../../src/features/publication/api/publication.adapter';
+import { I18nProvider } from '../../../../src/i18n/I18nContext';
 import type { PublicationPaper } from '../../../../src/features/publication/types/publication';
 
 vi.mock('../../../../src/features/publication/api/publication.adapter', () => ({
@@ -33,6 +34,8 @@ const buildAssignedPaper = (
   aiRecommended: true,
   reviewerIdentityPublic: false,
   researcherVerificationStatus: 'VERIFIED',
+  // Tests need this so isVisibleReviewerAssignment(paper) returns true.
+  reviewRequestId: 1,
   reviewer: {
     reviewerName: 'Prior Reviewer',
     recommendation: 'REVISION_REQUIRED',
@@ -47,9 +50,11 @@ const buildAssignedPaper = (
 
 const renderList = () =>
   render(
-    <MemoryRouter>
-      <ReviewerAssignments />
-    </MemoryRouter>,
+    <I18nProvider>
+      <MemoryRouter>
+        <ReviewerAssignments />
+      </MemoryRouter>
+    </I18nProvider>,
   );
 
 describe('ReviewerAssignments list', () => {
@@ -59,7 +64,20 @@ describe('ReviewerAssignments list', () => {
 
   it('renders an assigned paper as an actionable row', async () => {
     (publicationAdapter.getReviewerAssignments as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
-      [buildAssignedPaper({})],
+      [
+        // Override reviewer so the paper is treated as in-progress (no
+        // prior recommendation submitted) — that puts it under the
+        // "Accepted · in progress" bucket where the "Ready for evaluation"
+        // actionable label appears.
+        buildAssignedPaper({
+          reviewer: {
+            reviewerName: 'Pending Reviewer',
+            recommendation: undefined,
+            privateComments: '',
+            privateScores: {},
+          },
+        }),
+      ],
     );
 
     renderList();
@@ -68,14 +86,15 @@ describe('ReviewerAssignments list', () => {
     expect(within(row).getByText('Assigned manuscript for review')).toBeInTheDocument();
     expect(within(row).getByText(/Under Review/i)).toBeInTheDocument();
     expect(within(row).getByText(/Ready for evaluation/i)).toBeInTheDocument();
-    expect(within(row).getByText('2026-08-06')).toBeInTheDocument();
-    expect(within(row).getByText('2026-08-20')).toBeInTheDocument();
-    expect(row).toHaveTextContent(/Editorial/i);
+    // Dates are rendered via Intl.DateTimeFormat — assert via locale-aware
+    // pattern instead of ISO strings.
+    expect(row).toHaveTextContent(/Aug\s+6,?\s+2026/i);
+    expect(row).toHaveTextContent(/Aug\s+20,?\s+2026/i);
+    expect(row).toHaveTextContent(/Assigned by an editor/i);
     expect(row).toHaveTextContent(/AI recommended:\s*Yes/i);
-    expect(within(row).getByRole('link', { name: /Assigned manuscript for review/i })).toHaveAttribute(
-      'href',
-      '/reviewer/assignments/assigned-1',
-    );
+    expect(
+      within(row).getByRole('link', { name: /Assigned manuscript for review/i }),
+    ).toHaveAttribute('href', '/reviewer/assignments/1');
   });
 
   it('does not render published records returned by an outdated assignment response', async () => {
@@ -122,7 +141,19 @@ describe('ReviewerAssignments list', () => {
   it('shows the awaiting-response label for REVIEWER_ASSIGNED status', async () => {
     (publicationAdapter.getReviewerAssignments as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
       [
-        buildAssignedPaper({ id: 'assigned-awaiting', status: 'REVIEWER_ASSIGNED' }),
+        // Override reviewer so `bucketFor` puts this paper in the
+        // "Response needed" bucket — the test is specifically checking
+        // the actionable label for REVIEWER_ASSIGNED status.
+        buildAssignedPaper({
+          id: 'assigned-awaiting',
+          status: 'REVIEWER_ASSIGNED',
+          reviewer: {
+            reviewerName: 'Pending Reviewer',
+            recommendation: undefined,
+            privateComments: '',
+            privateScores: {},
+          },
+        }),
       ],
     );
 

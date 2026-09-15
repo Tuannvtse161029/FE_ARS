@@ -240,8 +240,8 @@
 .statusScreening      { background: var(--status-info-surface); color: var(--status-info-text); }
 .statusVerification   { background: var(--status-warning-surface); color: var(--status-warning-text); }
 .statusReady          { background: var(--status-info-surface); color: var(--status-info-text); }
-.statusAssigned       { background: var(--status-info-surface); color: var(--status-info-text); }
-.statusUnderReview    { background: var(--status-info-surface); color: var(--status-info-text); }
+.statusAssigned       { background: var(--status-accent-surface); color: var(--status-accent-text); }
+.statusUnderReview    { background: var(--status-accent-surface); color: var(--status-accent-text); }
 .statusRevision       { background: var(--status-warning-surface); color: var(--status-warning-text); }
 .statusResubmitted    { background: var(--status-warning-surface); color: var(--status-warning-text); }
 .statusRecommendAccept { background: var(--status-success-surface); color: var(--status-success-text); }

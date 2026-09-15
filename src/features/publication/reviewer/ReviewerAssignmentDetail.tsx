@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, AlertTriangle, ClipboardCheck } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, CheckCircle2, RefreshCcw, ClipboardCheck } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
 import { publicationToast } from '../utils/publicationToast';
 import { statusLabel, reviewTypeLabel, paperTypeLabel, type PublicationPaper } from '../types/publication';
@@ -19,6 +19,7 @@ import {
   type SpecializedItem,
 } from './evaluationCriteriaResolver';
 import { ManuscriptViewer } from './ManuscriptViewer';
+import { VerbalAnchorList } from './VerbalAnchorList';
 import { fieldService } from '../../../services/field.service';
 import { PageHeader } from '../../../components/PageHeader';
 import { EmptyState } from '../../../components/EmptyState';
@@ -502,12 +503,13 @@ export const ReviewerAssignmentDetail = () => {
             && Number.isFinite(currentScore)
             && currentScore >= 1
             && currentScore <= item.maxScore;
-          const anchors = values.map((v) =>
-            t(`reviewer.detail.criterion.anchor`, undefined, {
-              value: v,
-              label: t(`reviewer.detail.criterion.scaleAnchors.${v}`, String(v)),
-            }),
-          ).join(' · ');
+          const anchors = values.map((v) => ({
+            value: v,
+            label: t(`reviewer.detail.criterion.scaleAnchors.${v}`, String(v)),
+          }));
+          // Suppress unused-variable lint; keep anchors array for future use
+          // (e.g. tooltip rendering) — VerbalAnchorList reads the i18n keys directly.
+          void anchors;
           return (
             <fieldset key={item.code} className={reviewer.specializedCriterion}>
               <legend>
@@ -549,9 +551,11 @@ export const ReviewerAssignmentDetail = () => {
                         : `— / ${item.maxScore}`}
                     </span>
                   </span>
-                  <small className={reviewer.criterionAnchorRow}>
-                    {t('reviewer.detail.criterion.scoreHelp', undefined, { anchors })}
-                  </small>
+                  <VerbalAnchorList
+                    min={1}
+                    max={item.maxScore}
+                    selectedScore={currentScore}
+                  />
                 </label>
                 <label htmlFor={`spec-note-${item.code}`}>
                   <span className={reviewer.criterionLabelRow}>
@@ -600,12 +604,12 @@ export const ReviewerAssignmentDetail = () => {
             (_, idx) => criterion.min + idx,
           );
           const scoreValid = isCriterionScoreValid(criterion, draft.scores[criterion.key]);
-          const anchors = values.map((v) =>
-            t(`reviewer.detail.criterion.anchor`, undefined, {
-              value: v,
-              label: t(`reviewer.detail.criterion.scaleAnchors.${v}`, String(v)),
-            }),
-          ).join(' · ');
+          const anchors = values.map((v) => ({
+            value: v,
+            label: t(`reviewer.detail.criterion.scaleAnchors.${v}`, String(v)),
+          }));
+          // Suppress unused-variable lint; VerbalAnchorList reads i18n directly.
+          void anchors;
           const criterionIndex = criterionIndexMap[criterion.key];
 
           return (
@@ -643,9 +647,11 @@ export const ReviewerAssignmentDetail = () => {
                       {draft.scores[criterion.key]} / {criterion.max}
                     </span>
                   </div>
-                  <small className={reviewer.criterionAnchorRow}>
-                    {t('reviewer.detail.criterion.scoreHelp', undefined, { anchors })}
-                  </small>
+                  <VerbalAnchorList
+                    min={criterion.min}
+                    max={criterion.max}
+                    selectedScore={draft.scores[criterion.key]}
+                  />
                 </div>
                 {/* Notes Block */}
                 <div className={reviewer.notesBlock}>
@@ -797,17 +803,37 @@ export const ReviewerAssignmentDetail = () => {
                 <button
                   type="button"
                   className={`${reviewer.recommendationBtn} ${reviewer.recommendationBtnApproved} ${draft.recommendation === 'ACCEPT' ? reviewer.selected : ''}`}
-                  onClick={() => setDraft((current) => ({ ...current, recommendation: 'ACCEPT' }))}
+                  onClick={() =>
+                    setDraft((current) => ({
+                      ...current,
+                      recommendation:
+                        current.recommendation === 'ACCEPT' ? '' : 'ACCEPT',
+                    }))
+                  }
                   aria-pressed={draft.recommendation === 'ACCEPT'}
+                  aria-disabled={
+                    draft.recommendation != null && draft.recommendation !== '' && draft.recommendation !== 'ACCEPT'
+                  }
                 >
+                  <CheckCircle2 size={15} aria-hidden />
                   {t('reviewer.detail.final.recommendation.accept')}
                 </button>
                 <button
                   type="button"
                   className={`${reviewer.recommendationBtn} ${reviewer.recommendationBtnRevision} ${draft.recommendation === 'REVISION_REQUIRED' ? reviewer.selected : ''}`}
-                  onClick={() => setDraft((current) => ({ ...current, recommendation: 'REVISION_REQUIRED' }))}
+                  onClick={() =>
+                    setDraft((current) => ({
+                      ...current,
+                      recommendation:
+                        current.recommendation === 'REVISION_REQUIRED' ? '' : 'REVISION_REQUIRED',
+                    }))
+                  }
                   aria-pressed={draft.recommendation === 'REVISION_REQUIRED'}
+                  aria-disabled={
+                    draft.recommendation != null && draft.recommendation !== '' && draft.recommendation !== 'REVISION_REQUIRED'
+                  }
                 >
+                  <RefreshCcw size={15} aria-hidden />
                   {t('reviewer.detail.final.recommendation.revision')}
                 </button>
               </div>

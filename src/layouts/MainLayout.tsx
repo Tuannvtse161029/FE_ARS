@@ -39,7 +39,6 @@ import {
   UserCog as AccountsIcon,
   Banknote as TransactionsIcon,
   Flag as ReportsIcon,
-  Package as PackagesIcon,
   ScrollText as AuditLogsIcon,
   ShieldCheck as PoliciesIcon,
   Receipt as AnnualFeesIcon,
@@ -845,22 +844,6 @@ export const MainLayout = () => {
             omitted for Admin — the header dropdown's admin account
             menu is the canonical Admin identity surface instead. */}
         <div className={styles.sidebarBottomGroup}>
-          {showSubscriptionFooter && (
-            <NavLink
-              to={ROUTES.SUBSCRIPTION}
-              end={false}
-              aria-label={copy('My Subscription', 'Gói đăng ký của tôi')}
-              title={copy('My Subscription', 'Gói đăng ký của tôi')}
-              className={({ isActive }) =>
-                `${styles.navItem} ${isActive ? styles.navItemActive : ''}`
-              }
-            >
-              <span className={styles.navIcon}>
-                <PackagesIcon size={20} />
-              </span>
-              <span className={styles.navLabel}>{copy('My Subscription', 'Gói đăng ký của tôi')}</span>
-            </NavLink>
-          )}
           {showProfileFooter && (
             <NavLink
               to={ROUTES.PROFILE}

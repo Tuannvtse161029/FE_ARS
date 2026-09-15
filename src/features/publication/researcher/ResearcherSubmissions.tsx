@@ -11,42 +11,47 @@ import { StatusBadge } from '../../../components/common/StatusBadge';
 import { Button } from '../../../components/Button/Button';
 import { SortableHeader } from '../../../components/table/SortableHeader';
 import {
-  getSubmittedPaperLabel,
-  type SubmittedPaperTone,
-} from '../utils/statusPresentation';
-import {
   paperTypeLabel,
   type PublicationPaper,
-  type PublicationStatus,
 } from '../types/publication';
 import { formatDisplayDate } from '../../../utils/datetime';
 import { useT } from '../../../i18n/I18nContext';
+import {
+  RESEARCHER_STATUS_FILTER_OPTIONS,
+  toResearcherBucket,
+  toResearcherBucketTone,
+  type ResearcherBucket,
+  type ResearcherBucketTone,
+} from './researcherStatusGroups';
 import styles from './researcher.module.css';
 
 /** Sortable column ids for the Researcher Submissions table. */
 type SortColumn = 'title' | 'status' | 'submittedAt';
 
-/** Status filter options shown in the toolbar dropdown. "ALL" shows every
- *  paper; each specific value filters to that exact backend status. */
-type StatusFilter = 'ALL' | PublicationStatus;
+/**
+ * Single status bucket filter — the 5 user-facing buckets plus 'ALL'.
+ * Replaces the per-BE-status filter that previously exposed every
+ * PublicationStatus individually.
+ */
+type StatusFilter = ResearcherBucket;
 
 const RESEARCHER_ACCENT = 'var(--ars-researcher)';
 
-/** The six filterable status buckets in the dropdown.
- *  "Submitted papers" maps the five specified BE states; "Other" collects
- *  every remaining backend status so the researcher can still see those rows. */
-const STATUS_FILTER_OPTIONS: ReadonlyArray<{
-  value: StatusFilter;
-  i18nKey: string;
-}> = [
-  { value: 'ALL',                             i18nKey: 'researcher.submissions.filter.allStatuses' },
-  { value: 'SUBMITTED',                       i18nKey: 'researcher.submissions.filter.submitted' },
-  { value: 'REVIEWER_ASSIGNED',               i18nKey: 'researcher.submissions.filter.reviewerAssigned' },
-  { value: 'PUBLISHED',                       i18nKey: 'researcher.submissions.filter.published' },
-  { value: 'ADMIN_REJECTED',                   i18nKey: 'researcher.submissions.filter.adminRejected' },
-  { value: 'REVIEWER_RECOMMENDED_REJECT',      i18nKey: 'researcher.submissions.filter.reviewerRecommendedImprovement' },
-  { value: 'DRAFT',                           i18nKey: 'researcher.submissions.filter.draft' },
-];
+/**
+ * Map a Researcher's bucket tone → matching StatusBadge variant.
+ * StatusBadge receives the variant via the `status` prop and resolves
+ * the corresponding palette token.
+ */
+const BUCKET_TONE_TO_VARIANT: Record<ResearcherBucketTone, string> = {
+  pending: 'pubBucketPending',
+  verified: 'pubBucketVerified',
+  invalid: 'pubBucketInvalid',
+  published: 'pubBucketPublished',
+  needRevision: 'pubBucketNeedRevision',
+  other: 'pubBucketOther',
+};
+
+/** Friendly display labels for the 5 user-facing buckets. */
 
 const formatDate = (iso: string | undefined): string => {
   if (!iso) return '—';
@@ -104,12 +109,15 @@ export const ResearcherSubmissions = () => {
     [papers],
   );
 
-  // Count papers per status filter option so the dropdown shows accurate totals.
+  // Count papers per bucket so the tab bar shows accurate totals.
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = { ALL: papers.length };
-    for (const opt of STATUS_FILTER_OPTIONS) {
+    for (const opt of RESEARCHER_STATUS_FILTER_OPTIONS) {
       if (opt.value === 'ALL') continue;
-      counts[opt.value] = papers.filter((p) => p.status === opt.value).length;
+      counts[opt.value] = papers.filter((p) => {
+        const bucket = toResearcherBucket(p.status);
+        return bucket === opt.value;
+      }).length;
     }
     return counts;
   }, [papers]);
@@ -155,8 +163,11 @@ export const ResearcherSubmissions = () => {
   const visiblePapers = useMemo(() => {
     const term = search.trim().toLowerCase();
     return papers.filter((paper) => {
-      // Apply status filter
-      if (statusFilter !== 'ALL' && paper.status !== statusFilter) return false;
+      // Apply status filter (bucket filter)
+      if (statusFilter !== 'ALL') {
+        const bucket = toResearcherBucket(paper.status);
+        if (bucket !== statusFilter) return false;
+      }
       // Apply search filter
       if (!term) return true;
       const haystack = [
@@ -305,7 +316,7 @@ export const ResearcherSubmissions = () => {
               className={styles.tabBar}
               onKeyDown={handleTabKeyDown}
             >
-              {STATUS_FILTER_OPTIONS.map((opt) => {
+              {RESEARCHER_STATUS_FILTER_OPTIONS.map((opt) => {
                 const count = opt.value === 'ALL' ? papers.length : (statusCounts[opt.value] ?? 0);
                 const isSelected = statusFilter === opt.value;
                 return (
@@ -315,10 +326,11 @@ export const ResearcherSubmissions = () => {
                     type="button"
                     className={styles.tab}
                     aria-selected={isSelected}
+                    aria-description={t(opt.descriptionKey)}
                     tabIndex={isSelected ? 0 : -1}
                     onClick={() => setStatusFilter(opt.value)}
                   >
-                    {t(opt.i18nKey)}
+                    {t(opt.labelKey)}
                     <span className={styles.tabCount}>{count}</span>
                   </button>
                 );
@@ -390,36 +402,10 @@ export const ResearcherSubmissions = () => {
                 </thead>
                 <tbody>
                   {sortedPapers.map((paper) => {
-                    const displayLabel = getSubmittedPaperLabel(paper.status);
-
-                    // Determine what tone the next-action chip should use, based
-                    // on the backend status.
-                    const nextActionTone = ((): SubmittedPaperTone => {
-                      switch (paper.status) {
-                        case 'DRAFT':
-                        case 'REVISION_REQUIRED':
-                        case 'RESEARCHER_VERIFICATION_REQUIRED':
-                          return 'submitted';
-                        case 'SUBMITTED':
-                        case 'ADMIN_SCREENING':
-                        case 'READY_FOR_REVIEWER':
-                        case 'REVIEWER_ASSIGNED':
-                        case 'RESUBMITTED':
-                        case 'UNDER_REVIEW':
-                          return 'assigned';
-                        case 'REVIEWER_RECOMMENDED_ACCEPT':
-                        case 'ADMIN_APPROVED':
-                          return 'assigned';
-                        case 'PUBLISHED':
-                          return 'published';
-                        case 'ADMIN_REJECTED':
-                          return 'rejected';
-                        case 'REVIEWER_RECOMMENDED_REJECT':
-                          return 'improvement';
-                        default:
-                          return 'unknown';
-                      }
-                    })();
+                    const bucket = toResearcherBucket(paper.status);
+                    const bucketLabel = bucket ?? 'Other';
+                    const bucketTone = toResearcherBucketTone(paper.status);
+                    const badgeVariant = BUCKET_TONE_TO_VARIANT[bucketTone];
 
                     const nextActionLabel = (() => {
                       switch (paper.status) {
@@ -437,7 +423,6 @@ export const ResearcherSubmissions = () => {
                           return t('researcher.submissions.action.awaitingAdmin');
                         case 'UNDER_REVIEW':
                         case 'REVIEWER_RECOMMENDED_ACCEPT':
-                        case 'REVIEWER_RECOMMENDED_REJECT':
                           return t('researcher.submissions.action.awaitingDecision');
                         case 'ADMIN_APPROVED':
                           return t('researcher.submissions.action.awaitingPublication');
@@ -446,9 +431,24 @@ export const ResearcherSubmissions = () => {
                         case 'ADMIN_REJECTED':
                         case 'WITHDRAWN':
                         case 'INACTIVE':
-                          return displayLabel;
+                          return bucketLabel;
+                        case 'REVIEWER_RECOMMENDED_REJECT':
+                          return t('researcher.submissions.action.awaitingDecision');
                         default:
                           return t('researcher.submissions.action.unknown');
+                      }
+                    })();
+
+                    // Map bucket tone to the CSS data-tone attribute used by
+                    // .nextAction (inline chip under the title).
+                    const nextActionTone = (() => {
+                      switch (bucketTone) {
+                        case 'pending':    return 'submitted';
+                        case 'verified':   return 'assigned';
+                        case 'invalid':    return 'rejected';
+                        case 'published':  return 'published';
+                        case 'needRevision': return 'improvement';
+                        case 'other':      return 'inactive';
                       }
                     })();
 
@@ -484,8 +484,8 @@ export const ResearcherSubmissions = () => {
 
                         <td>
                           <StatusBadge
-                            status={paper.status}
-                            label={displayLabel}
+                            status={badgeVariant}
+                            label={bucketLabel}
                             size="sm"
                           />
                         </td>

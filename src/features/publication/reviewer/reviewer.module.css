@@ -29,20 +29,19 @@
 }
 
 /* ── Tab Filter Bar ────────────────────────────────────── */
-.tabFilterBar {
+.tabBar {
   display: flex;
+  gap: var(--space-1);
   flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-bottom: var(--space-3);
-  border-bottom: 1px solid var(--border-subtle);
   padding-bottom: var(--space-2);
+  margin-bottom: var(--space-3);
 }
 
-.tabButton {
+.tab {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 8px 16px;
+  padding: 8px 14px;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   background: var(--surface-raised);
@@ -51,30 +50,31 @@
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   cursor: pointer;
+  white-space: nowrap;
   transition:
     background-color var(--transition-fast),
     border-color var(--transition-fast),
     color var(--transition-fast);
 }
 
-.tabButton:hover {
+.tab:hover {
   background: var(--control-bg-hover);
   border-color: var(--border-strong);
   color: var(--ink-primary);
 }
 
-.tabButton:focus-visible {
+.tab:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
-.tabButtonActive {
+.tabActive {
   background: var(--accent-primary);
   border-color: var(--accent-primary);
   color: var(--ink-primary);
 }
 
-.tabButtonActive:hover {
+.tabActive:hover {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
   color: var(--ink-primary);
@@ -84,8 +84,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 24px;
-  height: 20px;
+  min-width: 22px;
+  height: 18px;
   padding: 0 6px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.2);
@@ -94,7 +94,7 @@
   font-family: var(--font-family-mono);
 }
 
-.tabButton:not(.tabButtonActive) .tabCount {
+.tab:not(.tabActive) .tabCount {
   background: var(--control-bg);
   color: var(--ink-muted);
 }
@@ -108,16 +108,28 @@
 .tableWrap { overflow-x: auto; background: var(--surface-raised); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); }
 .table { width: 100%; border-collapse: collapse; font-size: var(--font-size-sm); }
 .table thead th { padding: var(--space-3) var(--space-4); background: var(--surface-sunken); border-bottom: 1px solid var(--border-subtle); color: var(--ink-muted); font-size: var(--font-size-xs); text-align: left; text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; }
-.table tbody td { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border-subtle); color: var(--ink-primary); vertical-align: middle; }
+.table tbody td { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border-subtle); color: var(--ink-primary); vertical-align: top; }
 .table tbody tr:last-child td { border-bottom: 0; }
 .table tbody tr:hover { background: var(--control-bg-hover); }
 .thTitle, .tdTitle { min-width: 220px; max-width: 360px; }
+.thAbstract, .tdAbstract { min-width: 200px; max-width: 320px; }
 .thActions, .tdActions { width: 1%; text-align: right; white-space: nowrap; }
-.titleLink { display: block; color: var(--ink-primary); font-weight: var(--font-weight-semibold); line-height: var(--line-height-tight); text-decoration: none; word-break: break-word; }
+.titleLink { display: block; color: var(--ink-primary); font-weight: var(--font-weight-semibold); font-size: var(--font-size-base); line-height: var(--line-height-tight); text-decoration: none; word-break: break-word; }
 .titleLink:hover { color: var(--accent-sage); text-decoration: underline; text-underline-offset: 3px; }
 .titleLink:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
 .titleMeta, .mono { color: var(--ink-muted); font-size: var(--font-size-xs); }
 .titleMeta { display: block; margin-top: var(--space-1); }
+.assignmentAbstract { display: block; margin-top: var(--space-1); color: var(--ink-secondary); font-size: var(--font-size-sm); line-height: var(--line-height-normal); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; }
+.statusCell { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.statusCell .bucketActionable { font-size: var(--font-size-xs); }
+.bucketActionable { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: var(--radius-sm); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); white-space: nowrap; }
+.bucketActionable[data-tone="submitted"] { background: var(--ars-warning-bg); color: var(--ars-warning); }
+.bucketActionable[data-tone="evaluated"] { background: var(--ars-success-bg); color: var(--ars-success); }
+.bucketActionable[data-tone="waiting"] { background: var(--control-bg); color: var(--ink-secondary); }
+.bucketActionable[data-tone="unknown"] { background: var(--status-inactive-surface); color: var(--status-inactive-text); }
+.bucketNextAction { color: var(--accent-sage); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); text-decoration: none; }
+.bucketNextAction:hover { text-decoration: underline; text-underline-offset: 3px; }
+.bucketNextAction:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-radius: var(--radius-sm); }
 .mono { font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 .reviewGate { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--space-4); align-items: center; padding: var(--space-4) var(--space-5); background: var(--status-info-surface); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); transition: background-color var(--transition-fast), border-color var(--transition-fast); }
@@ -694,7 +706,9 @@
   white-space: nowrap;
 }
 
-/* Verbal anchor scale */
+/* Verbal anchor scale — now a vertical 10-row list (one item per
+   score) so reviewers can match their pick to its descriptor without
+   squinting at a comma-separated inline string. */
 .criterionAnchorRow {
   display: block;
   margin-top: var(--space-1);
@@ -702,6 +716,56 @@
   font-size: var(--font-size-xs);
   line-height: var(--line-height-normal);
   font-family: var(--font-family-mono);
+}
+
+.criterionAnchorList {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+
+.criterionAnchorItem {
+  display: grid;
+  grid-template-columns: 28px 16px 1fr;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 4px var(--space-3);
+  font-size: var(--font-size-xs);
+  color: var(--ink-secondary);
+  font-family: var(--font-family-mono);
+  transition: background-color var(--transition-fast);
+}
+
+.criterionAnchorItem:nth-child(odd) {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.criterionAnchorItemActive {
+  background: color-mix(in srgb, var(--accent-sage) 22%, var(--surface-raised));
+  color: var(--ink-primary);
+  font-weight: var(--font-weight-bold);
+  border-left: 3px solid var(--accent-sage);
+  padding-left: calc(var(--space-3) - 3px);
+}
+
+.criterionAnchorValue {
+  font-weight: var(--font-weight-bold);
+  color: var(--ink-primary);
+  text-align: right;
+}
+
+.criterionAnchorDash {
+  color: var(--ink-muted);
+}
+
+.criterionAnchorLabel {
+  color: var(--ink-primary);
 }
 
 /* Notes block */
@@ -1155,8 +1219,8 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  padding: var(--space-3) var(--space-5);
-  min-height: var(--control-height-lg);
+  padding: var(--space-2) var(--space-4);
+  min-height: var(--control-height-md);
   border: 2px solid var(--border-strong);
   border-radius: var(--radius-md);
   background: var(--surface-raised);
@@ -1170,8 +1234,13 @@
     border-color var(--transition-fast),
     color var(--transition-fast),
     box-shadow var(--transition-fast);
-  flex: 1;
-  min-width: 140px;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.recommendationBtn[aria-disabled="true"]:not(:disabled) {
+  opacity: 0.55;
+  cursor: pointer;
 }
 
 .recommendationBtn:hover:not(:disabled) {
