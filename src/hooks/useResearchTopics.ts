@@ -51,6 +51,8 @@ export const useResearchTopics = (): UseResearchTopicsResult => {
             // at the end of the table.
             createdAt: typeof t.createdAt === 'string' ? t.createdAt : undefined,
             updatedAt: typeof t.updatedAt === 'string' ? t.updatedAt : undefined,
+            lecturerId: typeof t.lecturerId === 'number' ? t.lecturerId : null,
+            lecturerName: typeof t.lecturerName === 'string' ? t.lecturerName : null,
           });
         }
       }

@@ -767,6 +767,10 @@ export const ResearchTopicsPage = () => {
                     const idLabel = tid >= 0 ? formatTopicId(tid) : '—';
                     const topicStatus =
                       (topic.status ?? 'OPEN') as ResearchTopicStatus;
+                    const isOwner =
+                      !topic.lecturerId ||
+                      !currentLecturerId ||
+                      topic.lecturerId === currentLecturerId;
                     const canComplete = canTransitionResearchTopic(
                       topicStatus,
                       'COMPLETED',
@@ -835,7 +839,7 @@ export const ResearchTopicsPage = () => {
                                 {t('lecturer.topics.managePhases')}
                                 <span className={styles.managePhasesHint}>
                                   {t('lecturer.topics.assignGroupFirst')}
-                               </span>
+                                </span>
                               </button>
                             ) : (
                               <button
@@ -858,8 +862,12 @@ export const ResearchTopicsPage = () => {
                                 type="button"
                                 className={styles.topicActionSecondary}
                                 onClick={() => openEditModal(topic)}
-                                disabled={!topic.id}
-                                title={t('lecturer.topics.editHint')}
+                                disabled={!topic.id || !isOwner}
+                                title={
+                                  !isOwner
+                                    ? t('lecturer.topics.editDisabledNotOwner')
+                                    : t('lecturer.topics.editHint')
+                                }
                               >
                                 <Pencil size={14} aria-hidden />
                                 {t('lecturer.topics.edit')}
@@ -871,10 +879,12 @@ export const ResearchTopicsPage = () => {
                                   void handleTopicTransition(topic, 'COMPLETED')
                                 }
                                 disabled={
-                                  !topic.id || !canComplete || inflight !== null
+                                  !topic.id || !canComplete || inflight !== null || !isOwner
                                 }
                                 title={
-                                  canComplete
+                                  !isOwner
+                                    ? t('lecturer.topics.editDisabledNotOwner')
+                                    : canComplete
                                     ? t('lecturer.topics.completeHint')
                                     : t('lecturer.topics.completeDisHint')
                                 }
@@ -895,10 +905,16 @@ export const ResearchTopicsPage = () => {
                                 className={styles.materialsTopicBtn}
                                 onClick={() => handleOpenMaterials(topic)}
                                 disabled={!topic.id}
-                                title={t('lecturer.topics.materialsHint')}
+                                title={
+                                  isOwner
+                                    ? t('lecturer.topics.materialsHint')
+                                    : t('lecturer.topics.materialsReadOnlyHint')
+                                }
                               >
                                 <Library size={14} aria-hidden />
-                                {t('lecturer.topics.manageMaterials')}
+                                {isOwner
+                                  ? t('lecturer.topics.manageMaterials')
+                                  : t('lecturer.topics.viewMaterials')}
                               </button>
                             </div>
                           </div>

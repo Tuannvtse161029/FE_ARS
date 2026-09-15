@@ -30,6 +30,8 @@ export interface ResearchTopic {
    */
   createdAt?: string;
   updatedAt?: string;
+  lecturerId?: number | null;
+  lecturerName?: string | null;
 }
 
 export interface ResearchGroup {

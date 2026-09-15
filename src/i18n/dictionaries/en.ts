@@ -1273,7 +1273,12 @@ export const dictionary: Dictionary = {
     'lecturer.topics.completeHint': 'Mark this topic as completed — archival step.',
     'lecturer.topics.completeDisHint': 'Topic must be in ASSIGNED status to be marked as completed.',
     'lecturer.topics.manageMaterials': 'Manage Materials',
+    'lecturer.topics.viewMaterials': 'View Materials',
     'lecturer.topics.materialsHint': 'Manage the learning materials scoped to this topic',
+    'lecturer.topics.materialsReadOnlyHint': 'View learning materials (read-only for topics created by another lecturer)',
+    'lecturer.topics.editDisabledNotOwner': 'You cannot edit topics created by another lecturer.',
+    'lecturer.topics.materialsReadOnlyNotice': 'Read-only mode: This topic is managed by {name}. Only the topic owner can attach or detach materials.',
+    'lecturer.topics.materialsReadOnlyFormNotice': 'Adding or attaching materials is restricted to the topic owner.',
     
     'lecturer.topics.createTitle': 'Create New Research Topic',
     'lecturer.topics.createSubtitle': 'Define a topic to be assigned to research groups',

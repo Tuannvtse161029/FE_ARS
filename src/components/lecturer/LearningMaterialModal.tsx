@@ -19,7 +19,9 @@ import {
   ExternalLink,
   Check,
   Library,
+  Info,
 } from 'lucide-react';
+import { useI18n } from '../../i18n/I18nContext';
 import { useAuth } from '../../context/AuthContext';
 import { topicLearningMaterialService } from '../../services/researchTopic.service';
 import type { TopicLearningMaterialResponse } from '../../types/researchWorkflowDtos';
@@ -57,9 +59,14 @@ export const LearningMaterialModal = ({
   onClose,
   onSuccess,
 }: LearningMaterialModalProps) => {
+  const { t } = useI18n();
   const { user } = useAuth();
   const lecturerId = user?.userId ?? null;
   const topicId = topic?.id ?? topic?.topicId ?? null;
+  const isOwner =
+    !topic?.lecturerId ||
+    !lecturerId ||
+    topic.lecturerId === lecturerId;
 
   const [materials, setMaterials] = useState<TopicLearningMaterialResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -277,6 +284,18 @@ export const LearningMaterialModal = ({
           </button>
         </div>
 
+        {!isOwner && (
+          <div className={styles.readOnlyBanner} role="status">
+            <Info size={16} aria-hidden />
+            <span>
+              {t('lecturer.topics.materialsReadOnlyNotice').replace(
+                '{name}',
+                topic.lecturerName || 'another lecturer',
+              )}
+            </span>
+          </div>
+        )}
+
         {banner.visible && (
           <div
             className={`${styles.banner} ${
@@ -357,7 +376,7 @@ export const LearningMaterialModal = ({
                           Open
                         </a>
                       )}
-                      {id >= 0 && (
+                      {id >= 0 && isOwner && (
                         <button
                           type="button"
                           className={styles.deleteBtn}
@@ -375,80 +394,87 @@ export const LearningMaterialModal = ({
           )}
         </div>
 
-        <form onSubmit={handleAdd} className={styles.form}>
-          <span className={styles.formTitle}>
-            <Plus size={14} aria-hidden /> Add a new learning material
-          </span>
-          <div className={styles.formRow}>
-            <label className={styles.formLabel} htmlFor="mat-title">
-              {newSource?.kind === 'library' ? 'Title (Optional for library)' : '* Title'}
-            </label>
-            <input
-              id="mat-title"
-              type="text"
-              className={styles.formInput}
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              placeholder={
-                newSource?.kind === 'library'
-                  ? 'Keep existing title or enter override'
-                  : 'Reference syllabus — Week 1'
-              }
-              required={newSource?.kind !== 'library'}
-            />
-          </div>
-          <div className={styles.formRow}>
-            <label className={styles.formLabel} htmlFor="lmMaterialSourceUrl">
-              * File URL
-            </label>
-            <MaterialSourcePicker
-              value={newSource}
-              onChange={(v) => {
-                setNewSource(v);
-                if (pickerError) setPickerError(null);
-              }}
-              errorMessage={pickerError}
-              inputId="lmMaterialSourceUrl"
-            />
-            <span className={styles.helperText}>
-              Link to an existing URL, upload a new PDF, or pick from your
-              library — the file URL is what students will open.
+        {isOwner ? (
+          <form onSubmit={handleAdd} className={styles.form}>
+            <span className={styles.formTitle}>
+              <Plus size={14} aria-hidden /> Add a new learning material
             </span>
-          </div>
-          {formError && (
-            <div className={styles.formErrorBanner} role="alert">
-              <AlertTriangle size={14} aria-hidden />
-              <span>{formError}</span>
+            <div className={styles.formRow}>
+              <label className={styles.formLabel} htmlFor="mat-title">
+                {newSource?.kind === 'library' ? 'Title (Optional for library)' : '* Title'}
+              </label>
+              <input
+                id="mat-title"
+                type="text"
+                className={styles.formInput}
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                placeholder={
+                  newSource?.kind === 'library'
+                    ? 'Keep existing title or enter override'
+                    : 'Reference syllabus — Week 1'
+                }
+                required={newSource?.kind !== 'library'}
+              />
             </div>
-          )}
+            <div className={styles.formRow}>
+              <label className={styles.formLabel} htmlFor="lmMaterialSourceUrl">
+                * File URL
+              </label>
+              <MaterialSourcePicker
+                value={newSource}
+                onChange={(v) => {
+                  setNewSource(v);
+                  if (pickerError) setPickerError(null);
+                }}
+                errorMessage={pickerError}
+                inputId="lmMaterialSourceUrl"
+              />
+              <span className={styles.helperText}>
+                Link to an existing URL, upload a new PDF, or pick from your
+                library — the file URL is what students will open.
+              </span>
+            </div>
+            {formError && (
+              <div className={styles.formErrorBanner} role="alert">
+                <AlertTriangle size={14} aria-hidden />
+                <span>{formError}</span>
+              </div>
+            )}
 
-          <div className={styles.formFooter}>
-            <button
-              type="button"
-              className={styles.cancelBtn}
-              onClick={handleClose}
-              disabled={isSubmitting}
-            >
-              Close
-            </button>
-            <button
-              type="submit"
-              className={styles.primaryBtn}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <Loader size={14} className={styles.spinningIcon} aria-hidden />
-              ) : (
-                <Plus size={14} aria-hidden />
-              )}
-              {isSubmitting
-                ? 'Adding…'
-                : newSource?.kind === 'library'
-                ? 'Attach Material'
-                : 'Add Material'}
-            </button>
+            <div className={styles.formFooter}>
+              <button
+                type="button"
+                className={styles.cancelBtn}
+                onClick={handleClose}
+                disabled={isSubmitting}
+              >
+                Close
+              </button>
+              <button
+                type="submit"
+                className={styles.primaryBtn}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <Loader size={14} className={styles.spinningIcon} aria-hidden />
+                ) : (
+                  <Plus size={14} aria-hidden />
+                )}
+                {isSubmitting
+                  ? 'Adding…'
+                  : newSource?.kind === 'library'
+                  ? 'Attach Material'
+                  : 'Add Material'}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className={styles.formReadOnlyNotice}>
+            <Info size={14} aria-hidden />
+            <span>{t('lecturer.topics.materialsReadOnlyFormNotice')}</span>
           </div>
-        </form>
+        )}
       </div>
 
       {/* Detach confirmation modal */}
