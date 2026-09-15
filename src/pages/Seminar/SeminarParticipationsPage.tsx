@@ -18,7 +18,12 @@ import { useLocale } from '../../i18n/I18nContext';
 import { PageHeader } from '../../components/PageHeader';
 import { useAuth } from '../../context/AuthContext';
 import { ParticipationTable } from '../../components/seminar/ParticipationTable';
-import { useSeminarRoleContext } from '../../hooks/useSeminar';
+import { SeminarCalendar } from '../../components/seminar/SeminarCalendar';
+import { SeminarDetailModal } from '../../components/seminar/SeminarDetailModal';
+import { useSeminarRoleContext, useSeminars } from '../../hooks/useSeminar';
+import { useSeminarCalendar } from '../../hooks/useSeminarCalendar';
+import { useState } from 'react';
+import type { SeminarCard } from '../../services/seminar.service';
 import styles from './SeminarParticipationsPage.module.css';
 
 const formatRole = (role: string, locale: 'vi' | 'en'): string => {
@@ -46,6 +51,27 @@ export const SeminarParticipationsPage= () => {
   const { currentRole } = useSeminarRoleContext();
   const roleLabel = currentRole ? formatRole(currentRole, locale) : 'Participant';
   const displayName = user?.username || user?.email || copy('researcher', 'người dùng');
+
+  const {
+    hostingSeminars,
+    joiningSeminars,
+  } = useSeminarCalendar();
+
+  // Pull seminar cards so the detail modal has full participant metadata.
+  const { seminars: seminarCards } = useSeminars();
+
+  // Detail modal state — opens when user clicks a calendar event.
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [detailSeminar, setDetailSeminar] = useState<SeminarCard | null>(null);
+
+  const handleCalendarEventClick = (sem: { seminarId?: number | null }) => {
+    if (sem.seminarId == null) return;
+    const matched = seminarCards.find((s) => s.seminarId === sem.seminarId);
+    if (matched) {
+      setDetailSeminar(matched);
+      setShowDetailModal(true);
+    }
+  };
 
   return (
     <div className={styles.page} data-testid="seminar-participations-page">
@@ -77,8 +103,25 @@ export const SeminarParticipationsPage= () => {
           </div>
         </div>
 
+        <SeminarCalendar
+          hostingSeminars={hostingSeminars}
+          joiningSeminars={joiningSeminars}
+          onEventClick={handleCalendarEventClick}
+        />
+
         <ParticipationTable />
       </div>
+
+      {showDetailModal && detailSeminar && (
+        <SeminarDetailModal
+          isOpen={showDetailModal}
+          seminar={detailSeminar}
+          onClose={() => {
+            setShowDetailModal(false);
+            setDetailSeminar(null);
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -63,6 +63,8 @@ import { Button } from '../../components/Button/Button';
 import { InviteMoreParticipantsModal } from '../../components/seminar/InviteMoreParticipantsModal';
 import { SeminarDetailModal } from '../../components/seminar/SeminarDetailModal';
 import { ParticipationTable } from '../../components/seminar/ParticipationTable';
+import { SeminarCalendar } from '../../components/seminar/SeminarCalendar';
+import { useSeminarCalendar } from '../../hooks/useSeminarCalendar';
 import styles from './SeminarWorkspace.module.css';
 
 const SEMINARS_PER_PAGE = 3;
@@ -107,6 +109,7 @@ export const SeminarWorkspace = () => {
 
   const [activeTab, setActiveTab] = useState<TabKey>('all');
   const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<WorkspaceTab>('manage');
+  const [showCalendar, setShowCalendar] = useState(false);
   const [currentSeminarPage, setCurrentSeminarPage] = useState(1);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showGeneratedModal, setShowGeneratedModal] = useState(false);
@@ -258,6 +261,12 @@ export const SeminarWorkspace = () => {
   } = useSeminars();
 
   const { currentRole, currentUserId, canModify } = useSeminarRoleContext();
+
+  // Calendar data — separate fetch for the calendar widget.
+  const {
+    hostingSeminars,
+    joiningSeminars,
+  } = useSeminarCalendar();
 
   const announce = useCallback(
     (
@@ -1014,6 +1023,41 @@ export const SeminarWorkspace = () => {
           {copy('My Participations', 'Lượt tham gia của tôi')}
         </button>
       </div>
+
+      {/* Calendar toggle — always visible */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          onClick={() => setShowCalendar((v) => !v)}
+          className={showCalendar ? styles.calendarActiveBtn : styles.calendarBtn}
+          aria-pressed={showCalendar}
+          title={copy('View seminars on a calendar', 'Xem lịch hội thảo trên lịch')}
+        >
+          <Calendar size={15} aria-hidden />
+          <span>{copy('Calendar', 'Lịch')}</span>
+        </button>
+      </div>
+
+      {showCalendar && (
+        <SeminarCalendar
+          hostingSeminars={hostingSeminars}
+          joiningSeminars={joiningSeminars}
+          onEventClick={(sem) => {
+            const id = sem.seminarId;
+            if (id == null) return;
+            const matched =
+              seminars.find((s) => s.seminarId === id) ??
+              hostingSeminars.find((s) => s.seminarId === id) ??
+              joiningSeminars.find((s) => s.seminarId === id);
+            if (matched) {
+              // Prefer the SeminarCard from the workspace cache if available,
+              // so the detail modal has full participant metadata.
+              setDetailSeminar(matched as SeminarCard);
+              setShowDetailModal(true);
+            }
+          }}
+        />
+      )}
 
       {activeWorkspaceTab === 'manage' ? (
         <>

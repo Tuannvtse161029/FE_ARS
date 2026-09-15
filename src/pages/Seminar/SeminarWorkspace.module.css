@@ -1672,3 +1672,61 @@
   align-items: center;
   justify-content: center;
 }
+
+/* ── Calendar Toggle Button ────────────────────────────────────────────── */
+
+.calendarBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1, 4px);
+  height: 32px;
+  padding: 0 var(--space-3, 12px);
+  background: var(--ars-paper-card, #fbf8f1);
+  border: 1px solid var(--ars-network, rgba(45, 53, 97, 0.12));
+  border-radius: var(--radius-sm, 0.375rem);
+  cursor: pointer;
+  font-size: var(--font-size-sm, 0.8125rem);
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--ars-ink, #2d3561);
+  transition: background var(--motion-feedback, 150ms), border-color var(--motion-feedback, 150ms), color var(--motion-feedback, 150ms);
+  white-space: nowrap;
+  font-family: var(--font-family-ui);
+}
+
+.calendarBtn:hover {
+  background: var(--ars-paper-alt, #f1ece1);
+  border-color: var(--ars-node, rgba(45, 53, 97, 0.12));
+}
+
+.calendarBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer, #7c2d12);
+  outline-offset: 2px;
+}
+
+.calendarActiveBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1, 4px);
+  height: 32px;
+  padding: 0 var(--space-3, 12px);
+  background: var(--ars-lecturer, #7c2d12);
+  border: 1px solid var(--ars-lecturer, #7c2d12);
+  border-radius: var(--radius-sm, 0.375rem);
+  cursor: pointer;
+  font-size: var(--font-size-sm, 0.8125rem);
+  font-weight: var(--font-weight-semibold, 600);
+  color: white;
+  transition: background var(--motion-feedback, 150ms), border-color var(--motion-feedback, 150ms);
+  white-space: nowrap;
+  font-family: var(--font-family-ui);
+}
+
+.calendarActiveBtn:hover {
+  background: var(--ars-lecturer-mid, #9a3412);
+  border-color: var(--ars-lecturer-mid, #9a3412);
+}
+
+.calendarActiveBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer, #7c2d12);
+  outline-offset: 2px;
+}

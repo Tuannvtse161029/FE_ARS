@@ -17,6 +17,7 @@
  */
 
 import { useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
   Calendar,
@@ -87,13 +88,48 @@ export const SeminarDetailModal = ({
     if (isOpen) closeBtnRef.current?.focus();
   }, [isOpen]);
 
-  // Lock body scroll while the modal is open.
+  // Lock body scroll while the modal is open. We also lock the
+  // `.contentBody` scroll container that the MainLayout uses so the
+  // underlying page cannot scroll while the modal is open.
   useEffect(() => {
     if (!isOpen) return;
-    const prev = document.body.style.overflow;
+    const prevBodyOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+
+    // Find and lock the actual scrolling ancestor (the layout uses a
+    // non-window scroll container). Walking up the DOM is cheaper than
+    // hard-coding a selector and stays portable if the layout changes.
+    const scrollAncestors: HTMLElement[] = [];
+    let node: HTMLElement | null = document.activeElement as HTMLElement | null;
+    if (!node || node === document.body) {
+      node = document.querySelector(
+        '[role="dialog"]',
+      )?.parentElement ?? document.body;
+    }
+    let cur: HTMLElement | null = node;
+    while (cur && cur !== document.documentElement) {
+      const style = window.getComputedStyle(cur);
+      if (
+        style.overflowY === 'auto' ||
+        style.overflowY === 'scroll' ||
+        style.overflow === 'auto' ||
+        style.overflow === 'scroll'
+      ) {
+        scrollAncestors.push(cur);
+      }
+      cur = cur.parentElement;
+    }
+
+    const prevOverflows = scrollAncestors.map((el) => el.style.overflow);
+    scrollAncestors.forEach((el) => {
+      el.style.overflow = 'hidden';
+    });
+
     return () => {
-      document.body.style.overflow = prev;
+      document.body.style.overflow = prevBodyOverflow;
+      scrollAncestors.forEach((el, i) => {
+        el.style.overflow = prevOverflows[i];
+      });
     };
   }, [isOpen]);
 
@@ -119,7 +155,7 @@ export const SeminarDetailModal = ({
         ? 'Chưa có mô tả cho buổi hội thảo này.'
         : 'No description has been provided for this seminar yet.';
 
-  return (
+  return createPortal(
     <div
       className={styles.overlay}
       role="dialog"
@@ -286,7 +322,8 @@ export const SeminarDetailModal = ({
           </button>
         </footer>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };
 

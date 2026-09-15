@@ -1,0 +1,694 @@
+/**
+ * SeminarCalendar — CSS Module
+ *
+ * Design tokens:
+ *   --ars-lecturer  = hosting accent (deep burgundy)
+ *   --ars-info      = joining accent (navy blue)
+ *   --ars-ink       = primary text
+ *   --ars-ink-muted = secondary text
+ *   --ars-paper-card = card surface
+ *   --ars-paper-alt  = alternate surface
+ *   --ars-network    = borders
+ *
+ * Calendar hours: 07:00 – 22:00 (15 hours, 30-min granularity)
+ * Hour slot height: 52px → total day height = 52 × 30 = 1560px
+ */
+
+.page {
+  background: var(--ars-paper-card, #fbf8f1);
+  border: 1px solid var(--ars-network, rgba(45, 53, 97, 0.08));
+  border-radius: var(--radius-lg, 0.75rem);
+  overflow: hidden;
+  margin-bottom: var(--space-5, 1.25rem);
+}
+
+/* ── Calendar Header ──────────────────────────────────────────────────────── */
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+  border-bottom: 1px solid var(--ars-network, rgba(45, 53, 97, 0.08));
+  background: var(--ars-surface-toolbar, linear-gradient(180deg, #fffbf4 0%, #fdf6e9 100%));
+  flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 0.75rem);
+  flex-wrap: wrap;
+}
+
+.navBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: 1px solid var(--ars-network, rgba(45, 53, 97, 0.12));
+  border-radius: var(--radius-sm, 0.375rem);
+  cursor: pointer;
+  color: var(--ars-ink, #2d3561);
+  transition: background var(--motion-feedback, 150ms), border-color var(--motion-feedback, 150ms);
+}
+
+.navBtn:hover {
+  background: var(--ars-paper-alt, #f1ece1);
+  border-color: var(--ars-node, rgba(45, 53, 97, 0.12));
+}
+
+.navBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer, #7c2d12);
+  outline-offset: 2px;
+}
+
+.todayBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1, 0.25rem);
+  height: 32px;
+  padding: 0 var(--space-3, 0.75rem);
+  background: var(--ars-paper-alt, #f1ece1);
+  border: 1px solid var(--ars-network, rgba(45, 53, 97, 0.12));
+  border-radius: var(--radius-sm, 0.375rem);
+  cursor: pointer;
+  font-size: var(--font-size-sm, 0.8125rem);
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--ars-ink, #2d3561);
+  transition: background var(--motion-feedback, 150ms), border-color var(--motion-feedback, 150ms);
+  white-space: nowrap;
+}
+
+.todayBtn:hover {
+  background: var(--ars-paper-inset, #e8e2d7);
+  border-color: var(--ars-node, rgba(45, 53, 97, 0.12));
+}
+
+.todayBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer, #7c2d12);
+  outline-offset: 2px;
+}
+
+.dateTitle {
+  font-size: var(--font-size-base, 1rem);
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--ars-ink, #2d3561);
+  white-space: nowrap;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 0.75rem);
+  flex-wrap: wrap;
+}
+
+/* ── View Toggle Pills ─────────────────────────────────────────────────────── */
+
+.viewToggle {
+  display: flex;
+  gap: 2px;
+  background: var(--ars-paper-inset, #e8e2d7);
+  border: 1px solid var(--ars-network, rgba(45, 53, 97, 0.08));
+  border-radius: var(--radius-sm, 0.375rem);
+  padding: 2px;
+}
+
+.viewPill {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 var(--space-2, 0.5rem);
+  background: transparent;
+  border: none;
+  border-radius: calc(var(--radius-sm, 0.375rem) - 2px);
+  cursor: pointer;
+  font-size: var(--font-size-sm, 0.8125rem);
+  font-weight: var(--font-weight-medium, 500);
+  color: var(--ars-ink-muted, #59627a);
+  transition: background var(--motion-feedback, 150ms), color var(--motion-feedback, 150ms);
+}
+
+.viewPill:hover {
+  color: var(--ars-ink, #2d3561);
+}
+
+.viewPill:focus-visible {
+  outline: 2px solid var(--ars-lecturer, #7c2d12);
+  outline-offset: -2px;
+}
+
+.viewPillActive {
+  background: var(--ars-paper-card, #fbf8f1);
+  color: var(--ars-ink, #2d3561);
+  font-weight: var(--font-weight-semibold, 600);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+/* ── Legend ────────────────────────────────────────────────────────────────── */
+
+.legend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 0.75rem);
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1, 0.25rem);
+  font-size: var(--font-size-sm, 0.8125rem);
+  color: var(--ars-ink-muted, #59627a);
+}
+
+.legendDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.legendDotHosting {
+  background: var(--ars-lecturer, #7c2d12);
+}
+
+.legendDotJoining {
+  background: var(--ars-info, #70490e);
+}
+
+/* ── Loading / Error ──────────────────────────────────────────────────────── */
+
+.loadingState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-8, 2rem);
+  color: var(--ars-ink-muted, #59627a);
+  font-size: var(--font-size-sm, 0.8125rem);
+}
+
+.errorState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-8, 2rem);
+  color: var(--ars-error, #991b1b);
+  font-size: var(--font-size-sm, 0.8125rem);
+}
+
+.retryBtn {
+  margin-left: var(--space-2, 0.5rem);
+  padding: var(--space-1, 0.25rem) var(--space-2, 0.5rem);
+  background: transparent;
+  border: 1px solid var(--ars-error, #991b1b);
+  border-radius: var(--radius-sm, 0.375rem);
+  cursor: pointer;
+  color: var(--ars-error, #991b1b);
+  font-size: var(--font-size-sm, 0.8125rem);
+  font-weight: var(--font-weight-medium, 500);
+  transition: background var(--motion-feedback, 150ms);
+}
+
+.retryBtn:hover {
+  background: var(--ars-error-bg, #fee2e2);
+}
+
+.retryBtn:focus-visible {
+  outline: 2px solid var(--ars-error, #991b1b);
+  outline-offset: 2px;
+}
+
+/* ── Empty State ──────────────────────────────────────────────────────────── */
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-8, 2rem);
+  color: var(--ars-ink-muted, #59627a);
+  font-size: var(--font-size-sm, 0.8125rem);
+  text-align: center;
+}
+
+/* ── Month View ────────────────────────────────────────────────────────────── */
+
+.monthGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-top: 1px solid var(--ars-network, rgba(45, 53, 97, 0.08));
+}
+
+.monthHeaderCell {
+  padding: var(--space-2, 0.5rem);
+  text-align: center;
+  font-size: var(--font-size-xs, 0.6875rem);
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--ars-ink-muted, #59627a);
+  border-bottom: 1px solid var(--ars-network, rgba(45, 53, 97, 0.08));
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.monthBody {
+  display: contents;
+}
+
+.monthDayCell {
+  min-height: 90px;
+  border-right: 1px solid var(--ars-network, rgba(45, 53, 97, 0.08));
+  border-bottom: 1px solid var(--ars-network, rgba(45, 53, 97, 0.08));
+  padding: var(--space-1, 0.25rem);
+  cursor: pointer;
+  transition: background var(--motion-feedback, 150ms);
+}
+
+.monthDayCell:hover {
+  background: var(--ars-paper-alt, #f1ece1);
+}
+
+.monthDayCell:focus-visible {
+  outline: 2px solid var(--ars-lecturer, #7c2d12);
+  outline-offset: -2px;
+}
+
+.monthDayCell:nth-child(7n) {
+  border-right: none;
+}
+
+.monthDayCellOtherMonth {
+  background: var(--ars-paper-alt, #f1ece1);
+  opacity: 0.5;
+}
+
+.monthDayCellToday {
+  background: var(--ars-yellow-soft, #fff3cc);
+}
+
+.monthDayNumber {
+  display: block;
+  font-size: var(--font-size-xs, 0.6875rem);
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--ars-ink-muted, #59627a);
+  margin-bottom: var(--space-1, 0.25rem);
+  width: 22px;
+  height: 22px;
+  line-height: 22px;
+  text-align: center;
+  border-radius: 50%;
+}
+
+.monthDayCellToday .monthDayNumber {
+  background: var(--ars-lecturer, #7c2d12);
+  color: white;
+}
+
+.monthEventDots {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.monthEventDot {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-size-xs, 0.6875rem);
+  color: var(--ars-ink, #2d3561);
+  cursor: pointer;
+  padding: 1px 4px;
+  border-radius: var(--radius-sm, 0.375rem);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  transition: background var(--motion-feedback, 150ms);
+}
+
+.monthEventDot:hover {
+  background: var(--ars-paper-inset, #e8e2d7);
+}
+
+.monthEventDot:focus-visible {
+  outline: 2px solid var(--ars-lecturer, #7c2d12);
+  outline-offset: -2px;
+}
+
+.monthEventDotDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.monthEventDotDotHosting {
+  background: var(--ars-lecturer, #7c2d12);
+}
+
+.monthEventDotDotJoining {
+  background: var(--ars-info, #70490e);
+}
+
+.monthMoreChip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: var(--font-weight-medium, 500);
+  color: var(--ars-ink-muted, #59627a);
+  padding: 1px 4px;
+  cursor: pointer;
+  transition: color var(--motion-feedback, 150ms);
+}
+
+.monthMoreChip:hover {
+  color: var(--ars-ink, #2d3561);
+}
+
+/* ── Week / Day View ───────────────────────────────────────────────────────── */
+
+.weekContainer {
+  display: flex;
+  flex-direction: column;
+  overflow-x: auto;
+}
+
+.weekHeader {
+  display: grid;
+  /* Time gutter (60px) + 7 day columns */
+  grid-template-columns: 60px repeat(7, minmax(120px, 1fr));
+  border-bottom: 1px solid var(--ars-network, rgba(45, 53, 97, 0.08));
+  position: sticky;
+  top: 0;
+  background: var(--ars-paper-card, #fbf8f1);
+  z-index: 5;
+}
+
+.weekTimeGutter {
+  /* Empty top-left corner cell */
+  border-right: 1px solid var(--ars-network, rgba(45, 53, 97, 0.08));
+}
+
+.weekDayHeader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2, 0.5rem) var(--space-1, 0.25rem);
+  border-right: 1px solid var(--ars-network, rgba(45, 53, 97, 0.08));
+  gap: 2px;
+}
+
+.weekDayHeader:last-child {
+  border-right: none;
+}
+
+.weekDayName {
+  font-size: 10px;
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--ars-ink-muted, #59627a);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.weekDayNumber {
+  font-size: var(--font-size-sm, 0.8125rem);
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--ars-ink, #2d3561);
+  width: 28px;
+  height: 28px;
+  line-height: 28px;
+  text-align: center;
+  border-radius: 50%;
+}
+
+.weekDayHeaderIsToday .weekDayNumber {
+  background: var(--ars-lecturer, #7c2d12);
+  color: white;
+}
+
+.weekBody {
+  display: grid;
+  grid-template-columns: 60px repeat(7, minmax(120px, 1fr));
+  position: relative;
+}
+
+.weekTimeColumn {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--ars-network, rgba(45, 53, 97, 0.08));
+}
+
+.weekTimeLabel {
+  height: 52px; /* matches .hourSlot height */
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding-right: var(--space-1, 0.25rem);
+  padding-top: 2px;
+  font-size: 10px;
+  font-weight: var(--font-weight-medium, 500);
+  color: var(--ars-ink-muted, #59627a);
+  user-select: none;
+}
+
+.weekDayColumn {
+  position: relative;
+  border-right: 1px solid var(--ars-network, rgba(45, 53, 97, 0.08));
+  min-height: 780px; /* 15 hours × 52px */
+}
+
+.weekDayColumn:last-child {
+  border-right: none;
+}
+
+.weekHourRow {
+  height: 52px;
+  border-bottom: 1px solid var(--ars-network, rgba(45, 53, 97, 0.06));
+  position: relative;
+}
+
+/* Current time indicator */
+.nowLine {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #ef4444;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.nowLine::before {
+  content: '';
+  position: absolute;
+  left: -3px;
+  top: -3px;
+  width: 8px;
+  height: 8px;
+  background: #ef4444;
+  border-radius: 50%;
+}
+
+/* ── Event Block ────────────────────────────────────────────────────────────── */
+
+.eventBlock {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  border-radius: var(--radius-sm, 0.375rem);
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--ars-ink, #2d3561);
+  overflow: hidden;
+  cursor: pointer;
+  z-index: 2;
+  transition: filter var(--motion-feedback, 150ms), box-shadow var(--motion-feedback, 150ms);
+  background: var(--ars-paper-alt, #f1ece1);
+  border-left: 3px solid transparent;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  min-height: 0;
+}
+
+.eventBlock:hover,
+.eventBlock:focus-visible {
+  filter: brightness(0.96);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  z-index: 3;
+}
+
+.eventBlock:focus-visible {
+  outline: 2px solid var(--ars-lecturer, #7c2d12);
+  outline-offset: -2px;
+}
+
+.eventBlockHosting {
+  border-left-color: var(--ars-lecturer, #7c2d12);
+  background: var(--ars-lecturer-light, #fef2f2);
+}
+
+.eventBlockJoining {
+  border-left-color: var(--ars-info, #70490e);
+  background: var(--ars-info-bg, #dbeafe);
+}
+
+.eventBlockTitle {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+.eventBlockTime {
+  font-size: 10px;
+  font-weight: var(--font-weight-normal, 400);
+  opacity: 0.8;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* ── Event Tooltip ─────────────────────────────────────────────────────────── */
+
+.eventTooltip {
+  position: absolute;
+  z-index: 50;
+  background: var(--ars-paper-card, #fbf8f1);
+  border: 1px solid var(--ars-network, rgba(45, 53, 97, 0.16));
+  border-radius: var(--radius-md, 0.5rem);
+  padding: var(--space-3, 0.75rem);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  min-width: 200px;
+  max-width: 280px;
+  pointer-events: none;
+}
+
+.tooltipTitle {
+  font-size: var(--font-size-sm, 0.8125rem);
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--ars-ink, #2d3561);
+  margin-bottom: var(--space-1, 0.25rem);
+  line-height: 1.3;
+}
+
+.tooltipMeta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 0.25rem);
+}
+
+.tooltipRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2, 0.5rem);
+  font-size: var(--font-size-sm, 0.8125rem);
+  color: var(--ars-ink-muted, #59627a);
+}
+
+.tooltipIcon {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.tooltipStatusBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: var(--font-weight-semibold, 600);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tooltipStatusUpcoming {
+  background: var(--ars-info-bg, #dbeafe);
+  color: var(--ars-info, #70490e);
+}
+
+.tooltipStatusInProgress {
+  background: var(--ars-warning-bg, #fef3c7);
+  color: var(--ars-warning, #92400e);
+}
+
+.tooltipStatusCompleted {
+  background: var(--ars-success-bg, #d1fae5);
+  color: var(--ars-success, #047857);
+}
+
+.tooltipStatusInactive {
+  background: var(--ars-error-bg, #fee2e2);
+  color: var(--ars-error, #991b1b);
+}
+
+.tooltipJoinLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: var(--space-2, 0.5rem);
+  padding: 4px 10px;
+  background: var(--ars-info-bg, #dbeafe);
+  border: 1px solid var(--ars-info, #70490e);
+  border-radius: var(--radius-sm, 0.375rem);
+  font-size: var(--font-size-sm, 0.8125rem);
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--ars-info, #70490e);
+  text-decoration: none;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: background var(--motion-feedback, 150ms);
+}
+
+.tooltipJoinLink:hover {
+  background: #c8d8f4;
+}
+
+.tooltipJoinLink:focus-visible {
+  outline: 2px solid var(--ars-info, #70490e);
+  outline-offset: 2px;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .weekHeader,
+  .weekBody {
+    grid-template-columns: 48px repeat(7, minmax(80px, 1fr));
+  }
+
+  .weekTimeLabel {
+    font-size: 9px;
+    padding-right: 2px;
+  }
+
+  .weekDayColumn {
+    min-height: 600px;
+  }
+
+  .monthDayCell {
+    min-height: 64px;
+  }
+}
+
+@media (max-width: 480px) {
+  .legend {
+    display: none;
+  }
+}
