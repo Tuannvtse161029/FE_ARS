@@ -9,7 +9,7 @@
 // This component is modal-only (per contract §15.1 — pages must split out
 // modals) and renders nothing when `isOpen === false`.
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import {
   X,
   FileText,
@@ -21,9 +21,8 @@ import {
   Library,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { useLearningMaterials } from '../../hooks/useLearningMaterials';
-import { learningMaterialService } from '../../services/learningMaterial.service';
-import type { LearningMaterial } from '../../services/learningMaterial.service';
+import { topicLearningMaterialService } from '../../services/researchTopic.service';
+import type { TopicLearningMaterialResponse } from '../../types/researchWorkflowDtos';
 import type { ResearchTopic } from '../../services/researchTopic.service';
 import { safeHref } from '../../utils/validationRules';
 import {
@@ -46,9 +45,9 @@ interface BannerState {
   variant: 'success' | 'error';
 }
 
-const formatTitle = (m: LearningMaterial): string => {
+const formatTitle = (m: TopicLearningMaterialResponse): string => {
   if (m.title && m.title.trim().length > 0) return m.title.trim();
-  if (m.id) return `Material #${m.id}`;
+  if (m.learningMaterialId) return `Material #${m.learningMaterialId}`;
   return 'Untitled material';
 };
 
@@ -60,12 +59,11 @@ export const LearningMaterialModal = ({
 }: LearningMaterialModalProps) => {
   const { user } = useAuth();
   const lecturerId = user?.userId ?? null;
-  const {
-    materials,
-    isLoading,
-    error,
-    refetch,
-  } = useLearningMaterials({ lecturerId });
+  const topicId = topic?.id ?? topic?.topicId ?? null;
+
+  const [materials, setMaterials] = useState<TopicLearningMaterialResponse[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
 
   const [newTitle, setNewTitle] = useState('');
   const [newSource, setNewSource] = useState<MaterialSourceValue | null>(null);
@@ -79,12 +77,34 @@ export const LearningMaterialModal = ({
     variant: 'success',
   });
 
-  /** Controls the delete-confirmation modal */
+  /** Controls the detach-confirmation modal */
   const [deleteConfirm, setDeleteConfirm] = useState<{
     open: boolean;
     materialId: number | null;
     materialTitle: string;
   }>({ open: false, materialId: null, materialTitle: '' });
+
+  const fetchTopicMaterials = useCallback(async () => {
+    if (!topicId) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await topicLearningMaterialService.getByTopicId(topicId);
+      setMaterials(data);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err : new Error('Failed to load topic materials.'),
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [topicId]);
+
+  useEffect(() => {
+    if (isOpen && topicId) {
+      void fetchTopicMaterials();
+    }
+  }, [isOpen, topicId, fetchTopicMaterials]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -96,7 +116,7 @@ export const LearningMaterialModal = ({
     }
   }, [isOpen]);
 
-  if (!isOpen || !topic) return null;
+  if (!isOpen || !topic || !topicId) return null;
 
   const handleClose = () => {
     if (isSubmitting) return;
@@ -109,91 +129,125 @@ export const LearningMaterialModal = ({
       setFormError('No lecturer session — please sign in again.');
       return;
     }
-    const title = newTitle.trim();
-    if (!title) {
-      setFormError('Title is required.');
+
+    setPickerError(null);
+    setFormError(null);
+
+    // If source is library, attach existing material
+    if (newSource?.kind === 'library') {
+      setIsSubmitting(true);
+      try {
+        await topicLearningMaterialService.attach(
+          topicId,
+          newSource.learningMaterialId,
+        );
+        setNewTitle('');
+        setNewSource(null);
+        setBanner({
+          visible: true,
+          text: 'Material attached to topic successfully.',
+          variant: 'success',
+        });
+        await fetchTopicMaterials();
+        onSuccess?.();
+      } catch (err: unknown) {
+        const errorObj = err as { response?: { status?: number; data?: { message?: string } }; message?: string };
+        const status = errorObj.response?.status;
+        let message = errorObj.response?.data?.message || errorObj.message || 'Failed to attach material.';
+        if (status === 409) {
+          message = 'This material is already attached to this research topic.';
+        } else if (status === 403) {
+          message = 'You are not authorized to manage materials for this topic.';
+        }
+        setFormError(message);
+      } finally {
+        setIsSubmitting(false);
+      }
       return;
     }
-    // The picker emits a single value whose kind determines how we
-    // resolve the fileUrl we POST to the BE. URL + File kinds both
-    // produce a direct URL; the Library kind is a no-op for this
-    // modal because we're already creating a new material — we still
-    // require the user to attach a concrete file/URL.
+
+    // Otherwise, require title and URL/file
+    const title = newTitle.trim();
+    if (!title) {
+      setFormError('Title is required for a new material.');
+      return;
+    }
+
     let resolvedUrl: string | null = null;
     if (newSource) {
       if (newSource.kind === 'url') {
         resolvedUrl = newSource.url.trim();
       } else if (newSource.kind === 'file') {
         resolvedUrl = newSource.fileUrl;
-      } else {
-        setPickerError(
-          'Pick a Link or Upload source for a new material. To reuse an existing one, close this modal and select it from your library.',
-        );
-        return;
       }
     }
+
     if (!resolvedUrl) {
       setPickerError(
-        'File URL is required. Paste a URL or upload a file before adding.',
+        'File URL is required. Paste a URL, upload a file, or pick from your library before adding.',
       );
       return;
     }
-    setPickerError(null);
+
     setIsSubmitting(true);
-    setFormError(null);
     try {
-      await learningMaterialService.create({
+      await topicLearningMaterialService.createAndAttach(topicId, {
         lecturerId,
         title,
         fileUrl: resolvedUrl,
         description: null,
-        subFieldId: null,
       });
-      // We do NOT pass `topicId` because the BE has no column for it yet
-      // (gap ticket §C.1.1 / §E.11). The "topic-attached" semantics live
-      // client-side only — the modal lists every material the lecturer
-      // owns. The header note documents the limit.
       setNewTitle('');
       setNewSource(null);
       setBanner({
         visible: true,
-        text: 'Material added to your library. Topic-scoped grouping ships once BE adds a topicId column.',
+        text: 'Material created and attached to topic successfully.',
         variant: 'success',
       });
-      await refetch();
+      await fetchTopicMaterials();
       onSuccess?.();
-    } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : 'The server rejected the material. Please try again.';
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { status?: number; data?: { message?: string } }; message?: string };
+      const status = errorObj.response?.status;
+      let message = errorObj.response?.data?.message || errorObj.message || 'Failed to create and attach material.';
+      if (status === 409) {
+        message = 'This material is already attached to this research topic.';
+      } else if (status === 403) {
+        message = 'You are not authorized to manage materials for this topic.';
+      } else if (status === 400) {
+        message = errorObj.response?.data?.message || 'Invalid material data. Please check the URL and format.';
+      }
       setFormError(message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDelete = async (id: number, title: string) => {
+  const handleDetach = (id: number, title: string) => {
     if (!id) return;
     setDeleteConfirm({ open: true, materialId: id, materialTitle: title });
   };
 
-  const confirmDelete = async () => {
+  const confirmDetach = async () => {
     const id = deleteConfirm.materialId;
     if (!id) return;
     setDeleteConfirm({ open: false, materialId: null, materialTitle: '' });
     try {
-      const deleteResult = await learningMaterialService.delete(id);
+      await topicLearningMaterialService.detach(topicId, id);
       setBanner({
         visible: true,
-        text: deleteResult?.message || 'Material deleted.',
+        text: 'Material removed from this topic.',
         variant: 'success',
       });
-      await refetch();
+      await fetchTopicMaterials();
       onSuccess?.();
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Failed to delete the material.';
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { status?: number; data?: { message?: string } }; message?: string };
+      const status = errorObj.response?.status;
+      let message = errorObj.response?.data?.message || errorObj.message || 'Failed to detach the material.';
+      if (status === 403) {
+        message = 'You are not authorized to remove materials from this topic.';
+      }
       setBanner({ visible: true, text: message, variant: 'error' });
     }
   };
@@ -221,17 +275,6 @@ export const LearningMaterialModal = ({
           >
             <X size={18} aria-hidden />
           </button>
-        </div>
-
-        <div className={styles.gapNote} role="note">
-          <AlertTriangle size={14} aria-hidden />
-          <span>
-            The backend has no{' '}
-            <code>LearningMaterial.topicId</code> column, so this modal lists
-            every material you (this lecturer) own. Topic-scoped filtering
-            ships once BE adds a{' '}
-            <code>topicId</code> column per gap ticket §E.11.
-          </span>
         </div>
 
         {banner.visible && (
@@ -269,7 +312,7 @@ export const LearningMaterialModal = ({
             <button
               type="button"
               className={styles.retryBtn}
-              onClick={() => void refetch()}
+              onClick={() => void fetchTopicMaterials()}
             >
               Retry
             </button>
@@ -290,9 +333,9 @@ export const LearningMaterialModal = ({
           ) : (
             <ul className={styles.list}>
               {materials.map((m) => {
-                const id = typeof m.id === 'number' ? m.id : -1;
+                const id = typeof m.learningMaterialId === 'number' ? m.learningMaterialId : -1;
                 return (
-                  <li key={String(m.id)} className={styles.listItem}>
+                  <li key={String(m.learningMaterialId)} className={styles.listItem}>
                     <div className={styles.itemMeta}>
                       <span className={styles.itemTitle}>{formatTitle(m)}</span>
                       {m.description?.trim() && (
@@ -318,10 +361,10 @@ export const LearningMaterialModal = ({
                         <button
                           type="button"
                           className={styles.deleteBtn}
-                          onClick={() => void handleDelete(id, formatTitle(m))}
-                          aria-label={`Delete ${formatTitle(m)}`}
+                          onClick={() => handleDetach(id, formatTitle(m))}
+                          aria-label={`Detach ${formatTitle(m)} from topic`}
                         >
-                          Delete
+                          Detach
                         </button>
                       )}
                     </div>
@@ -338,7 +381,7 @@ export const LearningMaterialModal = ({
           </span>
           <div className={styles.formRow}>
             <label className={styles.formLabel} htmlFor="mat-title">
-              * Title
+              {newSource?.kind === 'library' ? 'Title (Optional for library)' : '* Title'}
             </label>
             <input
               id="mat-title"
@@ -346,8 +389,12 @@ export const LearningMaterialModal = ({
               className={styles.formInput}
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
-              placeholder="Reference syllabus — Week 1"
-              required
+              placeholder={
+                newSource?.kind === 'library'
+                  ? 'Keep existing title or enter override'
+                  : 'Reference syllabus — Week 1'
+              }
+              required={newSource?.kind !== 'library'}
             />
           </div>
           <div className={styles.formRow}>
@@ -394,21 +441,25 @@ export const LearningMaterialModal = ({
               ) : (
                 <Plus size={14} aria-hidden />
               )}
-              {isSubmitting ? 'Adding…' : 'Add Material'}
+              {isSubmitting
+                ? 'Adding…'
+                : newSource?.kind === 'library'
+                ? 'Attach Material'
+                : 'Add Material'}
             </button>
           </div>
         </form>
       </div>
 
-      {/* Delete confirmation modal */}
+      {/* Detach confirmation modal */}
       <ConfirmModal
         open={deleteConfirm.open}
-        title="Are you sure?"
-        description={`Delete "${deleteConfirm.materialTitle}"? This action cannot be undone.`}
+        title="Detach Material?"
+        description={`Detach "${deleteConfirm.materialTitle}" from this research topic? The original material in your library will remain intact.`}
         variant="destructive"
-        confirmLabel="Delete"
+        confirmLabel="Detach"
         cancelLabel="Cancel"
-        onConfirm={confirmDelete}
+        onConfirm={confirmDetach}
         onClose={() =>
           setDeleteConfirm({ open: false, materialId: null, materialTitle: '' })
         }
