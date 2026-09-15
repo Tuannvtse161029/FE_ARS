@@ -667,21 +667,6 @@ export const ResearchGroup = () => {
         </div>
       )}
 
-      <div className={styles.joinRequestPreviewBanner} role="status" aria-live="polite">
-        <div className={styles.joinRequestPreviewIcon}>
-          <UserRound size={18} aria-hidden />
-        </div>
-        <div className={styles.joinRequestPreviewContent}>
-          <strong>{t('lecturer.researchGroups.joinRequestPreviewTitle')}</strong>
-          <p>
-            {t('lecturer.researchGroups.joinRequestPreviewDescription')}
-          </p>
-        </div>
-        <span className={styles.previewBadge}>
-          {t('lecturer.researchGroups.backendPending')}
-        </span>
-      </div>
-
       {errorBannerList.length > 0 && (
         <ErrorBanner
           tone="error"

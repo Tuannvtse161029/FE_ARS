@@ -1,5 +1,7 @@
 # BE Ticket: Learning Material Topic Association
 
+> **Status: RESOLVED** — Resolved by BE team. FE integration complete (Sep 2026). Notification i18n (English + Vietnamese prefixes) added.
+
 ## ID
 
 BE-LEARNING-MATERIAL-TOPIC-ASSOCIATION-01

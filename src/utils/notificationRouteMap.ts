@@ -75,6 +75,14 @@ export type NotificationKind =
   | 'material-shared'
   | 'material-share-accepted'
   | 'material-share-declined'
+  // Research Group join request workflow
+  | 'group-join-requested'
+  | 'group-join-accepted'
+  | 'group-join-rejected'
+  | 'group-member-accepted'
+  // Research Topic learning material events
+  | 'topic-learning-material-added'
+  | 'topic-learning-material-removed'
   // Researcher authorship events
   | 'paper-authorship-verified'
   | 'paper-authorship-rejected'
@@ -235,6 +243,113 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     spec: {
       path: ROUTES.LECTURER_MATERIALS,
       roles: ['Lecturer', 'Admin'],
+    },
+  },
+
+  // ── Research Group Join Request workflow ────────────────────────────────
+  // Graduate Student → Lecturer: a new application arrived.
+  {
+    kind: 'group-join-requested',
+    prefix: '[Group] join request',
+    spec: {
+      path: ROUTES.RESEARCH_GROUP,
+      roles: ['Lecturer', 'Admin'],
+    },
+  },
+  {
+    kind: 'group-join-requested',
+    prefix: '(Nhóm nghiên cứu) Yêu cầu tham gia mới',
+    spec: {
+      path: ROUTES.RESEARCH_GROUP,
+      roles: ['Lecturer', 'Admin'],
+    },
+  },
+  // Lecturer → Graduate Student: the Lecturer accepted.
+  {
+    kind: 'group-join-accepted',
+    prefix: '[Student] join accepted',
+    spec: {
+      path: ROUTES.STUDENT_RESEARCH_GROUPS,
+      roles: ['Graduate Student', 'Admin'],
+    },
+  },
+  {
+    kind: 'group-join-accepted',
+    prefix: '(Nhóm nghiên cứu) Yêu cầu tham gia được chấp thuận',
+    spec: {
+      path: ROUTES.STUDENT_RESEARCH_GROUPS,
+      roles: ['Graduate Student', 'Admin'],
+    },
+  },
+  // Lecturer → Graduate Student: the Lecturer rejected.
+  {
+    kind: 'group-join-rejected',
+    prefix: '[Student] join rejected',
+    spec: {
+      path: ROUTES.STUDENT_RESEARCH_GROUPS,
+      roles: ['Graduate Student', 'Admin'],
+    },
+  },
+  {
+    kind: 'group-join-rejected',
+    prefix: '(Nhóm nghiên cứu) Yêu cầu tham gia bị từ chối',
+    spec: {
+      path: ROUTES.STUDENT_RESEARCH_GROUPS,
+      roles: ['Graduate Student', 'Admin'],
+    },
+  },
+  // BE → existing group members when a new member is accepted.
+  {
+    kind: 'group-member-accepted',
+    prefix: '[Group] new member',
+    spec: {
+      path: ROUTES.RESEARCH_GROUP,
+      roles: ['Lecturer', 'Admin'],
+    },
+  },
+  {
+    kind: 'group-member-accepted',
+    prefix: '(Nhóm nghiên cứu) Thành viên mới được chấp thuận',
+    spec: {
+      path: ROUTES.RESEARCH_GROUP,
+      roles: ['Lecturer', 'Admin'],
+    },
+  },
+
+  // ── Research Topic learning-material events ─────────────────────────────
+  // Lecturer attached a new library material to a topic → notify the
+  // Graduate Students assigned to that topic.
+  {
+    kind: 'topic-learning-material-added',
+    prefix: '[Student] topic material added',
+    spec: {
+      path: ROUTES.STUDENT_RESEARCH_GROUPS,
+      roles: ['Graduate Student', 'Admin'],
+    },
+  },
+  {
+    kind: 'topic-learning-material-added',
+    prefix: '(Nhóm nghiên cứu) Tài liệu học tập mới được thêm',
+    spec: {
+      path: ROUTES.STUDENT_RESEARCH_GROUPS,
+      roles: ['Graduate Student', 'Admin'],
+    },
+  },
+  // Lecturer detached a material from a topic.
+  {
+    kind: 'topic-learning-material-removed',
+    prefix: '[Student] topic material removed',
+    spec: {
+      path: ROUTES.STUDENT_RESEARCH_GROUPS,
+      roles: ['Graduate Student', 'Admin'],
+    },
+  },
+  {
+    kind: 'topic-learning-material-removed',
+    prefix: '(Nhóm nghiên cứu) Tài liệu học tập bị xóa',
+    spec: {
+      path: ROUTES.STUDENT_RESEARCH_GROUPS,
+      roles: ['Graduate Student', 'Admin'],
     },
   },
 
@@ -429,6 +544,26 @@ export function inferNotificationKind(message: string): NotificationKind {
   }
   if (normalized.includes('báo cáo') || normalized.includes('giai đoạn') || normalized.includes('report')) {
     return 'student-report-submitted';
+  }
+  // Research group join request workflow keywords
+  if (normalized.includes('yêu cầu tham gia') && normalized.includes('chấp thuận')) {
+    return 'group-join-accepted';
+  }
+  if (normalized.includes('yêu cầu tham gia') && (normalized.includes('từ chối') || normalized.includes('bị từ chối'))) {
+    return 'group-join-rejected';
+  }
+  if (normalized.includes('yêu cầu tham gia')) {
+    return 'group-join-requested';
+  }
+  if (normalized.includes('thành viên mới') && (normalized.includes('chấp thuận') || normalized.includes('được chấp thuận'))) {
+    return 'group-member-accepted';
+  }
+  // Research topic learning-material keywords
+  if (normalized.includes('tài liệu học tập') && (normalized.includes('được thêm') || normalized.includes('đã được thêm') || normalized.includes('thêm mới'))) {
+    return 'topic-learning-material-added';
+  }
+  if (normalized.includes('tài liệu học tập') && (normalized.includes('bị xóa') || normalized.includes('đã xóa') || normalized.includes('đã gỡ'))) {
+    return 'topic-learning-material-removed';
   }
 
   return 'unknown';

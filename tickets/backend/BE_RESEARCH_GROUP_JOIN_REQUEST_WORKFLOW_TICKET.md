@@ -1,5 +1,7 @@
 # BE Ticket: Research Group Join Request Workflow
 
+> **Status: RESOLVED** — Resolved by BE team. FE integration complete (Sep 2026). Notification i18n (English + Vietnamese prefixes) added.
+
 ## ID
 
 BE-RESEARCH-GROUP-JOIN-REQUEST-01

@@ -127,6 +127,14 @@ const KIND_ICON_MAP: Record<NotificationKind, typeof Inbox> = {
   'account-platform-update': Inbox,
   'follower-new': Inbox,
   'system-update': Inbox,
+  // Research Group join request workflow
+  'group-join-requested': Inbox,
+  'group-join-accepted': Inbox,
+  'group-join-rejected': AlertTriangle,
+  'group-member-accepted': Inbox,
+  // Research Topic learning-material events
+  'topic-learning-material-added': Inbox,
+  'topic-learning-material-removed': AlertTriangle,
   // Forum
   'forum-reply': Inbox,
   // Fallback
@@ -238,6 +246,22 @@ function titleForKind(
     case 'forum-reply':
       return t('notif.forumReply', 'Forum reply');
 
+    // Research Group join request workflow
+    case 'group-join-requested':
+      return t('notif.groupJoinRequested', 'New join request');
+    case 'group-join-accepted':
+      return t('notif.groupJoinAccepted', 'Join request accepted');
+    case 'group-join-rejected':
+      return t('notif.groupJoinRejected', 'Join request rejected');
+    case 'group-member-accepted':
+      return t('notif.groupMemberAccepted', 'New member accepted');
+
+    // Research Topic learning-material events
+    case 'topic-learning-material-added':
+      return t('notif.topicLearningMaterialAdded', 'New learning material');
+    case 'topic-learning-material-removed':
+      return t('notif.topicLearningMaterialRemoved', 'Shared material removed');
+
     case 'unknown':
     default:
       return t('notif.notification', 'Notification');
@@ -291,10 +315,18 @@ const KIND_BODY_KEY: Partial<Record<NotificationKind, string>> = {
   'follower-new': 'notif.body.followerNew',
   'system-update': 'notif.body.systemUpdate',
   'forum-reply': 'notif.body.forumReply',
+  // Research Group join request workflow
+  'group-join-requested': 'notif.body.groupJoinRequested',
+  'group-join-accepted': 'notif.body.groupJoinAccepted',
+  'group-join-rejected': 'notif.body.groupJoinRejected',
+  'group-member-accepted': 'notif.body.groupMemberAccepted',
+  // Research Topic learning-material events
+  'topic-learning-material-added': 'notif.body.topicLearningMaterialAdded',
+  'topic-learning-material-removed': 'notif.body.topicLearningMaterialRemoved',
 };
 
 const stripTagPrefix = (raw: string): string =>
-  (raw ?? '').trim().replace(/^\[[^\]]+\]\s*/, '');
+  (raw ?? '').trim().replace(/^\[[^\]]+\]\s*/, '').replace(/^\([^\)]+\)\s*/, '');
 
 const extractDynamicSuffix = (stripped: string): string => {
   const colonIdx = stripped.indexOf(':');

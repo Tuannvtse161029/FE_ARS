@@ -382,6 +382,22 @@ function titleForKind(kind: ReturnType<typeof inferNotificationKind>, t: (key: s
     case 'forum-reply':
       return t('notif.forumReply', 'Forum reply');
 
+    // Research Group join request workflow
+    case 'group-join-requested':
+      return t('notif.groupJoinRequested', 'New join request');
+    case 'group-join-accepted':
+      return t('notif.groupJoinAccepted', 'Join request accepted');
+    case 'group-join-rejected':
+      return t('notif.groupJoinRejected', 'Join request rejected');
+    case 'group-member-accepted':
+      return t('notif.groupMemberAccepted', 'New member accepted');
+
+    // Research Topic learning-material events
+    case 'topic-learning-material-added':
+      return t('notif.topicLearningMaterialAdded', 'New learning material');
+    case 'topic-learning-material-removed':
+      return t('notif.topicLearningMaterialRemoved', 'Shared material removed');
+
     case 'unknown':
     default:
       return t('notif.notification', 'Notification');
@@ -443,6 +459,14 @@ const KIND_BODY_KEY: Readonly<Partial<Record<NotificationKind, string>>> = {
   'follower-new': 'notif.body.followerNew',
   'system-update': 'notif.body.systemUpdate',
   'forum-reply': 'notif.body.forumReply',
+  // Research Group join request workflow
+  'group-join-requested': 'notif.body.groupJoinRequested',
+  'group-join-accepted': 'notif.body.groupJoinAccepted',
+  'group-join-rejected': 'notif.body.groupJoinRejected',
+  'group-member-accepted': 'notif.body.groupMemberAccepted',
+  // Research Topic learning-material events
+  'topic-learning-material-added': 'notif.body.topicLearningMaterialAdded',
+  'topic-learning-material-removed': 'notif.body.topicLearningMaterialRemoved',
 };
 
 // Strip the BE-side `[Tag]` prefix from a notification message so we can
@@ -450,7 +474,8 @@ const KIND_BODY_KEY: Readonly<Partial<Record<NotificationKind, string>>> = {
 // variable inside our i18n template. Returns the original string (trimmed)
 // when no `[Tag]` prefix is present — natural-language BE messages and
 // unknown kinds are still surfaced to the user unchanged.
-const stripTagPrefix = (raw: string): string => (raw ?? '').trim().replace(/^\[[^\]]+\]\s*/, '');
+const stripTagPrefix = (raw: string): string =>
+  (raw ?? '').trim().replace(/^\[[^\]]+\]\s*/, '').replace(/^\([^\)]+\)\s*/, '');
 
 // Extract the dynamic part of a BE notification message — the paper title,
 // entity name, or other user-specific value that should be substituted into
