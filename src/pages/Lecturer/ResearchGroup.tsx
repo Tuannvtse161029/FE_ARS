@@ -277,6 +277,10 @@ export const ResearchGroup = () => {
         groups.map(async (g) => {
           const gid = g.id ?? g.researchGroupId;
           if (!gid) return { groupId: 0, requests: [] };
+          // Avoid 403 Forbidden: Only query join requests for groups supervised by this lecturer
+          if (lecturerId && g.lecturerId && g.lecturerId !== lecturerId) {
+            return { groupId: gid, requests: [] };
+          }
           const reqs = await groupJoinRequestService.getRequestsByGroup(gid, 'PENDING');
           return { groupId: gid, requests: reqs };
         }),
@@ -291,7 +295,7 @@ export const ResearchGroup = () => {
     } catch (err) {
       console.error('Failed to fetch group join requests:', err);
     }
-  }, [groups]);
+  }, [groups, lecturerId]);
 
   useEffect(() => {
     void fetchPendingRequests();
