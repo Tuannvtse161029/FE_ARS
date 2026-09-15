@@ -139,3 +139,53 @@
   color: #7c3aed;
   border-color: color-mix(in srgb, #7c3aed 30%, transparent);
 }
+
+/* ── Researcher bucket tones (5-bucket filter) ──────────────────────
+   Used by Researcher's "My Research Papers" listing when the status is
+   bucketed through researcherStatusGroups.toResearcherBucketTone(). */
+
+/* Pending — accent indigo (in-flight reviewer assignments: REVIEWER_ASSIGNED,
+   UNDER_REVIEW, RESUBMITTED). This is intentionally distinct from the
+   info-blue used for SUBMITTED/SCREENING/READY so reviewers can tell the
+   two states apart at a glance. */
+.pubBucketPending {
+  background-color: var(--status-accent-surface);
+  color: var(--status-accent-text);
+  border-color: color-mix(in srgb, var(--status-accent-text) 30%, transparent);
+}
+
+/* Verified — blue (admin verified successfully) */
+.pubBucketVerified {
+  background-color: var(--ars-blue-light);
+  color: var(--ars-blue);
+  border-color: color-mix(in srgb, var(--ars-blue) 30%, transparent);
+}
+
+/* Invalid — red (admin rejected: missing info / can't prove authorship) */
+.pubBucketInvalid {
+  background-color: var(--ars-error-bg);
+  color: var(--ars-error);
+  border-color: color-mix(in srgb, var(--ars-error) 30%, transparent);
+}
+
+/* Published — green (paper is live in the public catalog) */
+.pubBucketPublished {
+  background-color: var(--ars-success-bg);
+  color: var(--ars-success);
+  border-color: color-mix(in srgb, var(--ars-success) 30%, transparent);
+}
+
+/* Need Revision — purple (reviewer recommended reject + admin decided
+   not to publish) */
+.pubBucketNeedRevision {
+  background-color: #e9d5ff;
+  color: #7c3aed;
+  border-color: color-mix(in srgb, #7c3aed 30%, transparent);
+}
+
+/* Other / catch-all (DRAFT, WITHDRAWN, INACTIVE, RECOMMENDED_ACCEPT) */
+.pubBucketOther {
+  background-color: var(--status-draft-surface);
+  color: var(--status-draft-text);
+  border-color: color-mix(in srgb, var(--status-draft-text) 30%, transparent);
+}

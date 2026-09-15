@@ -37,6 +37,10 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  /* Allow the flex item to shrink below its content size so child text
+     can wrap/clip instead of overflowing the card. */
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .kpiLabel {
@@ -51,6 +55,10 @@
   font-size: 1.5rem;
   font-weight: 700;
   color: var(--ink-on-paper, #0f172a);
+  /* Stay inside the card and wrap long medal titles instead of overflowing. */
+  max-width: 100%;
+  word-break: break-word;
+  line-height: 1.25;
 }
 
 .kpiSub {

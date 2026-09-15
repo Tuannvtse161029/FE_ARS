@@ -52,6 +52,52 @@ const ACTION_COLOR: Record<
   DELETED_PACKAGE: 'red',
 };
 
+// Words that, when present in `adminName`, indicate the actor is *not* an
+// admin. This is a best-effort client-side filter for BE hygiene: the
+// proper fix is the BE restricting AuditLog rows to admin actors only.
+// If the BE later exposes `actorRole` / `roleName` per row, prefer that
+// signal and remove this list.
+const NON_ADMIN_ACTOR_KEYWORDS = [
+  'reviewer',
+  'researcher',
+  'lecturer',
+  'student',
+  'graduate',
+  'groupleader',
+  'group leader',
+];
+
+function isAdminActor(entry: AuditLogEntry): boolean {
+  const name = (entry.adminName ?? '').toLowerCase();
+  if (!name) return true; // If BE leaves name empty, don't over-filter.
+  // Drop rows whose adminName clearly belongs to a non-admin role.
+  // The keyword check is conservative — if none of the known role words
+  // appear in the name, we assume the actor is an admin.
+  return !NON_ADMIN_ACTOR_KEYWORDS.some((kw) => name.includes(kw));
+}
+
+// Convert a camelCase / SCREAMING_SNAKE action code into a humanized
+// label ("UserMedal" -> "User Medal", "OPEN_ALEX_WORK" -> "Open Alex Work").
+// Falls back to a literal string when nothing else is known so the badge
+// is never blank.
+function humanizeAction(raw: string): string {
+  if (!raw) return '';
+  return raw
+    .replace(/[_-]+/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function getActionColor(raw: string): 'green' | 'red' | 'blue' | 'gray' | 'amber' {
+  const known = (ACTION_COLOR as Record<string, string | undefined>)[raw];
+  if (known === 'green' || known === 'red' || known === 'blue' || known === 'amber') {
+    return known;
+  }
+  return 'gray';
+}
+
 export default function AuditLogs(): JSX.Element {
   const { t } = useI18n();
   const locale = useLocale();
@@ -132,7 +178,8 @@ export default function AuditLogs(): JSX.Element {
   const sort = useTableSort<AuditLogEntry, SortColumn>('timestamp', 'desc');
 
   // Apply sort on top of the entries (no client-side filter — the BE
-  // does the search/range/admin narrowing).
+  // does the search/range/admin narrowing). Soft client-side filter for
+  // non-admin actors via the `isAdminActor` heuristic — see comment there.
   const sortedEntries = useMemo(
     () =>
       sort
@@ -151,6 +198,7 @@ export default function AuditLogs(): JSX.Element {
               return entry.timestamp ?? null;
           }
         })
+        .filter((entry) => isAdminActor(entry))
         .filter((entry) =>
           actionFilter === 'ALL' ? true : entry.action === actionFilter,
         ),
@@ -382,10 +430,10 @@ export default function AuditLogs(): JSX.Element {
                     <td>
                       <span
                         className={`${styles.actionBadge} ${
-                          styles[`action_${ACTION_COLOR[entry.action]}`] ?? ''
+                          styles[`action_${getActionColor(entry.action)}`] ?? ''
                         }`}
                       >
-                        {ACTION_LABEL[entry.action]}
+                        {ACTION_LABEL[entry.action] ?? humanizeAction(entry.action)}
                       </span>
                     </td>
                     <td>{entry.target}</td>
