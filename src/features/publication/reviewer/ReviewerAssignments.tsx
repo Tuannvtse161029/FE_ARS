@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Inbox } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
-import { useTableSort } from '../../../hooks/useTableSort';
+import { StatusBadge } from '../../../components/common/StatusBadge';
 import reviewer from './reviewer.module.css';
-import { statusLabel, reviewTypeLabel, paperTypeLabel, type PublicationPaper, type PublicationStatus } from '../types/publication';
 import {
   isAwaitingReviewerResponse,
   isReviewerActionable,
@@ -19,35 +18,12 @@ import { useListShortcuts } from '../../../hooks/useListShortcuts';
 import { formatDisplayDate } from '../../../utils/datetime';
 import { useT } from '../../../i18n/I18nContext';
 import { ROUTES } from '../../../routes/paths';
-
-/** Sortable column ids for the Reviewer Assignments table. */
-type SortColumn = 'title' | 'status' | 'actionability' | 'assigned' | 'deadline';
-
-// ReviewerAssignments — Reviewer-only list of Admin-assigned papers.
-//
-// ORGANIZATION:
-//   The list is organized into three action-centered groups:
-//   1. Response needed  — reviewer must accept/decline (REVIEWER_ASSIGNED)
-//   2. Accepted/in progress — reviewer has accepted and is evaluating
-//      (UNDER_REVIEW, REVISION_REQUIRED, RESUBMITTED)
-//   3. Completed recommendations — reviewer has submitted and is awaiting
-//      Admin (REVIEWER_RECOMMENDED_ACCEPT/REJECT)
-//
-// AVAILABILITY:
-//   The reviewer's availability setting is shown next to its control
-//   (in the Professional Profile page). An empty queue is NOT solely
-//   attributed to availability — Admin may simply not have assigned any
-//   matching papers yet.
-//
-// PRIVACY:
-//   This page never renders `PublicationReview.privateComments` or
-//   `PublicationReview.privateScores`. The reviewer can only see their
-//   own work product from inside the detail page after they submit.
-//
-// I18N:
-//   All user-facing copy routes through the shared i18n dictionary.
-//   Status labels come from `statusLabel()` (BE contract preserved); the
-//   i18n dictionary owns the bucket titles, hints, and empty-state copy.
+import type { PublicationPaper, PublicationStatus } from '../types/publication';
+import {
+  statusLabel,
+  reviewTypeLabel,
+  paperTypeLabel,
+} from '../types/publication';
 
 const REVIEWER_ACCENT = 'var(--ars-reviewer)';
 
@@ -65,6 +41,33 @@ const REVIEWER_VISIBLE_STATUSES: ReadonlySet<PublicationStatus> = new Set([
   'REVIEWER_RECOMMENDED_ACCEPT',
   'REVIEWER_RECOMMENDED_REJECT',
 ]);
+
+/** Map a reviewer-visible status to a StatusBadge variant token. */
+const REVIEWER_STATUS_TO_VARIANT: Partial<Record<PublicationStatus, string>> = {
+  REVIEWER_ASSIGNED: 'pubBucketPending',          // accent indigo
+  UNDER_REVIEW: 'pubBucketPending',               // accent indigo
+  REVISION_REQUIRED: 'pubBucketNeedRevision',     // purple
+  RESUBMITTED: 'pubBucketPending',                // accent indigo
+  REVIEWER_RECOMMENDED_ACCEPT: 'pubBucketVerified', // blue
+  REVIEWER_RECOMMENDED_REJECT: 'pubBucketNeedRevision', // purple
+};
+
+/** Status filter bar options for the reviewer list. */
+type ReviewerStatusFilter = 'ALL' | PublicationStatus;
+
+const REVIEWER_STATUS_FILTER_OPTIONS: ReadonlyArray<{
+  value: ReviewerStatusFilter;
+  labelKey: string;
+  descriptionKey: string;
+}> = [
+  { value: 'ALL',                               labelKey: 'reviewer.assignments.filter.all',       descriptionKey: 'reviewer.assignments.filter.desc.all' },
+  { value: 'REVIEWER_ASSIGNED',               labelKey: 'reviewer.assignments.filter.assigned', descriptionKey: 'reviewer.assignments.filter.desc.assigned' },
+  { value: 'UNDER_REVIEW',                    labelKey: 'reviewer.assignments.filter.underReview', descriptionKey: 'reviewer.assignments.filter.desc.underReview' },
+  { value: 'REVISION_REQUIRED',               labelKey: 'reviewer.assignments.filter.revisionRequired', descriptionKey: 'reviewer.assignments.filter.desc.revisionRequired' },
+  { value: 'RESUBMITTED',                     labelKey: 'reviewer.assignments.filter.resubmitted', descriptionKey: 'reviewer.assignments.filter.desc.resubmitted' },
+  { value: 'REVIEWER_RECOMMENDED_ACCEPT',     labelKey: 'reviewer.assignments.filter.recommendedAccept', descriptionKey: 'reviewer.assignments.filter.desc.recommendedAccept' },
+  { value: 'REVIEWER_RECOMMENDED_REJECT',     labelKey: 'reviewer.assignments.filter.recommendedReject', descriptionKey: 'reviewer.assignments.filter.desc.recommendedReject' },
+];
 
 const isVisibleReviewerAssignment = (paper: PublicationPaper): boolean =>
   paper.reviewRequestId != null && REVIEWER_VISIBLE_STATUSES.has(paper.status);
@@ -122,10 +125,9 @@ export const ReviewerAssignments = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-
-  // Default sort by assigned (newest first) so recently assigned papers
-  // surface at the top. The user can override per column header click.
-  const sort = useTableSort<PublicationPaper, SortColumn>('assigned', 'desc');
+  /** Status filter — narrows the table to one reviewer-visible status. */
+  const [statusFilter, setStatusFilter] = useState<ReviewerStatusFilter>('ALL');
+  const tabListRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -150,6 +152,7 @@ export const ReviewerAssignments = () => {
   const visiblePapers = useMemo(() => {
     const term = search.trim().toLowerCase();
     return papers.filter((paper) => {
+      if (statusFilter !== 'ALL' && paper.status !== statusFilter) return false;
       if (!term) return true;
       const haystack = [
         paper.title,
@@ -166,28 +169,17 @@ export const ReviewerAssignments = () => {
         .toLowerCase();
       return haystack.includes(term);
     });
-  }, [papers, search]);
+  }, [papers, search, statusFilter]);
 
-  // Apply column sort on top of filtered list.
+  // Apply default sort by assigned (newest first).
   const sortedPapers = useMemo(
     () =>
-      sort.sortedItemsBy(visiblePapers, (paper) => {
-        switch (sort.sortState.column) {
-          case 'title':
-            return paper.title ?? '';
-          case 'status':
-            return paper.status;
-          case 'actionability':
-            return actionableLabel(paper);
-          case 'assigned':
-            return paper.assignmentCreatedAt ?? paper.submittedAt ?? null;
-          case 'deadline':
-            return paper.reviewDeadline ?? null;
-          default:
-            return paper.assignmentCreatedAt ?? paper.submittedAt ?? paper.createdAt ?? null;
-        }
+      [...visiblePapers].sort((a, b) => {
+        const av = a.assignmentCreatedAt ?? a.submittedAt ?? a.createdAt ?? '';
+        const bv = b.assignmentCreatedAt ?? b.submittedAt ?? b.createdAt ?? '';
+        return bv.localeCompare(av);
       }),
-    [visiblePapers, sort],
+    [visiblePapers],
   );
 
   // Group sorted papers by action bucket so reviewers see what to do next
@@ -204,6 +196,16 @@ export const ReviewerAssignments = () => {
     return groups;
   }, [sortedPapers]);
 
+  /** Per-status totals for the filter pill bar. */
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = { ALL: papers.length };
+    for (const opt of REVIEWER_STATUS_FILTER_OPTIONS) {
+      if (opt.value === 'ALL') continue;
+      counts[opt.value] = papers.filter((p) => p.status === opt.value).length;
+    }
+    return counts;
+  }, [papers]);
+
   const rows = useMemo(
     () =>
       ACTION_BUCKET_ORDER.flatMap((bucket) => groupedPapers[bucket]).map((paper) => ({
@@ -215,6 +217,44 @@ export const ReviewerAssignments = () => {
       })),
     [groupedPapers],
   );
+
+  // Keyboard navigation handler for status filter tab bar
+  const handleTabKeyDown = (
+    event: React.KeyboardEvent<HTMLDivElement>,
+  ) => {
+    const tabs = tabListRef.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]');
+    if (!tabs || tabs.length === 0) return;
+
+    const currentIndex = Array.from(tabs).findIndex(
+      (tab) => tab === document.activeElement,
+    );
+    if (currentIndex === -1) return;
+
+    let nextIndex: number;
+
+    switch (event.key) {
+      case 'ArrowRight':
+        nextIndex = (currentIndex + 1) % tabs.length;
+        tabs[nextIndex].focus();
+        event.preventDefault();
+        break;
+      case 'ArrowLeft':
+        nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+        tabs[nextIndex].focus();
+        event.preventDefault();
+        break;
+      case 'Home':
+        tabs[0].focus();
+        event.preventDefault();
+        break;
+      case 'End':
+        tabs[tabs.length - 1].focus();
+        event.preventDefault();
+        break;
+      default:
+        break;
+    }
+  };
 
   // Intentional next-action hint per paper.
   const nextActionHint = (paper: PublicationPaper): string => {
@@ -339,100 +379,157 @@ export const ReviewerAssignments = () => {
               data-testid="empty-assignments"
             />
           ) : (
-            <div className={reviewer.buckets}>
-              {ACTION_BUCKET_ORDER.map((bucket) => {
-                const bucketPapers = groupedPapers[bucket];
-                if (bucketPapers.length === 0) return null;
-                const bucketCopy = ACTION_BUCKET_I18N[bucket];
-                return (
-                  <section
-                    key={bucket}
-                    className={reviewer.bucket}
-                    aria-labelledby={`bucket-${bucket}-title`}
-                    data-testid={`bucket-${bucket}`}
-                  >
-                    <header className={reviewer.bucketHeader}>
-                      <h2
-                        id={`bucket-${bucket}-title`}
-                        className={reviewer.bucketTitle}
-                      >
-                        {t(bucketCopy.label)}
-                        <span className={reviewer.bucketCount}>{bucketPapers.length}</span>
-                      </h2>
-                      <p className={reviewer.bucketHint}>{t(bucketCopy.hint)}</p>
-                    </header>
-                    <ul className={reviewer.bucketList}>
-                      {bucketPapers.map((paper) => {
-                        const rowIndex = rows.findIndex((row) => row.paper.reviewRequestId === paper.reviewRequestId);
-                        const aiLabel = aiRecommendedLabel(paper);
-                        return (
-                          <li
-                            key={`${paper.id}-${paper.reviewRequestId ?? 'assignment'}`}
-                            className={reviewer.bucketItem}
-                          >
-                            <Link
-                              to={`/reviewer/assignments/${paper.reviewRequestId}`}
-                              className={reviewer.bucketLink}
-                              data-testid="assignment-row"
-                              data-paper-id={paper.id}
-                              data-assignment-id={paper.reviewRequestId}
-                              aria-current={selectedIndex === rowIndex ? 'true' : undefined}
-                            >
-                              <div className={reviewer.bucketMain}>
-                                <span className={reviewer.bucketTitleText}>{paper.title}</span>
-                                <span className={reviewer.bucketMeta}>
-                                  {paperTypeLabel(paper.paperType) ? `${paperTypeLabel(paper.paperType)} · ` : ''}
-                                  {paper.reviewType ? reviewTypeLabel(paper.reviewType) : ''}
-                                  {aiLabel ? ` · ${aiLabel}` : ''}
-                                </span>
-                                <span className={reviewer.bucketMeta}>
-                                  {paper.authors.map((author) => author.name).filter(Boolean).join(', ') || t('reviewer.detail.notSupplied', 'Not supplied')}
-                                </span>
-                                {paper.abstract && <span className={reviewer.assignmentAbstract}>{paper.abstract}</span>}
-                              </div>
-                              <div className={reviewer.bucketStatus}>
-                                <span className={reviewer.bucketStatusLabel}>
-                                  {statusLabel(paper.status)}
-                                </span>
-                                <span
-                                  className={reviewer.bucketActionable}
-                                  data-tone={actionableTone(paper)}
+            <>
+              {/* Status filter pill bar — narrows the table to one status */}
+              <div
+                ref={tabListRef}
+                role="tablist"
+                aria-label={t('reviewer.assignments.filter.label')}
+                className={reviewer.tabBar}
+                onKeyDown={handleTabKeyDown}
+              >
+                {REVIEWER_STATUS_FILTER_OPTIONS.map((opt) => {
+                  const count = opt.value === 'ALL' ? papers.length : (statusCounts[opt.value] ?? 0);
+                  const isSelected = statusFilter === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      role="tab"
+                      type="button"
+                      className={`${reviewer.tab} ${isSelected ? reviewer.tabActive : ''}`}
+                      aria-selected={isSelected}
+                      aria-description={t(opt.descriptionKey)}
+                      tabIndex={isSelected ? 0 : -1}
+                      onClick={() => setStatusFilter(opt.value)}
+                    >
+                      {t(opt.labelKey)}
+                      <span className={reviewer.tabCount}>{count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className={reviewer.buckets}>
+                {ACTION_BUCKET_ORDER.map((bucket) => {
+                  const bucketPapers = groupedPapers[bucket];
+                  if (bucketPapers.length === 0) return null;
+                  const bucketCopy = ACTION_BUCKET_I18N[bucket];
+                  return (
+                    <section
+                      key={bucket}
+                      className={reviewer.bucket}
+                      aria-labelledby={`bucket-${bucket}-title`}
+                      data-testid={`bucket-${bucket}`}
+                    >
+                      <header className={reviewer.bucketHeader}>
+                        <h2
+                          id={`bucket-${bucket}-title`}
+                          className={reviewer.bucketTitle}
+                        >
+                          {t(bucketCopy.label)}
+                          <span className={reviewer.bucketCount}>{bucketPapers.length}</span>
+                        </h2>
+                        <p className={reviewer.bucketHint}>{t(bucketCopy.hint)}</p>
+                      </header>
+                      <div className={reviewer.tableWrap}>
+                        <table className={reviewer.table}>
+                          <thead>
+                            <tr>
+                              <th scope="col" className={reviewer.thTitle}>
+                                {t('reviewer.assignments.column.title')}
+                              </th>
+                              <th scope="col" className={reviewer.thAbstract}>
+                                {t('reviewer.assignments.column.abstract')}
+                              </th>
+                              <th scope="col">{t('reviewer.assignments.column.status')}</th>
+                              <th scope="col">{t('reviewer.assignments.column.assigned')}</th>
+                              <th scope="col">{t('reviewer.assignments.column.deadline')}</th>
+                              <th scope="col" className={reviewer.thActions}>
+                                {t('reviewer.assignments.column.action')}
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {bucketPapers.map((paper) => {
+                              const rowIndex = rows.findIndex(
+                                (row) => row.paper.reviewRequestId === paper.reviewRequestId,
+                              );
+                              const aiLabel = aiRecommendedLabel(paper);
+                              const authorsLine = paper.authors.map((a) => a.name).filter(Boolean).join(', ')
+                                || t('reviewer.detail.notSupplied', 'Not supplied');
+                              return (
+                                <tr
+                                  key={`${paper.id}-${paper.reviewRequestId ?? 'assignment'}`}
+                                  data-testid="assignment-row"
+                                  data-paper-id={paper.id}
+                                  data-assignment-id={paper.reviewRequestId}
+                                  aria-current={selectedIndex === rowIndex ? 'true' : undefined}
                                 >
-                                  {actionableLabel(paper)}
-                                </span>
-                              </div>
-                              <div className={reviewer.bucketDates}>
-                                <span>
-                                  <span className={reviewer.bucketDateLabel}>
-                                    {t('reviewer.assignments.assigned')}
-                                  </span>
-                                  <span className={reviewer.mono}>
+                                  <td className={reviewer.tdTitle}>
+                                    <Link
+                                      to={`/reviewer/assignments/${paper.reviewRequestId}`}
+                                      className={reviewer.titleLink}
+                                    >
+                                      {paper.title}
+                                    </Link>
+                                    <span className={reviewer.titleMeta}>
+                                      {[
+                                        paperTypeLabel(paper.paperType),
+                                        paper.reviewType ? reviewTypeLabel(paper.reviewType) : '',
+                                        aiLabel,
+                                      ].filter(Boolean).join(' · ')}
+                                    </span>
+                                    <span className={reviewer.titleMeta}>{authorsLine}</span>
+                                  </td>
+                                  <td className={reviewer.tdAbstract}>
+                                    {paper.abstract ? (
+                                      <span className={reviewer.assignmentAbstract}>{paper.abstract}</span>
+                                    ) : (
+                                      <span className={reviewer.titleMeta}>
+                                        {t('reviewer.detail.notSupplied', 'Not supplied')}
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td>
+                                    <div className={reviewer.statusCell}>
+                                      <StatusBadge
+                                        status={REVIEWER_STATUS_TO_VARIANT[paper.status] ?? 'unknown'}
+                                        label={statusLabel(paper.status)}
+                                        size="sm"
+                                      />
+                                      <span
+                                        className={reviewer.bucketActionable}
+                                        data-tone={actionableTone(paper)}
+                                      >
+                                        {actionableLabel(paper)}
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <td className={reviewer.mono}>
                                     {formatDate(paper.assignmentCreatedAt ?? paper.submittedAt)}
-                                  </span>
-                                </span>
-                                <span>
-                                  <span className={reviewer.bucketDateLabel}>
-                                    {t('reviewer.assignments.deadline')}
-                                  </span>
-                                  <span className={reviewer.mono}>
+                                  </td>
+                                  <td className={reviewer.mono}>
                                     {formatDate(paper.reviewDeadline)}
-                                  </span>
-                                </span>
-                              </div>
-                              <div className={reviewer.bucketAction}>
-                                <span className={reviewer.bucketNextAction}>
-                                  {nextActionHint(paper)} →
-                                </span>
-                              </div>
-                            </Link>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </section>
-                );
-              })}
-            </div>
+                                  </td>
+                                  <td className={reviewer.tdActions}>
+                                    <Link
+                                      to={`/reviewer/assignments/${paper.reviewRequestId}`}
+                                      className={reviewer.bucketNextAction}
+                                    >
+                                      {nextActionHint(paper)} →
+                                    </Link>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
+                  );
+                })}
+              </div>
+            </>
           )}
         </>
       )}

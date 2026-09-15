@@ -25,7 +25,15 @@ export type StatusBadgeVariant =
   | 'pubAssigned'     // Blue  — REVIEWER_ASSIGNED
   | 'pubPublished'    // Green — PUBLISHED
   | 'pubRejected'     // Red   — ADMIN_REJECTED
-  | 'pubImprovement'; // Purple — REVIEWER_RECOMMENDED_REJECT
+  | 'pubImprovement'  // Purple — REVIEWER_RECOMMENDED_REJECT
+  // Researcher "My Research Papers" 5-bucket filter — derives from
+  // researcherStatusGroups.toResearcherBucketTone().
+  | 'pubBucketPending'      // Amber — Pending (in-flight)
+  | 'pubBucketVerified'     // Blue  — Verified (admin approved)
+  | 'pubBucketInvalid'      // Red   — Invalid (admin rejected)
+  | 'pubBucketPublished'    // Green — Published (live)
+  | 'pubBucketNeedRevision' // Purple — Need Revision
+  | 'pubBucketOther';       // Grey  — catch-all (DRAFT, etc.)
 
 // Map raw status strings (canonical labels AND common synonyms) to a
 // normalised variant. The BE stores these as free-form strings so we accept
@@ -75,6 +83,14 @@ const normalise = (raw: string | null | undefined): StatusBadgeVariant => {
     case 'published':                          return 'pubPublished';
     case 'admin_rejected':                     return 'pubRejected';
     case 'reviewer_recommended_reject':         return 'pubImprovement';
+    // Researcher 5-bucket filter — variants are passed through
+    // directly (e.g. `pubBucketPending`). Lowercased match.
+    case 'pubbucketpending':                   return 'pubBucketPending';
+    case 'pubbucketverified':                  return 'pubBucketVerified';
+    case 'pubbucketinvalid':                   return 'pubBucketInvalid';
+    case 'pubbucketpublished':                 return 'pubBucketPublished';
+    case 'pubbucketneedrevision':              return 'pubBucketNeedRevision';
+    case 'pubbucketother':                     return 'pubBucketOther';
     default:
       return NORMALISE_TABLE[key] ?? 'unknown';
   }

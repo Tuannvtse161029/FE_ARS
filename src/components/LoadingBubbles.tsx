@@ -12,9 +12,10 @@ import { useI18n } from '../i18n/I18nContext';
  *  1. **Minimized (first 4 s elapsed, overlay shrinks away)** —
  *     Fires a neutral info toast so the user knows the spinner is gone
  *     and they can keep working while the request finishes in the background.
- *     Only shown while loading is still in flight.
+ *     Only shown while loading is still in flight. Auto-dismisses after 12s so
+ *     a stuck request doesn't leave the notification on screen indefinitely.
  *
- *  2. **Completed (all requests resolved while minimized)** —
+ *  2. **Completed (all requests resolved)** —
  *     Fires a success toast telling the user their data is ready and they
  *     can click "Back" to return to where they started. Only fires once
  *     per loading cycle and only if the overlay was actually minimized
@@ -23,20 +24,26 @@ import { useI18n } from '../i18n/I18nContext';
  * This component is intentionally side-effect-only (no render output) so
  * it can be mounted once at the app root without adding DOM nodes.
  */
+// Auto-dismiss the "keep exploring" toast after this many ms even if the
+// request never resolves, so the notification can't get stuck on screen.
+const KEEP_EXPLORING_TIMEOUT_MS = 12_000;
+
 export const LoadingBubbles = () => {
   const { t } = useI18n();
 
   // Track whether we have shown the "minimized" toast this cycle so
   // we only show it once. Ref avoids triggering re-renders on every tick.
   const minimizedToastFired = useRef(false);
+  // Track the previous loading state so we only fire the "done" toast on
+  // the loading -> idle transition (not on every subsequent snapshot).
+  const wasLoading = useRef(false);
 
   useEffect(() => {
     // Subscribe to loadingTracker so we can react to load completion.
     const unsub = loadingTracker.subscribe(() => {
       const isLoading = loadingTracker.getSnapshot();
-      if (!isLoading) {
-        // Loading completed — fire the "done" toast if we previously
-        // minimized. Reset the guard so the next cycle starts clean.
+      // Edge-trigger: only fire when transitioning from loading -> idle.
+      if (wasLoading.current && !isLoading) {
         if (minimizedToastFired.current) {
           minimizedToastFired.current = false;
           toast.success(t('loadingBubble.done'), {
@@ -46,6 +53,7 @@ export const LoadingBubbles = () => {
           });
         }
       }
+      wasLoading.current = isLoading;
     });
 
     return unsub;
@@ -62,9 +70,13 @@ export const LoadingBubbles = () => {
       // in flight. If loading already completed we don't need it.
       if (loadingTracker.getSnapshot()) {
         minimizedToastFired.current = true;
+        wasLoading.current = true;
         toast.info(t('loadingBubble.keepExploring'), {
           id: 'loading-minimized',
-          duration: Infinity,
+          // Cap the duration so a stuck request doesn't leave the toast
+          // on screen forever. If loading completes before the timeout,
+          // the "done" toast replaces it (same id -> Sonner replaces).
+          duration: KEEP_EXPLORING_TIMEOUT_MS,
           icon: <Info size={16} aria-hidden />,
         });
       }

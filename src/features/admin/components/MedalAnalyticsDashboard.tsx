@@ -571,7 +571,7 @@ export const MedalAnalyticsDashboard = ({
               className={styles.kpiValue}
 
 
-              style={{ fontSize: '1.125rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+              style={{ fontSize: '1.125rem' }}
 
 
             >

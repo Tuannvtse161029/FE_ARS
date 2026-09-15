@@ -15,6 +15,28 @@
   color: var(--ink-primary, #0f172a);
 }
 
+/* Reset button defaults — the badge is rendered as either a plain div
+   (when subscription doesn't apply to the role) or a clickable button
+   (when it does). The button variant needs the same alignment/padding
+   as the div variant. */
+.badgeButton {
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.badgeButton:hover {
+  background: var(--surface-paper-2, var(--surface-paper-muted, #e2e8f0));
+  border-color: var(--border-strong, var(--ink-muted, #94a3b8));
+}
+
+.badgeButton:focus-visible {
+  outline: 2px solid var(--focus-ring, #2563eb);
+  outline-offset: 2px;
+}
+
 .badgeActive {
   border-color: color-mix(in srgb, var(--status-success, #16a34a) 35%, transparent);
   background: color-mix(in srgb, var(--status-success, #16a34a) 8%, var(--surface-paper, #ffffff));

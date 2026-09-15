@@ -390,6 +390,11 @@
   --status-draft-surface: #dde4f0;
   --status-inactive-text: #5b4a6e;
   --status-inactive-surface: #ebe3f5;
+  /* Reviewer assignment badge — distinct violet/indigo for
+     UNDER_REVIEW and REVIEWER_ASSIGNED so they don't look the same
+     as the info-blue used for SUBMITTED/SCREENING/READY states. */
+  --status-accent-text: #4338ca;
+  --status-accent-surface: #e0e7ff;
   --surface-canvas: var(--app-canvas);
   --surface-subtle: var(--app-canvas-subtle);
   --surface-inset: var(--surface-sunken);

@@ -128,6 +128,24 @@ export const ManuscriptViewer = ({ fileUrl, title }: ManuscriptViewerProps) => {
     void verify(fileUrl);
   };
 
+  // When the iframe successfully fires `onLoad`, mark that the PDF rendered.
+  // If the iframe's content fails to load (CORS / X-Frame-Options blocks
+  // typical Firebase Storage URLs), the `onError` event fires instead — we
+  // use that to flip the state to `error` and surface the fallback UI.
+  const handleIframeLoad = () => {
+    // No-op: a successful load is implicit by remaining in the 'ready' state.
+  };
+  const handleIframeError = () => {
+    cacheRef.current.set(fileUrl, 'error');
+    setState('error');
+    setErrorMessage(
+      t(
+        'reviewer.detail.manuscript.corsBlocked',
+        'Your browser blocked the embedded preview due to cross-origin policy. Download or open the manuscript in a new tab to view it.',
+      ),
+    );
+  };
+
   return (
     <div className={reviewer.pdfFrame} data-testid="pdf-frame">
       <div className={reviewer.pdfActions}>
@@ -155,6 +173,10 @@ export const ManuscriptViewer = ({ fileUrl, title }: ManuscriptViewerProps) => {
         <iframe
           src={safeHref(fileUrl) ?? ''}
           title={t('reviewer.detail.doc.frameTitle', undefined, { title })}
+          onLoad={handleIframeLoad}
+          onError={handleIframeError}
+          sandbox="allow-same-origin allow-scripts"
+          referrerPolicy="no-referrer"
         />
       )}
 

@@ -49,7 +49,7 @@
  */
 
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 
 
 import { createPortal } from 'react-dom';
@@ -98,9 +98,14 @@ import { Button } from '../../../components/Button/Button';
 
 
 import { useI18n } from '../../../i18n/I18nContext';
-
-
 import styles from './MedalRecipientsModal.module.css';
+
+
+// sessionStorage key for the set of locally-tracked revoked `userMedalId`s.
+// Used to keep the "Revoked" tab populated after a refresh within the
+// same browser session (the BE removes the grant record on DELETE so a
+// plain re-fetch loses the row; we cache the revoked IDs on the client).
+const REVOKED_STORAGE_KEY = 'ars_revoked_medal_ids';
 
 
 
@@ -283,7 +288,36 @@ export const MedalRecipientsModal = ({
   // `userMedalId`s separately from the prop list.
 
 
-  const [revokedIds, setRevokedIds] = useState<Set<number>>(new Set());
+  const [revokedIds, setRevokedIds] = useState<Set<number>>(() => {
+    if (typeof window === 'undefined') return new Set();
+    try {
+      const raw = window.sessionStorage.getItem(REVOKED_STORAGE_KEY);
+      if (!raw) return new Set();
+      const parsed = JSON.parse(raw) as unknown;
+      if (Array.isArray(parsed)) {
+        return new Set(parsed.filter((n): n is number => typeof n === 'number'));
+      }
+    } catch {
+      // Corrupted JSON or storage disabled — fall back to empty set.
+    }
+    return new Set();
+  });
+
+  // Persist `revokedIds` to sessionStorage on every change so the Revoked
+  // tab stays populated across re-renders and refreshes within the same
+  // browser session. (Clears automatically when the tab/window closes —
+  // matches the FE convention for non-"Remember Me" data.)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.sessionStorage.setItem(
+        REVOKED_STORAGE_KEY,
+        JSON.stringify(Array.from(revokedIds)),
+      );
+    } catch {
+      // Storage quota or disabled — best-effort, fall back to in-memory.
+    }
+  }, [revokedIds]);
 
 
   const [revokedReasons, setRevokedReasons] = useState<Map<number, string>>(new Map());
@@ -367,6 +401,15 @@ export const MedalRecipientsModal = ({
 
 
 
+  // ─── Visible recipients (admins excluded) ───────────────────────────
+  const visibleRecipients = useMemo(
+    () =>
+      recipients.filter(
+        (r) => (r.roleName ?? '').trim().toLowerCase() !== 'admin',
+      ),
+    [recipients],
+  );
+
   // ─── Filtered recipients ───────────────────────────────────────────
 
 
@@ -376,7 +419,7 @@ export const MedalRecipientsModal = ({
     const q = searchQuery.trim().toLowerCase();
 
 
-    return recipients.filter((r) => {
+    return visibleRecipients.filter((r) => {
 
 
       if (tierFilter !== 'ALL' && r.tier !== tierFilter) return false;
@@ -412,7 +455,7 @@ export const MedalRecipientsModal = ({
     });
 
 
-  }, [recipients, tierFilter, statusFilter, searchQuery, revokedIds]);
+  }, [visibleRecipients, tierFilter, statusFilter, searchQuery, revokedIds]);
 
 
 
@@ -424,13 +467,13 @@ export const MedalRecipientsModal = ({
   const countsByTier = useMemo(() => {
 
 
-    const counts: Record<string, number> = { ALL: recipients.length };
+    const counts: Record<string, number> = { ALL: visibleRecipients.length };
 
 
     for (const tier of ['Bronze', 'Silver', 'Gold', 'Platinum'] as MedalTier[]) {
 
 
-      counts[tier] = recipients.filter((r) => r.tier === tier).length;
+      counts[tier] = visibleRecipients.filter((r) => r.tier === tier).length;
 
 
     }
@@ -439,7 +482,7 @@ export const MedalRecipientsModal = ({
     return counts;
 
 
-  }, [recipients]);
+  }, [visibleRecipients]);
 
 
 
@@ -448,16 +491,24 @@ export const MedalRecipientsModal = ({
   const activeCount = useMemo(
 
 
-    () => recipients.filter((r) => !revokedIds.has(r.userMedalId)).length,
+    () => visibleRecipients.filter((r) => !revokedIds.has(r.userMedalId)).length,
 
 
-    [recipients, revokedIds],
+    [visibleRecipients, revokedIds],
 
 
   );
 
 
-  const revokedCount = revokedIds.size;
+  // Count of revoked rows among the *visible* recipients so it matches what
+  // the user actually sees in the list (admins are excluded upstream).
+  const revokedCount = useMemo(() => {
+    let n = 0;
+    for (const r of visibleRecipients) {
+      if (revokedIds.has(r.userMedalId)) n += 1;
+    }
+    return n;
+  }, [visibleRecipients, revokedIds]);
 
 
 
@@ -1685,89 +1736,35 @@ export const MedalRecipientsModal = ({
 
 
                             {isRevoked ? (
-
-
-                              <button
-
-
-                                type="button"
-
-
-                                className={`${styles.rowAction} ${styles.rowActionReinstate}`}
-
-
-                                onClick={() => void handleReinstate(item)}
-
-
-                                disabled={!onReinstate}
-
-
-                                title={copy(
-
-
-                                  'Reinstate this badge for the user',
-
-
-                                  'Khôi phục huy hiệu cho người dùng này',
-
-
-                                )}
-
-
-                              >
-
-
-                                <RotateCcw size={12} />
-
-
-                                <span>{copy('Reinstate', 'Khôi phục')}</span>
-
-
-                              </button>
-
-
+                              onReinstate ? (
+                                <button
+                                  type="button"
+                                  className={`${styles.rowAction} ${styles.rowActionReinstate}`}
+                                  onClick={() => void handleReinstate(item)}
+                                  title={copy(
+                                    'Reinstate this badge for the user',
+                                    'Khôi phục huy hiệu cho người dùng này',
+                                  )}
+                                >
+                                  <RotateCcw size={12} />
+                                  <span>{copy('Reinstate', 'Khôi phục')}</span>
+                                </button>
+                              ) : null
                             ) : (
-
-
-                              <button
-
-
-                                type="button"
-
-
-                                className={`${styles.rowAction} ${styles.rowActionDanger}`}
-
-
-                                onClick={() => openRevokeConfirm(item)}
-
-
-                                disabled={!onRevoke}
-
-
-                                title={copy(
-
-
-                                  'Revoke this badge from the user',
-
-
-                                  'Thu hồi huy hiệu của người dùng này',
-
-
-                                )}
-
-
-                              >
-
-
-                                <EyeOff size={12} />
-
-
-                                <span>{copy('Revoke', 'Thu hồi')}</span>
-
-
-                              </button>
-
-
+                              onRevoke ? (
+                                <button
+                                  type="button"
+                                  className={`${styles.rowAction} ${styles.rowActionDanger}`}
+                                  onClick={() => openRevokeConfirm(item)}
+                                  title={copy(
+                                    'Revoke this badge from the user',
+                                    'Thu hồi huy hiệu của người dùng này',
+                                  )}
+                                >
+                                  <EyeOff size={12} />
+                                  <span>{copy('Revoke', 'Thu hồi')}</span>
+                                </button>
+                              ) : null
                             )}
 
 
