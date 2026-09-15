@@ -156,8 +156,17 @@ export interface AnnualFeePurchase {
   expiryDate?: string | null;
 }
 
-/** Request to initiate an annual fee purchase (creates PayOS payment link) */
+/** Request to initiate an annual fee purchase (creates PayOS payment link)
+ *
+ * NOTE: `userId` is REQUIRED by the BE for `POST /api/AnnualFees/{id}/purchase`,
+ * even though the Swagger spec marks it `nullable: true`. Sending the
+ * request without it causes the BE to reject with `UserID is required`.
+ * The FE injects the authenticated user's `userId` automatically — callers
+ * normally leave this `undefined` and the page sets it from `useAuth()`.
+ */
 export interface AnnualFeePurchaseRequest {
+  /** Authenticated user id; the BE requires this for purchase orders. */
+  userId?: number | null;
   /** Optional override for the post-payment return URL */
   returnUrl?: string | null;
   /** Optional override for the post-cancel return URL */

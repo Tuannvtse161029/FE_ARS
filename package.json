@@ -41,6 +41,7 @@
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
     "axios": "^1.20.0",
+    "date-fns": "^4.4.0",
     "firebase": "^12.18.0",
     "lucide-react": "^1.39.0",
     "pdf-lib": "^1.17.1",
