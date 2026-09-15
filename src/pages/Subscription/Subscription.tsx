@@ -224,10 +224,22 @@ export const Subscription = () => {
 
   const handleProceedToPay = useCallback(async () => {
     if (!selectedPlan) return;
+    // The BE's POST /api/AnnualFees/{id}/purchase requires `userId` in the
+    // request body. Pulling it from the authenticated session ensures the
+    // purchase is attributed to the correct user even if JWT role/claim
+    // lookup is stale. Skip silently when no session is present — the
+    // route guard already prevents unauthenticated users from reaching
+    // this page, so this is a defensive no-op.
+    const authenticatedUserId = user?.userId ?? null;
+    if (!authenticatedUserId) {
+      setOrderError(new Error('You must be signed in to purchase a subscription.'));
+      return;
+    }
     setIsOrdering(true);
     setOrderError(null);
     try {
       const order = await annualFeeService.purchaseAnnualFee(selectedPlan.id, {
+        userId: authenticatedUserId,
         returnUrl:
           typeof window !== 'undefined'
             ? `${window.location.origin}${ROUTES.SUBSCRIPTION_RETURN}?status=success`
@@ -251,7 +263,7 @@ export const Subscription = () => {
     } finally {
       setIsOrdering(false);
     }
-  }, [selectedPlan]);
+  }, [selectedPlan, user?.userId]);
 
   const featureDisabled = !AppConfig.features.enableSubscriptionAccess;
   // True when the BE has returned a valid subscription that is not expired.
