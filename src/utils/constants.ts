@@ -317,6 +317,11 @@ export const API_ENDPOINTS = {
       UPDATE: (id: number) => `/api/ResearchTopic/${id}`,
       DELETE: (id: number) => `/api/ResearchTopic/${id}`,
       MY_TOPICS: '/api/ResearchTopic/my-topics',
+      GET_MATERIALS: (topicId: number) => `/api/ResearchTopic/${topicId}/learning-materials`,
+      ATTACH_MATERIAL: (topicId: number) => `/api/ResearchTopic/${topicId}/learning-materials`,
+      CREATE_ATTACH_MATERIAL: (topicId: number) => `/api/ResearchTopic/${topicId}/learning-materials/create`,
+      DETACH_MATERIAL: (topicId: number, materialId: number) =>
+        `/api/ResearchTopic/${topicId}/learning-materials/${materialId}`,
     },
     RESEARCH_GROUP: {
       GET_ALL: '/api/ResearchGroup',
@@ -331,6 +336,17 @@ export const API_ENDPOINTS = {
       // `is_active` column without forcing the caller to PUT the full group
       // payload. Returns the updated ResearchGroupResponse.
       TOGGLE_ACTIVE: (id: number) => `/api/ResearchGroup/${id}/active`,
+    },
+    RESEARCH_GROUP_JOIN_REQUEST: {
+      STUDENT_CREATE: (groupId: number) => `/api/ResearchGroup/${groupId}/join-requests`,
+      LECTURER_LIST: (groupId: number, status = 'PENDING') =>
+        `/api/lecturer/research-groups/${groupId}/join-requests?status=${status}`,
+      LECTURER_DETAIL: (groupId: number, requestId: number) =>
+        `/api/lecturer/research-groups/${groupId}/join-requests/${requestId}`,
+      LECTURER_ACCEPT: (groupId: number, requestId: number) =>
+        `/api/lecturer/research-groups/${groupId}/join-requests/${requestId}/accept`,
+      LECTURER_REJECT: (groupId: number, requestId: number) =>
+        `/api/lecturer/research-groups/${groupId}/join-requests/${requestId}/reject`,
     },
     GROUP_MEMBER: {
       GET_ALL: '/api/GroupMember',

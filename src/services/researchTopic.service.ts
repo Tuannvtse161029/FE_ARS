@@ -7,6 +7,9 @@ import {
 import type {
   ResearchTopicCreateRequest,
   ResearchTopicUpdateRequest,
+  TopicLearningMaterialResponse,
+  AttachLearningMaterialResponse,
+  CreateTopicLearningMaterialRequest,
 } from '../types/researchWorkflowDtos';
 
 type TopicGuidelineFields = {
@@ -126,4 +129,42 @@ export const getResearchTopicStatus = (
   t: ResearchTopic | null | undefined,
 ): ResearchTopicStatus => normalizeResearchTopicStatus(t?.status ?? null);
 
+export const topicLearningMaterialService = {
+  getByTopicId: async (topicId: number): Promise<TopicLearningMaterialResponse[]> => {
+    const response = await api.get<TopicLearningMaterialResponse[]>(
+      API_ENDPOINTS.RESEARCH_WORKFLOW.RESEARCH_TOPIC.GET_MATERIALS(topicId),
+    );
+    return Array.isArray(response.data) ? response.data : [];
+  },
+
+  attach: async (
+    topicId: number,
+    learningMaterialId: number,
+  ): Promise<AttachLearningMaterialResponse> => {
+    const response = await api.post<AttachLearningMaterialResponse>(
+      API_ENDPOINTS.RESEARCH_WORKFLOW.RESEARCH_TOPIC.ATTACH_MATERIAL(topicId),
+      { learningMaterialId },
+    );
+    return response.data;
+  },
+
+  createAndAttach: async (
+    topicId: number,
+    payload: CreateTopicLearningMaterialRequest,
+  ): Promise<TopicLearningMaterialResponse> => {
+    const response = await api.post<TopicLearningMaterialResponse>(
+      API_ENDPOINTS.RESEARCH_WORKFLOW.RESEARCH_TOPIC.CREATE_ATTACH_MATERIAL(topicId),
+      payload,
+    );
+    return response.data;
+  },
+
+  detach: async (topicId: number, learningMaterialId: number): Promise<void> => {
+    await api.delete(
+      API_ENDPOINTS.RESEARCH_WORKFLOW.RESEARCH_TOPIC.DETACH_MATERIAL(topicId, learningMaterialId),
+    );
+  },
+};
+
 export default researchTopicService;
+

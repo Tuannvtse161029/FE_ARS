@@ -6,7 +6,7 @@
 // page so the lecturer can navigate Groups → Topic without back/forward
 // navigation.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Plus,
@@ -32,7 +32,10 @@ import { useResearchTopics } from '../../hooks/useResearchTopics';
 import {
   researchGroupService,
   deriveGroupStatus,
+  type ResearchGroup as ResearchGroupType,
 } from '../../services/researchGroup.service';
+import { groupJoinRequestService } from '../../services/groupJoinRequest.service';
+import type { GroupJoinRequestResponse } from '../../types/researchWorkflowDtos';
 import type { ResearchTopic } from '../../types/research';
 import {
   groupMemberService,
@@ -187,14 +190,17 @@ export const ResearchGroup = () => {
   const [statusFilter, setStatusFilter] = useState<GroupFilterTab>('all');
   const [togglingGroupIds, setTogglingGroupIds] = useState<Set<number>>(new Set());
 
-  // Frontend-only preview until BE ships the pending-membership API.
-  const [showJoinRequestPreview, setShowJoinRequestPreview] = useState(false);
-  const demoJoinRequest = {
-    applicantName: 'Nguyen Minh Anh',
-    applicantEmail: 'minhanh@example.edu',
-    applicantMajor: 'Computer Science',
-    groupName: groups[0]?.name ?? 'AI Research Group',
-  };
+  // Join Requests state (BE-RESEARCH-GROUP-JOIN-REQUEST-01)
+  const [pendingRequestsByGroup, setPendingRequestsByGroup] = useState<
+    Record<number, GroupJoinRequestResponse[]>
+  >({});
+  const [activeJoinRequest, setActiveJoinRequest] = useState<{
+    request: GroupJoinRequestResponse;
+    group: ResearchGroupType;
+  } | null>(null);
+  const [rejectionNote, setRejectionNote] = useState('');
+  const [isProcessingDecision, setIsProcessingDecision] = useState(false);
+  const [decisionError, setDecisionError] = useState<string | null>(null);
 
   /** Controls the delete-confirmation modal */
   const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -262,6 +268,112 @@ export const ResearchGroup = () => {
       () => setBanner({ visible: false, text: '', variant: 'success' }),
       4000,
     );
+  };
+
+  const fetchPendingRequests = useCallback(async () => {
+    if (groups.length === 0) return;
+    try {
+      const results = await Promise.allSettled(
+        groups.map(async (g) => {
+          const gid = g.id ?? g.researchGroupId;
+          if (!gid) return { groupId: 0, requests: [] };
+          const reqs = await groupJoinRequestService.getRequestsByGroup(gid, 'PENDING');
+          return { groupId: gid, requests: reqs };
+        }),
+      );
+      const map: Record<number, GroupJoinRequestResponse[]> = {};
+      for (const r of results) {
+        if (r.status === 'fulfilled' && r.value.groupId > 0) {
+          map[r.value.groupId] = r.value.requests;
+        }
+      }
+      setPendingRequestsByGroup(map);
+    } catch (err) {
+      console.error('Failed to fetch group join requests:', err);
+    }
+  }, [groups]);
+
+  useEffect(() => {
+    void fetchPendingRequests();
+  }, [fetchPendingRequests]);
+
+  const handleAcceptRequest = async () => {
+    if (!activeJoinRequest) return;
+    const { request, group } = activeJoinRequest;
+    const gid = group.id ?? group.researchGroupId;
+    if (!gid) return;
+    setIsProcessingDecision(true);
+    setDecisionError(null);
+    try {
+      await groupJoinRequestService.acceptRequest(gid, request.joinRequestId);
+      showBannerMessage(
+        locale === 'vi'
+          ? `Đã duyệt đơn xin gia nhập của ${request.applicant?.displayName || 'sinh viên'}.`
+          : `Accepted join request from ${request.applicant?.displayName || 'applicant'}.`,
+        'success',
+      );
+      setActiveJoinRequest(null);
+      setRejectionNote('');
+      await loadMembers();
+      await refetchGroups();
+      await fetchPendingRequests();
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { status?: number; data?: { message?: string } }; message?: string };
+      const status = errorObj.response?.status;
+      let msg = errorObj.response?.data?.message || errorObj.message || 'Failed to accept join request.';
+      if (status === 409) {
+        msg =
+          locale === 'vi'
+            ? 'Không thể duyệt đơn: Nhóm đã đủ sĩ số tối đa (5 thành viên) hoặc đơn đã được xử lý.'
+            : 'Cannot accept request: group reached maximum capacity or request was already processed.';
+      } else if (status === 403) {
+        msg =
+          locale === 'vi'
+            ? 'Bạn không có quyền duyệt đơn của nhóm này.'
+            : 'You are not authorized to decide requests for this group.';
+      }
+      setDecisionError(msg);
+    } finally {
+      setIsProcessingDecision(false);
+    }
+  };
+
+  const handleRejectRequest = async () => {
+    if (!activeJoinRequest) return;
+    const { request, group } = activeJoinRequest;
+    const gid = group.id ?? group.researchGroupId;
+    if (!gid) return;
+    setIsProcessingDecision(true);
+    setDecisionError(null);
+    try {
+      await groupJoinRequestService.rejectRequest(
+        gid,
+        request.joinRequestId,
+        rejectionNote,
+      );
+      showBannerMessage(
+        locale === 'vi'
+          ? `Đã từ chối đơn của ${request.applicant?.displayName || 'sinh viên'}.`
+          : `Rejected join request from ${request.applicant?.displayName || 'applicant'}.`,
+        'success',
+      );
+      setActiveJoinRequest(null);
+      setRejectionNote('');
+      await fetchPendingRequests();
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { status?: number; data?: { message?: string } }; message?: string };
+      const status = errorObj.response?.status;
+      let msg = errorObj.response?.data?.message || errorObj.message || 'Failed to reject join request.';
+      if (status === 409) {
+        msg =
+          locale === 'vi'
+            ? 'Đơn này đã được xử lý trước đó.'
+            : 'This request has already been processed.';
+      }
+      setDecisionError(msg);
+    } finally {
+      setIsProcessingDecision(false);
+    }
   };
 
   const handleDeleteGroup = async (groupId: number, name: string) => {
@@ -680,7 +792,7 @@ export const ResearchGroup = () => {
         />
       ) : (
         <div className={styles.grid}>
-          {pagedGroups.map((grp, groupIndex) => {
+          {pagedGroups.map((grp) => {
             const gid = typeof grp.id === 'number' ? grp.id : -1;
             const idLabel = gid >= 0 ? formatGroupId(gid) : '—';
             const topic = grp.topicId ? topicById.get(grp.topicId) : null;
@@ -689,6 +801,7 @@ export const ResearchGroup = () => {
               ? formatDisplayDate(grp.deadline, locale)
               : '';
             const roster = gid >= 0 ? memberIndex[gid] ?? [] : [];
+            const groupJoinRequests = gid >= 0 ? pendingRequestsByGroup[gid] ?? [] : [];
             return (
               <article className={styles.groupCard} key={gid}>
                 <div className={styles.cardTopRow}>
@@ -754,18 +867,27 @@ export const ResearchGroup = () => {
                   <span className={styles.membersLabel}>
                     {t('lecturer.researchGroups.membersLabel')} ({roster.length})
                   </span>
-                  {groupIndex === 0 && (
-                    <button
-                      type="button"
-                      className={styles.joinRequestPreview}
-                      onClick={() => setShowJoinRequestPreview(true)}
-                      aria-label={t('lecturer.researchGroups.openJoinRequest')}
-                    >
-                      <UserRound size={14} aria-hidden />
-                      <span>
-                        {`${demoJoinRequest.applicantName} ${t('lecturer.researchGroups.joinRequestFrom')}`}
-                      </span>
-                    </button>
+                  {groupJoinRequests.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      {groupJoinRequests.map((req) => (
+                        <button
+                          key={req.joinRequestId}
+                          type="button"
+                          className={styles.joinRequestPreview}
+                          onClick={() => {
+                            setActiveJoinRequest({ request: req, group: grp });
+                            setRejectionNote('');
+                            setDecisionError(null);
+                          }}
+                          aria-label={`${t('lecturer.researchGroups.openJoinRequest')}: ${req.applicant?.displayName || 'Applicant'}`}
+                        >
+                          <UserRound size={14} aria-hidden />
+                          <span>
+                            {`${req.applicant?.displayName || 'Applicant'} ${t('lecturer.researchGroups.joinRequestFrom')}`}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                   )}
                   <div className={styles.memberPills}>
                     {isLoadingMembers && roster.length === 0 ? (
@@ -895,15 +1017,17 @@ export const ResearchGroup = () => {
         />
       )}
 
-      {/* FRONTEND-ONLY JOIN REQUEST PREVIEW */}
-      {showJoinRequestPreview && (
+      {/* RESEARCH GROUP JOIN REQUEST MODAL */}
+      {activeJoinRequest && (
         <div
           className={styles.modalOverlay}
           role="dialog"
           aria-modal="true"
-          aria-labelledby="join-request-preview-title"
+          aria-labelledby="join-request-modal-title"
           onClick={(event) => {
-            if (event.target === event.currentTarget) setShowJoinRequestPreview(false);
+            if (event.target === event.currentTarget && !isProcessingDecision) {
+              setActiveJoinRequest(null);
+            }
           }}
         >
           <div className={styles.modalCard}>
@@ -913,18 +1037,19 @@ export const ResearchGroup = () => {
                   <UserRound size={18} aria-hidden />
                 </span>
                 <div>
-                  <h3 id="join-request-preview-title" className={styles.modalTitle}>
+                  <h3 id="join-request-modal-title" className={styles.modalTitle}>
                     {t('lecturer.researchGroups.joinRequestModalTitle')}
                   </h3>
                   <span className={styles.modalSubtitle}>
-                    {demoJoinRequest.groupName}
+                    {activeJoinRequest.group.name ?? `Group #${activeJoinRequest.group.id}`}
                   </span>
                 </div>
               </div>
               <button
                 type="button"
                 className={styles.closeBtn}
-                onClick={() => setShowJoinRequestPreview(false)}
+                onClick={() => setActiveJoinRequest(null)}
+                disabled={isProcessingDecision}
                 aria-label={t('common.cancel')}
               >
                 <X size={18} aria-hidden />
@@ -932,21 +1057,39 @@ export const ResearchGroup = () => {
             </div>
             <div className={styles.modalBody}>
               <div className={styles.previewProfile}>
-                <span className={styles.previewProfileAvatar}>{initialsOf(demoJoinRequest.applicantName)}</span>
+                <span className={styles.previewProfileAvatar}>
+                  {initialsOf(activeJoinRequest.request.applicant?.displayName || '?')}
+                </span>
                 <div>
-                  <strong>{demoJoinRequest.applicantName}</strong>
-                  <span>{demoJoinRequest.applicantEmail}</span>
+                  <strong>{activeJoinRequest.request.applicant?.displayName || 'Applicant'}</strong>
+                  <span>{activeJoinRequest.request.applicant?.email || ''}</span>
                 </div>
               </div>
               <div className={styles.previewDetails}>
                 <span>{t('lecturer.researchGroups.applicantMajor')}</span>
-                <strong>{demoJoinRequest.applicantMajor}</strong>
+                <strong>{activeJoinRequest.request.applicant?.major || 'N/A'}</strong>
               </div>
-              <div className={styles.previewApiNotice} role="note">
-                <AlertTriangle size={16} aria-hidden />
-                <span>{t('lecturer.researchGroups.joinRequestModalNotice')}</span>
-              </div>
-              <div className={styles.formGroup}>
+              {activeJoinRequest.request.applicant?.academicLevel && (
+                <div className={styles.previewDetails}>
+                  <span>{locale === 'vi' ? 'Trình độ' : 'Academic Level'}</span>
+                  <strong>{activeJoinRequest.request.applicant.academicLevel}</strong>
+                </div>
+              )}
+              {activeJoinRequest.request.createdAt && (
+                <div className={styles.previewDetails}>
+                  <span>{locale === 'vi' ? 'Thời gian nộp' : 'Applied on'}</span>
+                  <span>{formatDisplayDate(activeJoinRequest.request.createdAt, locale)}</span>
+                </div>
+              )}
+
+              {decisionError && (
+                <div className={styles.formErrorBanner} role="alert" style={{ marginTop: '12px' }}>
+                  <AlertTriangle size={14} aria-hidden />
+                  <span>{decisionError}</span>
+                </div>
+              )}
+
+              <div className={styles.formGroup} style={{ marginTop: '14px' }}>
                 <label className={styles.formLabel} htmlFor="join-request-rejection-note">
                   {t('lecturer.researchGroups.rejectionNoteLabel')}
                 </label>
@@ -955,7 +1098,9 @@ export const ResearchGroup = () => {
                   className={styles.formTextarea}
                   placeholder={t('lecturer.researchGroups.rejectionNotePlaceholder')}
                   rows={3}
-                  disabled
+                  value={rejectionNote}
+                  onChange={(e) => setRejectionNote(e.target.value)}
+                  disabled={isProcessingDecision}
                 />
               </div>
             </div>
@@ -963,16 +1108,35 @@ export const ResearchGroup = () => {
               <Button
                 variant="outline"
                 size="md"
-                onClick={() => setShowJoinRequestPreview(false)}
+                onClick={() => setActiveJoinRequest(null)}
+                disabled={isProcessingDecision}
               >
                 {t('common.cancel')}
               </Button>
-              <Button variant="danger" size="md" disabled>
-                <X size={14} aria-hidden />
+              <Button
+                variant="danger"
+                size="md"
+                onClick={handleRejectRequest}
+                disabled={isProcessingDecision}
+              >
+                {isProcessingDecision ? (
+                  <Loader size={14} className={styles.spinningIcon} aria-hidden />
+                ) : (
+                  <X size={14} aria-hidden />
+                )}
                 {t('lecturer.researchGroups.rejectRequest')}
               </Button>
-              <Button variant="primary" size="md" disabled>
-                <Check size={14} aria-hidden />
+              <Button
+                variant="primary"
+                size="md"
+                onClick={handleAcceptRequest}
+                disabled={isProcessingDecision}
+              >
+                {isProcessingDecision ? (
+                  <Loader size={14} className={styles.spinningIcon} aria-hidden />
+                ) : (
+                  <Check size={14} aria-hidden />
+                )}
                 {t('lecturer.researchGroups.acceptRequest')}
               </Button>
             </div>

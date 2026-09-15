@@ -251,3 +251,90 @@ export interface PhasedReportEvaluationRequest {
   finalOutcomeEvaluation?: string | null;
   status: string;
 }
+
+// ---------- Topic Learning Materials (BE-LEARNING-MATERIAL-TOPIC-ASSOCIATION-01) ----------
+
+export interface TopicLearningMaterialResponse {
+  learningMaterialId: number;
+  topicId: number;
+  lecturerId?: number | null;
+  title: string;
+  fileUrl: string;
+  description?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface AttachLearningMaterialRequest {
+  learningMaterialId: number;
+}
+
+export interface AttachLearningMaterialResponse {
+  topicId: number;
+  learningMaterialId: number;
+  attachedAt?: string;
+}
+
+export interface CreateTopicLearningMaterialRequest {
+  lecturerId?: number | null;
+  title: string;
+  fileUrl: string;
+  description?: string | null;
+}
+
+// ---------- Research Group Join Requests (BE-RESEARCH-GROUP-JOIN-REQUEST-01) ----------
+
+export type GroupJoinRequestStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED';
+
+export interface ApplicantProfileDto {
+  userId: number;
+  displayName: string;
+  email: string;
+  avatarUrl?: string | null;
+  major?: string | null;
+  academicLevel?: string | null;
+}
+
+export interface GroupJoinRequestResponse {
+  joinRequestId: number;
+  researchGroupId: number;
+  researchGroupName?: string;
+  applicant: ApplicantProfileDto;
+  status: GroupJoinRequestStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateGroupJoinRequestResponse {
+  joinRequestId: number;
+  researchGroupId: number;
+  applicantUserId: number;
+  status: GroupJoinRequestStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RejectGroupJoinRequestPayload {
+  rejectionNote?: string;
+}
+
+export interface AcceptGroupJoinRequestResponse {
+  joinRequestId: number;
+  researchGroupId: number;
+  applicantUserId: number;
+  status: 'ACCEPTED';
+  groupMemberId?: number;
+  decidedByUserId?: number;
+  decidedAt?: string;
+  note?: string | null;
+}
+
+export interface RejectGroupJoinRequestResponse {
+  joinRequestId: number;
+  researchGroupId: number;
+  applicantUserId: number;
+  status: 'REJECTED';
+  decidedByUserId?: number;
+  decidedAt?: string;
+  rejectionNote?: string | null;
+}

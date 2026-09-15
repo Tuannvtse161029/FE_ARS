@@ -41,7 +41,7 @@ import { useLearningMaterials } from '../../hooks/useLearningMaterials';
 import { groupMemberService, type GroupMember } from '../../services/groupMember.service';
 import { getAllGroupMembers } from '../../services/groupMembership.service';
 import { researchGroupService, type ResearchGroup } from '../../services/researchGroup.service';
-import { notificationService } from '../../services/notification.service';
+import { groupJoinRequestService } from '../../services/groupJoinRequest.service';
 import { lecturerLookupService } from '../../services/lecturerLookup.service';
 import InvitationBanner from '../../components/gradstudent/InvitationBanner';
 import RejectionFeedbackBanner from '../../components/gradstudent/RejectionFeedbackBanner';
@@ -209,51 +209,35 @@ export const StudentResearchGroups = (): JSX.Element => {
     setApplyingGroupId(groupId);
     setApplyFeedback(null);
     try {
-      await groupMemberService.create({
-        researchGroupId: groupId,
-        studentId,
-        activityStatus: 'Pending',
-        joinedAt: new Date().toISOString(),
-      });
-
-      // Optimistically save pending application in localStorage
-      if (typeof window !== 'undefined' && window.localStorage) {
-        try {
-          const key = `student_pending_groups_${studentId}`;
-          const raw = window.localStorage.getItem(key);
-          const currentList: number[] = raw ? JSON.parse(raw) : [];
-          if (!currentList.includes(groupId)) {
-            currentList.push(groupId);
-            window.localStorage.setItem(key, JSON.stringify(currentList));
-          }
-        } catch {}
-      }
-
-      // Notify the lecturer
-      if (group.lecturerId) {
-        try {
-          await notificationService.create({
-            userId: group.lecturerId,
-            message: `[Group] membership: Sinh viên ${user.username} đã nộp đơn xin gia nhập nhóm "${group.name}".`,
-          });
-        } catch {
-          // ignore notification error
-        }
-      }
+      await groupJoinRequestService.applyToGroup(groupId);
 
       setApplyFeedback({
         type: 'success',
-        message: `Đã nộp đơn xin gia nhập nhóm "${group.name}" thành công! Nhóm đã xuất hiện trong danh sách "Nhóm nghiên cứu của tôi" với trạng thái Chờ duyệt.`,
+        message: copy(
+          `Application to join "${group.name}" submitted successfully! Please wait for lecturer approval.`,
+          `Đã nộp đơn xin gia nhập nhóm "${group.name}" thành công! Vui lòng chờ giảng viên phê duyệt.`,
+        ),
       });
       await refetch();
       await loadAllGroups();
-    } catch (err) {
-      setApplyFeedback({
-        type: 'error',
-        message: err instanceof Error ? err.message : copy(
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { status?: number; data?: { message?: string } }; message?: string };
+      const status = errorObj.response?.status;
+      let message = errorObj.response?.data?.message || errorObj.message;
+      if (status === 409) {
+        message = copy(
+          'You already have a pending application or are already a member of this group.',
+          'Bạn đã có đơn chờ duyệt hoặc đã là thành viên của nhóm này.',
+        );
+      } else if (!message) {
+        message = copy(
           'We could not submit your application to join this research group.',
           'Không thể gửi đơn xin gia nhập nhóm.',
-        ),
+        );
+      }
+      setApplyFeedback({
+        type: 'error',
+        message,
       });
     } finally {
       setApplyingGroupId(null);
