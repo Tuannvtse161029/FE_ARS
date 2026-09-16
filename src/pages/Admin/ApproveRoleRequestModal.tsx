@@ -83,7 +83,7 @@ export const ApproveRoleRequestModal = ({ request, open, onClose, onActioned }: 
       <form className={styles.modal} onSubmit={handleSubmit}>
         <header className={styles.header}>
           <div>
-            <h2 id="approve-role-title" className={styles.title}>{t('admin.roleRequests.approve.title')}</h2>
+            <h2 id="approve-role-title" className={styles.title}>{t('admin.roleRequests.approve.title', 'Approve Role Request')}</h2>
             <p className={styles.subtitle}>{t('admin.roleRequests.approve.subtitle').replace('{id}', String(request.id)).replace('{name}', request.userName)}</p>
           </div>
           <button className={styles.iconButton} onClick={onClose} disabled={submitting} type="button" aria-label={t('admin.roleRequests.approve.closeLabel')}><X size={18} /></button>
@@ -101,14 +101,14 @@ export const ApproveRoleRequestModal = ({ request, open, onClose, onActioned }: 
                       : t('admin.roleRequests.approve.unavailableApi')}
             </strong>
           </div>
-          <label className={styles.fieldLabel} htmlFor="role-approval-notes">{t('admin.roleRequests.approve.notesLabel')}</label>
+          <label className={styles.fieldLabel} htmlFor="role-approval-notes">{t('admin.roleRequests.approve.notesLabel', 'Internal verification notes (optional)')}</label>
           <textarea ref={notesRef} id="role-approval-notes" className={styles.textarea} rows={5} maxLength={1500} value={notes} onChange={(event) => setNotes(event.target.value)} disabled={submitting} />
           <div className={styles.counter}>{notes.length} / 1,500</div>
           {error ? <p className={styles.error} role="alert"><AlertTriangle size={15} />{error}</p> : null}
         </div>
         <footer className={styles.footer}>
-          <button className={`${styles.button} ${styles.secondaryButton}`} onClick={onClose} disabled={submitting} type="button">{t('common.cancel')}</button>
-          <button className={`${styles.button} ${styles.primaryButton}`} disabled={submitting} type="submit"><Check size={16} />{submitting ? t('admin.roleRequests.approve.approving') : t('admin.roleRequests.approve.confirm')}</button>
+          <button className={`${styles.button} ${styles.secondaryButton}`} onClick={onClose} disabled={submitting} type="button">{t('common.cancel', 'Cancel')}</button>
+          <button className={`${styles.button} ${styles.primaryButton}`} disabled={submitting} type="submit"><Check size={16} />{submitting ? t('admin.roleRequests.approve.approving', 'Approving…') : t('admin.roleRequests.approve.confirm', 'Confirm Approval')}</button>
         </footer>
       </form>
     </div>

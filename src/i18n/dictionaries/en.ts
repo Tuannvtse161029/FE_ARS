@@ -801,6 +801,8 @@ export const dictionary: Dictionary = {
     'admin.roleRequests.details.orcidLinked': 'Linked',
     'admin.roleRequests.details.orcidMissing': 'No confirmed ORCID connection',
     'admin.roleRequests.details.orcidDisclosure': 'An ORCID connection is an identity signal; approving this request remains an ARS role decision.',
+    'admin.roleRequests.details.academicIdentifier': 'Academic Scholarly Identifier',
+    'admin.roleRequests.details.viewProfile': 'View Author Profile',
     'admin.roleRequests.details.decisionNotes': 'Decision notes',
     'admin.roleRequests.details.proofDocument': 'Proof document',
     'admin.roleRequests.details.openNewTab': 'Open in new tab',

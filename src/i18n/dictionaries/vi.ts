@@ -806,6 +806,8 @@ export const dictionary: Dictionary = {
     'admin.roleRequests.details.orcidLinked': 'Đã liên kết',
     'admin.roleRequests.details.orcidMissing': 'Chưa có kết nối ORCID được xác nhận',
     'admin.roleRequests.details.orcidDisclosure': 'Kết nối ORCID là một tín hiệu nhận dạng; việc phê duyệt yêu cầu này vẫn là quyết định vai trò của ARS.',
+    'admin.roleRequests.details.academicIdentifier': 'Mã định danh học thuật',
+    'admin.roleRequests.details.viewProfile': 'Xem hồ sơ tác giả',
     'admin.roleRequests.details.decisionNotes': 'Ghi chú quyết định',
     'admin.roleRequests.details.proofDocument': 'Tài liệu chứng minh',
     'admin.roleRequests.details.openNewTab': 'Mở trong tab mới',

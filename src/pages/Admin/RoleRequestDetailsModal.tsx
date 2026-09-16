@@ -39,9 +39,9 @@ export const RoleRequestDetailsModal = ({ request, open, onClose, onOpenOrcidChe
   if (!open || !request) return null;
 
   const requestTypeLabel = (req: RoleRequest) => {
-    if (req.requestType === 'INITIAL_REGISTRATION') return t('admin.roleRequests.details.initialRegistration');
-    if (req.requestType === 'ADDITIONAL_ROLE') return t('admin.roleRequests.details.additionalRole');
-    return t('admin.roleRequests.approve.unavailableApi');
+    if (req.requestType === 'INITIAL_REGISTRATION') return t('admin.roleRequests.details.initialRegistration', 'Initial registration');
+    if (req.requestType === 'ADDITIONAL_ROLE') return t('admin.roleRequests.details.additionalRole', 'Additional role');
+    return t('admin.roleRequests.approve.unavailableApi', '—');
   };
 
   const rolesText = (roles?: string[]) =>
@@ -111,7 +111,7 @@ export const RoleRequestDetailsModal = ({ request, open, onClose, onOpenOrcidChe
               <div><dt>{t('admin.roleRequests.details.requestType')}</dt><dd>{requestTypeLabel(request)}</dd></div>
               <div>
                 <dt>{t('admin.roleRequests.details.status')}</dt>
-                <dd><span className={`${styles.statusBadge} ${STATUS_CLASS[request.status]}`}>{t(`common.status.${request.status.toLowerCase()}`)}</span></dd>
+                <dd><span className={`${styles.statusBadge} ${STATUS_CLASS[request.status]}`}>{t(`common.status.${request.status.toLowerCase()}`, request.status)}</span></dd>
               </div>
               <div className={styles.fullWidth}>
                 <dt>{t('admin.roleRequests.details.orcid')}</dt>
@@ -133,6 +133,59 @@ export const RoleRequestDetailsModal = ({ request, open, onClose, onOpenOrcidChe
                   {t('admin.roleRequests.details.orcidDisclosure')}
                 </p>
               </div>
+              {(request.openAlexId || request.semanticScholarId) ? (
+                <div className={styles.fullWidth}>
+                  <dt>{t('admin.roleRequests.details.academicIdentifier', 'Academic Scholarly Identifier')}</dt>
+                  <dd style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+                    {request.openAlexId ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <span style={{ fontWeight: 600, color: 'var(--ink-secondary)' }}>{t('register.openAlexLabel', 'OpenAlex ID')}:</span>
+                        <code>{request.openAlexId}</code>
+                        {(() => {
+                          const url = request.openAlexId.startsWith('http')
+                            ? request.openAlexId
+                            : `https://openalex.org/${request.openAlexId}`;
+                          const safe = safeHref(url);
+                          return safe ? (
+                            <a
+                              href={safe}
+                              target="_blank"
+                              rel="noreferrer noopener"
+                              className={styles.textLink}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px' }}
+                            >
+                              <ExternalLink size={13} /> {t('admin.roleRequests.details.viewProfile', 'View Author Profile')}
+                            </a>
+                          ) : null;
+                        })()}
+                      </div>
+                    ) : null}
+                    {request.semanticScholarId ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <span style={{ fontWeight: 600, color: 'var(--ink-secondary)' }}>{t('register.semanticScholarLabel', 'Semantic Scholar ID')}:</span>
+                        <code>{request.semanticScholarId}</code>
+                        {(() => {
+                          const url = request.semanticScholarId.startsWith('http')
+                            ? request.semanticScholarId
+                            : `https://www.semanticscholar.org/author/${request.semanticScholarId}`;
+                          const safe = safeHref(url);
+                          return safe ? (
+                            <a
+                              href={safe}
+                              target="_blank"
+                              rel="noreferrer noopener"
+                              className={styles.textLink}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px' }}
+                            >
+                              <ExternalLink size={13} /> {t('admin.roleRequests.details.viewProfile', 'View Author Profile')}
+                            </a>
+                          ) : null;
+                        })()}
+                      </div>
+                    ) : null}
+                  </dd>
+                </div>
+              ) : null}
               {request.notes ? <div className={styles.fullWidth}><dt>{t('admin.roleRequests.details.decisionNotes')}</dt><dd>{request.notes}</dd></div> : null}
             </dl>
           </div>
@@ -155,7 +208,7 @@ export const RoleRequestDetailsModal = ({ request, open, onClose, onOpenOrcidChe
         </div>
 
         <footer className={styles.footer}>
-          <button className={`${styles.button} ${styles.secondaryButton}`} onClick={onClose} type="button">{t('common.cancel')}</button>
+          <button className={`${styles.button} ${styles.secondaryButton}`} onClick={onClose} type="button">{t('common.close', 'Close')}</button>
           {request.isOrcidVerified === true && request.orcidId && onOpenOrcidCheck ? (
             <button className={`${styles.button} ${styles.orcidButton}`} onClick={onOpenOrcidCheck} type="button">
               {t('admin.roleRequests.details.checkOrcid')}
