@@ -6,7 +6,10 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: 100%;
+  /* Cap height so the viewer fits one screen without stretching the page down.
+     For a 44-page PDF the sidebar should show only ~5 thumbnails at a time,
+     not expand to the full canvas height. 720px ≈ 7 × ~100px thumbnail rows. */
+  height: min(80vh, 720px);
   min-height: 500px;
   background: var(--surface-raised);
   border: 1px solid var(--border-subtle);
@@ -178,6 +181,10 @@
 .viewerBody {
   display: flex;
   flex: 1;
+  /* Constrain height so the sidebar (flex: 1 inside) is pinned to the
+     wrapper height — not stretched by a tall canvas. Together with the
+     .thumbList { overflow-y: auto } this makes the thumbnail strip
+     show ~5 rows at a time with independent scrolling. */
   overflow: hidden;
 }
 
@@ -588,55 +595,98 @@
  * Non-interactive overlay anchored over the canvas area.
  * pointer-events: none ensures the notice never captures focus or blocks
  * interaction with toolbar controls (which are outside this element).
+ *
+ * Pinned to the TOP of the canvas (not centered) so the notice reads as a
+ * quiet status banner and never blocks the body text of the manuscript.
+ * The notice is rendered as a low-opacity pill so it stays legible without
+ * competing with the manuscript content for attention.
  */
 .protectedOverlay {
   position: absolute;
-  inset: 0;
+  top: 12px;
+  left: 0;
+  right: 0;
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  flex-direction: row;
+  align-items: flex-start;
   justify-content: center;
   pointer-events: none;
   user-select: none;
   z-index: 10;
-  gap: 12px;
-  padding: 16px;
+  gap: 8px;
+  padding: 0 16px;
 }
 
-/** Confidential notice — warm-paper semi-transparent so the red text stays
-    legible against an arbitrary page content while keeping the Paper Day
-    warm tone (instead of cold white). */
+/** Confidential notice — low-opacity pill pinned to the top of the canvas.
+    White background + black text + ~20% opacity so it reads as a quiet
+    status badge rather than a visual blocker on top of the manuscript. */
 .protectedNotice {
   display: inline-block;
-  padding: 6px 16px;
-  border: 1px solid var(--status-danger-text);
+  padding: 4px 12px;
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  background: var(--status-danger-surface);
-  backdrop-filter: blur(4px);
-  color: var(--status-danger-text);
-  font-size: 12px;
-  font-weight: var(--font-weight-semibold);
+  background: #ffffff;
+  color: #000000;
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
   font-family: var(--font-family-ui);
   letter-spacing: 0.02em;
   white-space: nowrap;
+  opacity: 0.4;
 }
 
 /**
- * Watermark copy identifier — positioned so it is legible but does not
- * fully obscure the PDF content.  Never exposes researcher identity
- * (double-blind: uses review-request id or reviewer copy token).
+ * Watermark copy identifier — same low-opacity treatment as the notice
+ * so neither element distracts from the manuscript. Identifies the
+ * review copy via review-request id (never researcher identity).
  */
 .protectedWatermark {
   display: inline-block;
-  padding: 4px 10px;
+  padding: 3px 8px;
   border-radius: var(--radius-sm);
-  background: var(--status-danger-surface);
-  color: var(--ink-secondary);
+  background: #ffffff;
+  color: #000000;
   font-size: 10px;
   font-weight: var(--font-weight-medium);
   font-family: var(--font-family-ui);
   letter-spacing: 0.05em;
   text-transform: uppercase;
   white-space: nowrap;
-  opacity: 0.85;
+  opacity: 0.4;
+}
+
+/**
+ * "Open full PDF" action — bright-red pill anchored beside the watermark
+ * so reviewers can jump straight into a full-tab view without hunting for
+ * the toolbar button. Re-enables pointer events on the anchor itself
+ * because the parent overlay is `pointer-events: none`.
+ */
+.protectedOpenFullBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border: 1px solid var(--status-danger-text);
+  border-radius: var(--radius-md);
+  background: var(--status-danger-text);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-family-ui);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.protectedOpenFullBtn:hover {
+  background: color-mix(in srgb, var(--status-danger-text) 85%, #ffffff);
+  border-color: color-mix(in srgb, var(--status-danger-text) 85%, #ffffff);
+}
+
+.protectedOpenFullBtn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }

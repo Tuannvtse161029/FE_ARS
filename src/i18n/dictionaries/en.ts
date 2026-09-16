@@ -1181,6 +1181,38 @@ export const dictionary: Dictionary = {
     'lecturer.groupDetail.assignOne': 'Assign one from Research Topics.',
     'lecturer.groupDetail.groupMembersTitle': 'Group members',
     'lecturer.groupDetail.inviteStudents': 'Invite students',
+    // BE-RESEARCH-GROUP-APPROVAL-01 (Sep 2026) — Pending Join Requests
+    // card on the Group Detail page. The strings power both the badge
+    // summary count and the inline accept/reject controls. The reject
+    // modal captures a free-text `requestNote` that the BE forwards to
+    // the student side as a notification.
+    'lecturer.groupDetail.pendingJoinRequestsTitle': 'Pending join requests',
+    'lecturer.groupDetail.pendingJoinRequestsHint':
+      'Review applications from students who want to join this group. Approve to add them as members or reject with a note that explains your decision.',
+    'lecturer.groupDetail.acceptPending': 'Accept',
+    'lecturer.groupDetail.rejectPending': 'Reject',
+    'lecturer.groupDetail.studentId': 'Student ID',
+    'lecturer.groupDetail.appliedOn': 'Applied',
+    'lecturer.groupDetail.studentNote': 'Student note',
+    'lecturer.groupDetail.acceptPendingSuccess':
+      'Approved {name}\u2019s request to join this group.',
+    'lecturer.groupDetail.rejectPendingSuccess':
+      'Rejected {name}\u2019s request to join this group.',
+    'lecturer.groupDetail.rejectModalTitle': 'Reject join request',
+    'lecturer.groupDetail.rejectionNoteLabel': 'Rejection note',
+    'lecturer.groupDetail.rejectionNotePlaceholder':
+      'Explain why this request is rejected (this message will be sent to the student)',
+    'lecturer.groupDetail.rejectionNoteHint':
+      'Optional, but recommended — the note is sent to the student as a notification.',
+    'lecturer.groupDetail.confirmReject': 'Confirm rejection',
+    'lecturer.groupDetail.rejecting': 'Rejecting…',
+    'lecturer.groupDetail.errPendingLoad':
+      'Could not load pending join requests for this group.',
+    'lecturer.groupDetail.errGroupFullOnAccept':
+      'Cannot accept: the group has reached its 4-member limit or this request was already processed.',
+    'lecturer.groupDetail.errAcceptFail': 'Could not approve this join request.',
+    'lecturer.groupDetail.errRejectFail': 'Could not reject this join request.',
+    'lecturer.groupDetail.errAlreadyProcessed': 'This request has already been processed.',
     'lecturer.groupDetail.maxMembersReached': 'Maximum of 4 members reached',
     'lecturer.groupDetail.maxMembersNotice': 'Maximum 4 members per group',
     'lecturer.groupDetail.maxMembersNoticeDesc': 'The four-member limit is enforced in this interface; the BE contract does not document the constraint.',
@@ -1203,8 +1235,12 @@ export const dictionary: Dictionary = {
     'lecturer.groupDetail.milestoneApiNoticeDesc': 'A dedicated milestone endpoint is not exposed yet. This card counts Phased Reports as a stand-in.',
     'lecturer.groupDetail.learningMaterialsTitle': 'Learning materials',
     'lecturer.groupDetail.learningMaterialsHint': 'Attached to phase milestones via Manage phase on the topic.',
+    'lecturer.groupDetail.topicMaterialsTitle': 'Materials attached to this topic',
+    'lecturer.groupDetail.libraryMaterialsTitle': 'Lecturer library',
+    'lecturer.groupDetail.noTopicMaterials': 'No materials are attached to this group’s research topic yet.',
     'lecturer.groupDetail.loadingMaterials': 'Loading materials…',
     'lecturer.groupDetail.noMaterials': 'No learning materials attached yet.',
+    'lecturer.groupDetail.materialPhaseBucketTitle': 'Phase milestone materials',
     'lecturer.groupDetail.materialPrefix': 'Material #',
     'lecturer.groupDetail.materialPhaseLabel': 'Phase {n}',
     'lecturer.groupDetail.open': 'Open',

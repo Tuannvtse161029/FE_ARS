@@ -668,6 +668,16 @@
   font-weight: var(--font-weight-semibold);
 }
 
+/* Student-applicant note rendered inside the Pending Join Requests card.
+   We avoid the existing `.memberMeta` row because that flex layout
+   turns the em-tagged text into a sibling chip. Here we want a single
+   line of body copy with a subtle italic voice. */
+.studentNoteLine {
+  margin: 4px 0 0;
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+}
+
 .memberActions {
   flex-shrink: 0;
 }
@@ -763,12 +773,96 @@
 }
 
 /* ── Material list ──────────────────────────────────────────── */
+.materialSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5) var(--space-2);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.materialSection:first-of-type {
+  border-top: none;
+}
+
+.materialSectionTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .materialList {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
+}
+
+/* Two-bucket layout: topic-level + phase-level materials are shown
+   side-by-side as two visually distinct columns inside the card. */
+.materialBuckets {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: 0 var(--space-5) var(--space-3);
+}
+
+.materialBucket {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.materialBucketTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* A single material row now holds a description sub-line too. */
+.materialDescription {
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+}
+
+.materialErrorRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--ars-surface-danger-subtle);
+  border: var(--border-thin);
+  border-radius: var(--radius-sm);
+  color: var(--ars-text-danger);
+  font-size: var(--font-size-sm);
+}
+
+.retryBtn {
+  margin-left: auto;
+  padding: 2px var(--space-2);
+  background: transparent;
+  border: 1px solid var(--ars-border-muted);
+  border-radius: var(--radius-sm);
+  color: var(--ars-ink);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.retryBtn:hover {
+  background: var(--ars-paper-inset);
 }
 
 .materialRow {

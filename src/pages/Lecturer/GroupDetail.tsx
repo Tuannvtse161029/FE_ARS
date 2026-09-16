@@ -79,6 +79,7 @@ import {
   derivePhaseMaterialsForGroup,
   type PhaseMaterialEntry,
 } from '../../utils/phaseMaterials';
+import { useTopicLearningMaterials } from '../../hooks/useTopicLearningMaterials';
 import styles from './GroupDetail.module.css';
 
 interface BannerState {
@@ -204,6 +205,22 @@ export const LecturerGroupDetail = (): JSX.Element => {
     if (!group || typeof group.topicId !== 'number') return null;
     return topics.find((t) => t.id === group.topicId) ?? null;
   }, [group, topics]);
+
+  // Topic-level Learning Materials — lecturer-only fix (Sep 2026):
+  // the global `useLearningMaterials` + `derivePhaseMaterialsForGroup`
+  // pair never fetched materials the lecturer attached to the group's
+  // Research Topic via "Manage Materials", so the "Learning Materials"
+  // card always showed "No learning materials attached yet" even when
+  // topic-level attachments existed. This second hook bridges that gap
+  // via `/api/ResearchTopic/{topicId}/learning-materials`.
+  const {
+    materials: topicMaterials,
+    isLoading: isTopicMaterialsLoading,
+    error: topicMaterialsError,
+    refetch: refetchTopicMaterials,
+  } = useTopicLearningMaterials(
+    group && typeof group.topicId === 'number' ? group.topicId : null,
+  );
 
   const derivedStatus = useMemo(
     () => deriveGroupStatus(group, relatedTopic?.status ?? null),
@@ -1010,6 +1027,11 @@ export const LecturerGroupDetail = (): JSX.Element => {
             the `<PhaseTimeline />` card above. */}
 
         {/* Learning materials — full width */}
+        {/* Two sources: (1) topic-level attachments via
+            `/api/ResearchTopic/{topicId}/learning-materials` (written by
+            "Manage Materials" on the Research Topic page), and (2)
+            phase-level attachments via `PhasedReport.phasedMaterialsUrl`
+            (written by "Manage phase"). Both are now shown here. */}
         <section className={`${styles.card} ${styles.cardFull}`}>
           <header className={styles.cardHeader}>
             <h2 className={styles.cardTitle}>
@@ -1019,43 +1041,113 @@ export const LecturerGroupDetail = (): JSX.Element => {
               {t('lecturer.groupDetail.learningMaterialsHint')}
             </span>
           </header>
-          {materialsLoading ? (
+          {materialsLoading || isTopicMaterialsLoading ? (
             <div className={styles.loadingPanel}>
               <Loader size={14} className={styles.spinningIcon} aria-hidden />
               {t('lecturer.groupDetail.loadingMaterials')}
             </div>
-          ) : phaseMaterials.length === 0 ? (
+          ) : phaseMaterials.length === 0 && topicMaterials.length === 0 ? (
             <div className={styles.emptyState}>
               <Library size={18} aria-hidden />
               {t('lecturer.groupDetail.noMaterials')}
             </div>
           ) : (
-            <ul className={styles.materialList}>
-              {phaseMaterials.map((m) => (
-                <li
-                  key={`phase-material-${m.phasedReportId}`}
-                  className={styles.materialRow}
-                >
-                  <div className={styles.materialMeta}>
-                    <span className={styles.materialTitle}>
-                      {t('lecturer.groupDetail.materialPhaseLabel', 'Phase {n}', { n: m.phaseNumber })}
-                      {m.milestoneTitle ? ` · ${m.milestoneTitle}` : ''}
-                    </span>
-                  </div>
-                  {safeHref(m.materialUrl) && (
-                    <a
-                      className={styles.openLink}
-                      href={safeHref(m.materialUrl) ?? '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <ExternalLink size={14} aria-hidden />
-                      {t('lecturer.groupDetail.open')}
-                    </a>
-                  )}
-                </li>
-              ))}
-            </ul>
+            <div className={styles.materialBuckets}>
+              {/* Bucket 1: topic-level materials */}
+              {topicMaterials.length > 0 && (
+                <div className={styles.materialBucket}>
+                  <h3 className={styles.materialBucketTitle}>
+                    <FileText size={14} aria-hidden />
+                    {t('lecturer.groupDetail.topicMaterialsTitle')}
+                  </h3>
+                  <ul className={styles.materialList}>
+                    {topicMaterials.map((m) => {
+                      const id = typeof m.id === 'number' ? m.id : -1;
+                      const title =
+                        (m.title ?? '').trim() ||
+                        `${t('lecturer.groupDetail.materialPrefix')}${id}`;
+                      return (
+                        <li
+                          key={`topic-material-${id}`}
+                          className={styles.materialRow}
+                        >
+                          <div className={styles.materialMeta}>
+                            <span className={styles.materialTitle}>{title}</span>
+                            {m.description && (
+                              <span className={styles.materialDescription}>
+                                {m.description}
+                              </span>
+                            )}
+                          </div>
+                          {safeHref(m.fileUrl) && (
+                            <a
+                              className={styles.openLink}
+                              href={safeHref(m.fileUrl) ?? '#'}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <ExternalLink size={14} aria-hidden />
+                              {t('lecturer.groupDetail.open')}
+                            </a>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+
+              {/* Bucket 2: phase-level materials */}
+              {phaseMaterials.length > 0 && (
+                <div className={styles.materialBucket}>
+                  <h3 className={styles.materialBucketTitle}>
+                    <Clock size={14} aria-hidden />
+                    {t('lecturer.groupDetail.materialPhaseBucketTitle', 'Phase milestones')}
+                  </h3>
+                  <ul className={styles.materialList}>
+                    {phaseMaterials.map((m) => (
+                      <li
+                        key={`phase-material-${m.phasedReportId}`}
+                        className={styles.materialRow}
+                      >
+                        <div className={styles.materialMeta}>
+                          <span className={styles.materialTitle}>
+                            {t('lecturer.groupDetail.materialPhaseLabel', 'Phase {n}', { n: m.phaseNumber })}
+                            {m.milestoneTitle ? ` · ${m.milestoneTitle}` : ''}
+                          </span>
+                        </div>
+                        {safeHref(m.materialUrl) && (
+                          <a
+                            className={styles.openLink}
+                            href={safeHref(m.materialUrl) ?? '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <ExternalLink size={14} aria-hidden />
+                            {t('lecturer.groupDetail.open')}
+                          </a>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Error fallback for topic-level fetch */}
+              {topicMaterialsError != null && (
+                <div className={styles.materialErrorRow}>
+                  <AlertTriangle size={14} aria-hidden />
+                  <span>{topicMaterialsError.message}</span>
+                  <button
+                    type="button"
+                    className={styles.retryBtn}
+                    onClick={() => void refetchTopicMaterials()}
+                  >
+                    {t('common.retry')}
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </section>
 

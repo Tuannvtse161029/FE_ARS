@@ -24,6 +24,7 @@ const {
   listReportsForGroupMock,
   getAllLearningMaterialsMock,
   updateGroupMock,
+  getByTopicIdMock,
 } = vi.hoisted(() => ({
   getAllGroupsMock: vi.fn(),
   getAllTopicsMock: vi.fn(),
@@ -31,6 +32,7 @@ const {
   listReportsForGroupMock: vi.fn(),
   getAllLearningMaterialsMock: vi.fn(),
   updateGroupMock: vi.fn(),
+  getByTopicIdMock: vi.fn(),
 }));
 
 vi.mock('../../../../src/hooks/useAuth', () => ({
@@ -76,6 +78,12 @@ vi.mock('../../../../src/services/groupMember.service', () => ({
     update: vi.fn(),
     delete: vi.fn(),
     getMembersForGroup: getMembersForGroupMock,
+    // BE-RESEARCH-GROUP-APPROVAL-01: defaults so the new pending-join
+    // requests surface never throws at mount time during legacy tests
+    // that don't pre-load it. Tests that exercise the surface override
+    // these on a per-call basis.
+    listByStatus: vi.fn().mockResolvedValue([]),
+    setApproval: vi.fn().mockResolvedValue({}),
   },
 }));
 
@@ -86,6 +94,25 @@ vi.mock('../../../../src/services/phasedReport.service', () => ({
 vi.mock('../../../../src/services/learningMaterial.service', () => ({
   learningMaterialService: { getAll: getAllLearningMaterialsMock },
 }));
+
+// BE-LEARNING-MATERIAL-TOPIC-ASSOCIATION-01: the GroupDetail page now
+// fetches topic-level materials via topicLearningMaterialService so the
+// materials a lecturer attached via "Manage Materials" surface here.
+// Stub the service in this test so the hook never throws on an
+// unmocked axios call. Tests that need richer topic-material data
+// override `getByTopicIdMock` per-call.
+vi.mock('../../../../src/services/researchTopic.service', async () => {
+  const actual = await vi.importActual<
+    typeof import('../../../../src/services/researchTopic.service')
+  >('../../../../src/services/researchTopic.service');
+  return {
+    ...actual,
+    topicLearningMaterialService: {
+      ...actual.topicLearningMaterialService,
+      getByTopicId: getByTopicIdMock,
+    },
+  };
+});
 
 vi.mock('../../../../src/services/guidanceProject.service', async () => {
   const actual = await vi.importActual<
@@ -125,12 +152,14 @@ describe('<LecturerGroupDetail> page', () => {
     listReportsForGroupMock.mockReset();
     getAllLearningMaterialsMock.mockReset();
     updateGroupMock.mockReset();
+    getByTopicIdMock.mockReset();
     // Provide defaults for the always-on effect calls.
     getAllGroupsMock.mockResolvedValue([]);
     getMembersForGroupMock.mockResolvedValue([]);
     getAllTopicsMock.mockResolvedValue([]);
     listReportsForGroupMock.mockResolvedValue([]);
     getAllLearningMaterialsMock.mockResolvedValue([]);
+    getByTopicIdMock.mockResolvedValue([]);
     updateGroupMock.mockResolvedValue({ ...SEED_GROUP, name: 'Renamed' });
   });
 

@@ -18,7 +18,8 @@ import {
   type SpecializedCriteriaBundle,
   type SpecializedItem,
 } from './evaluationCriteriaResolver';
-import { ManuscriptViewer } from './ManuscriptViewer';
+import LazyPdfViewer from '../../../components/PdfViewer/LazyPdfViewer';
+
 import { VerbalAnchorList } from './VerbalAnchorList';
 import { fieldService } from '../../../services/field.service';
 import { PageHeader } from '../../../components/PageHeader';
@@ -58,8 +59,11 @@ import { Link } from 'react-router-dom';
  *     Vietnamese taxonomy copy into the English UI. The page formats
  *     standards through i18n and the adapter sends `specializedEvaluation[]`
  *     to the BE.
- *   - Manuscript iframe: replaced with `ManuscriptViewer` that HEAD-checks
- *     the URL and shows an `ErrorBanner` fallback with Retry / Open / Download.
+ *   - Manuscript iframe: replaced with `LazyPdfViewer` (pdf.js-based) in
+ *     `protected-review` mode — downloads the PDF as an ArrayBuffer via the
+ *     Firebase SDK (avoids Firebase Storage's X-Frame-Options:DENY block),
+ *     renders to canvas, blocks copy/cut/context-menu/drag, and overlays a
+ *     confidential watermark (`RR-{reviewRequestId}`) for traceability.
  *   - Hand-rolled submit dialog: replaced with the shared `ConfirmModal`
  *     (focus-trap, ESC-to-close, themed backdrop already wired).
  *
@@ -467,7 +471,11 @@ export const ReviewerAssignmentDetail = () => {
     if (!hasPolicyAcceptance) return <p className={reviewer.pdfUnavailable} role="status">{t('reviewer.detail.gate.requireToOpen')}</p>;
     if (!fileUrl) return <p className={reviewer.pdfUnavailable} role="status">{t('reviewer.detail.gate.noManuscript')}</p>;
     return (
-      <ManuscriptViewer fileUrl={fileUrl} title={paper?.title ?? 'manuscript'} />
+      <LazyPdfViewer
+        url={fileUrl}
+        mode="protected-review"
+        reviewCopyId={reviewRequestId != null ? `RR-${reviewRequestId}` : undefined}
+      />
     );
   };
 

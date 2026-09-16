@@ -2304,6 +2304,35 @@ export const dictionary: Dictionary = {
     'lecturer.groupDetail.assignOne': 'Giao đề tài từ trang Đề tài Nghiên cứu.',
     'lecturer.groupDetail.groupMembersTitle': 'Thành viên nhóm',
     'lecturer.groupDetail.inviteStudents': 'Mời sinh viên',
+    // BE-RESEARCH-GROUP-APPROVAL-01 (Sep 2026) — Vietnamese strings for
+    // the pending-join-requests surface. Mirror the English keys above.
+    'lecturer.groupDetail.pendingJoinRequestsTitle': 'Đơn xin gia nhập đang chờ',
+    'lecturer.groupDetail.pendingJoinRequestsHint':
+      'Xem các đơn xin gia nhập từ sinh viên muốn vào nhóm này. Duyệt để thêm họ làm thành viên hoặc từ chối kèm ghi chú giải thích.',
+    'lecturer.groupDetail.acceptPending': 'Duyệt',
+    'lecturer.groupDetail.rejectPending': 'Từ chối',
+    'lecturer.groupDetail.studentId': 'Mã sinh viên',
+    'lecturer.groupDetail.appliedOn': 'Ngày nộp',
+    'lecturer.groupDetail.studentNote': 'Ghi chú của sinh viên',
+    'lecturer.groupDetail.acceptPendingSuccess':
+      'Đã duyệt đơn xin gia nhập của {name}.',
+    'lecturer.groupDetail.rejectPendingSuccess':
+      'Đã từ chối đơn xin gia nhập của {name}.',
+    'lecturer.groupDetail.rejectModalTitle': 'Từ chối đơn xin gia nhập',
+    'lecturer.groupDetail.rejectionNoteLabel': 'Lý do từ chối',
+    'lecturer.groupDetail.rejectionNotePlaceholder':
+      'Giải thích lý do từ chối đơn này (nội dung sẽ được gửi tới sinh viên)',
+    'lecturer.groupDetail.rejectionNoteHint':
+      'Không bắt buộc, nhưng khuyến khích nhập — ghi chú sẽ được gửi tới sinh viên qua thông báo.',
+    'lecturer.groupDetail.confirmReject': 'Xác nhận từ chối',
+    'lecturer.groupDetail.rejecting': 'Đang từ chối…',
+    'lecturer.groupDetail.errPendingLoad':
+      'Không thể tải danh sách đơn xin gia nhập cho nhóm này.',
+    'lecturer.groupDetail.errGroupFullOnAccept':
+      'Không thể duyệt: nhóm đã đủ 4 thành viên hoặc đơn này đã được xử lý trước đó.',
+    'lecturer.groupDetail.errAcceptFail': 'Không thể duyệt đơn xin gia nhập này.',
+    'lecturer.groupDetail.errRejectFail': 'Không thể từ chối đơn xin gia nhập này.',
+    'lecturer.groupDetail.errAlreadyProcessed': 'Đơn này đã được xử lý trước đó.',
     'lecturer.groupDetail.maxMembersReached': 'Đã đạt tối đa 4 thành viên',
     'lecturer.groupDetail.maxMembersNotice': 'Tối đa 4 thành viên mỗi nhóm',
     'lecturer.groupDetail.maxMembersNoticeDesc': 'Giới hạn bốn thành viên được áp dụng trên giao diện này.',
@@ -2326,8 +2355,12 @@ export const dictionary: Dictionary = {
     'lecturer.groupDetail.milestoneApiNoticeDesc': 'Endpoint chuyên dụng cho mốc thời gian chưa có. Thẻ này đếm số lượng Báo cáo giai đoạn thay thế.',
     'lecturer.groupDetail.learningMaterialsTitle': 'Tài liệu học tập',
     'lecturer.groupDetail.learningMaterialsHint': 'Được đính kèm vào các mốc qua Quản lý giai đoạn trên đề tài.',
+    'lecturer.groupDetail.topicMaterialsTitle': 'Tài liệu đính kèm cho đề tài này',
+    'lecturer.groupDetail.libraryMaterialsTitle': 'Thư viện của giảng viên',
+    'lecturer.groupDetail.noTopicMaterials': 'Chưa có tài liệu nào được đính kèm cho đề tài của nhóm này.',
     'lecturer.groupDetail.loadingMaterials': 'Đang tải tài liệu…',
     'lecturer.groupDetail.noMaterials': 'Chưa đính kèm tài liệu học tập nào.',
+    'lecturer.groupDetail.materialPhaseBucketTitle': 'Tài liệu giai đoạn',
     'lecturer.groupDetail.materialPrefix': 'Tài liệu #',
     'lecturer.groupDetail.materialPhaseLabel': 'Giai đoạn {n}',
     'lecturer.groupDetail.open': 'Mở',

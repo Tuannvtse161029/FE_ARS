@@ -16,29 +16,23 @@ import reviewer from './reviewer.module.css';
  * way to recover — the "Download" link still worked but the visible
  * surface looked broken.
  *
- * This component:
- *   - issues a HEAD request to the signed URL once, caches the verdict
- *     per `fileUrl` (so re-mounting the page doesn't re-fire),
- *   - shows the iframe when the response is `application/pdf`,
- *   - shows an `ErrorBanner` with Retry / Open-in-new-tab / Download
- *     actions when the response is not a PDF (status >= 400, wrong
- *     content-type, or network error),
- *   - leaves a clear "PDF unavailable" placeholder when no URL is
- *     provided (the parent renders the policy gate so this branch only
- *     runs when the reviewer has acknowledged responsibilities).
+ * The fix:
+ *   - Instead of a CORS-busting HEAD fetch (which fails against Firebase
+ *     Storage because the bucket is not CORS-configured for localhost), we
+ *     render the PDF inside a hidden "probe" iframe with a 6-second load
+ *     timeout.
+ *   - `onload`  → URL is alive; switch to the visible iframe.
+ *   - `onerror` → URL is dead (expired / blocked); show fallback.
+ *   - Timeout   → same fallback with a timeout message.
  *
- * The HEAD request is wrapped in try/catch — we never throw to the
- * parent, we just flip the `state` to `'error'` so the error UI shows.
+ * No fetch() CORS needed: browser iframe resource loading is not gated
+ * by the fetch CORS check, so Firebase Storage signed URLs work fine
+ * without any CORS bucket policy changes.
  */
 
 type ViewerState = 'checking' | 'ready' | 'error';
 
-const HEAD_TIMEOUT_MS = 5000;
-
-const isPdfContentType = (rawType: string | null | undefined): boolean => {
-  if (!rawType) return false;
-  return rawType.toLowerCase().split(';')[0].trim() === 'application/pdf';
-};
+const PROBE_TIMEOUT_MS = 6000;
 
 export interface ManuscriptViewerProps {
   /** Signed Firebase (or storage) URL for the manuscript PDF. */
@@ -51,76 +45,98 @@ export const ManuscriptViewer = ({ fileUrl, title }: ManuscriptViewerProps) => {
   const t = useT();
   const [state, setState] = useState<ViewerState>('checking');
   const [errorMessage, setErrorMessage] = useState<string>('');
-  const cacheRef = useRef<Map<string, ViewerState>>(new Map());
+  const cacheRef = useRef<Map<string, 'ready' | 'error'>>(new Map());
+  const probeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const probeRef = useRef<HTMLIFrameElement | null>(null);
 
-  const verify = useCallback(async (url: string) => {
-    const cached = cacheRef.current.get(url);
-    if (cached && cached !== 'checking') {
-      setState(cached);
-      return;
+  const probeCleanup = () => {
+    if (probeTimerRef.current !== null) {
+      clearTimeout(probeTimerRef.current);
+      probeTimerRef.current = null;
     }
-    setState('checking');
-    setErrorMessage('');
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), HEAD_TIMEOUT_MS);
-    try {
-      const response = await fetch(url, {
-        method: 'HEAD',
-        // No cache: we want a fresh verdict when the user clicks Retry —
-        // storage URLs change after rotation so a stale cache could mask
-        // a fix that just took effect.
-        cache: 'no-store',
-        signal: controller.signal,
-        credentials: 'omit',
-        mode: 'cors',
-      });
-      clearTimeout(timer);
-      if (!response.ok) {
-        cacheRef.current.set(url, 'error');
-        setState('error');
-        setErrorMessage(
-          t(
-            'reviewer.detail.manuscript.httpError',
-            `Storage returned ${response.status}. The signed URL may have expired.`,
-          ),
-        );
+    if (probeRef.current) {
+      // Remove the probe iframe from the DOM to stop it loading
+      probeRef.current.remove();
+      probeRef.current = null;
+    }
+  };
+
+  const verify = useCallback(
+    async (url: string) => {
+      const cached = cacheRef.current.get(url);
+      if (cached) {
+        setState(cached);
         return;
       }
-      const contentType = response.headers.get('content-type');
-      if (!isPdfContentType(contentType)) {
-        cacheRef.current.set(url, 'error');
-        setState('error');
-        setErrorMessage(
-          t(
-            'reviewer.detail.manuscript.wrongType',
-            'The file at this URL is not a PDF. Use the download link below to retrieve the manuscript.',
-          ),
-        );
-        return;
-      }
-      cacheRef.current.set(url, 'ready');
-      setState('ready');
-    } catch (caught) {
-      clearTimeout(timer);
-      cacheRef.current.set(url, 'error');
-      setState('error');
-      const isAbort = caught instanceof DOMException && caught.name === 'AbortError';
-      setErrorMessage(
-        isAbort
-          ? t(
+      setState('checking');
+      setErrorMessage('');
+
+      // Remove any stale probe from the previous attempt
+      probeCleanup();
+
+      // Create a hidden iframe to probe whether the signed URL is alive.
+      // We do NOT use fetch() here because Firebase Storage signed URLs
+      // do not carry CORS headers for localhost — the fetch would be
+      // rejected by the browser before we even get a response.
+      // Iframe resource loading, however, is not gated by fetch CORS.
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.style.visibility = 'hidden';
+      iframe.width = '0';
+      iframe.height = '0';
+      iframe.referrerPolicy = 'no-referrer';
+      iframe.setAttribute('aria-hidden', 'true');
+
+      // Append to body so it actually begins loading
+      document.body.appendChild(iframe);
+      probeRef.current = iframe;
+
+      // 6-second load timeout: if the iframe hasn't fired onload by then,
+      // the URL is likely expired or unreachable.
+      probeTimerRef.current = setTimeout(() => {
+        // Check if the iframe is still in the DOM (not already cleaned up)
+        if (probeRef.current === iframe) {
+          probeCleanup();
+          cacheRef.current.set(url, 'error');
+          setState('error');
+          setErrorMessage(
+            t(
               'reviewer.detail.manuscript.timeout',
               'The storage server did not respond in time. You can retry or download the manuscript directly.',
-            )
-          : t(
-              'reviewer.detail.manuscript.networkError',
-              'Could not reach the storage server. Check your connection and retry.',
             ),
-      );
-    }
-  }, [t]);
+          );
+        }
+      }, PROBE_TIMEOUT_MS);
+
+      iframe.onload = () => {
+        if (probeRef.current !== iframe) return; // stale after unmount
+        probeCleanup();
+        cacheRef.current.set(url, 'ready');
+        setState('ready');
+      };
+
+      iframe.onerror = () => {
+        if (probeRef.current !== iframe) return;
+        probeCleanup();
+        cacheRef.current.set(url, 'error');
+        setState('error');
+        setErrorMessage(
+          t(
+            'reviewer.detail.manuscript.networkError',
+            'Could not reach the storage server. Check your connection and retry.',
+          ),
+        );
+      };
+
+      // Assign src last — iframe only starts loading after being in the DOM
+      iframe.src = url;
+    },
+    [t],
+  );
 
   useEffect(() => {
     void verify(fileUrl);
+    return probeCleanup; // cleanup on unmount or re-verify
   }, [fileUrl, verify]);
 
   const handleRetry = () => {
@@ -128,20 +144,17 @@ export const ManuscriptViewer = ({ fileUrl, title }: ManuscriptViewerProps) => {
     void verify(fileUrl);
   };
 
-  // When the iframe successfully fires `onLoad`, mark that the PDF rendered.
-  // If the iframe's content fails to load (CORS / X-Frame-Options blocks
-  // typical Firebase Storage URLs), the `onError` event fires instead — we
-  // use that to flip the state to `error` and surface the fallback UI.
-  const handleIframeLoad = () => {
-    // No-op: a successful load is implicit by remaining in the 'ready' state.
-  };
+  // Safety nets on the visible iframe (only rendered after the probe
+  // confirmed the URL is alive). handleIframeLoad is a no-op because
+  // the probe already verified the URL is alive before this iframe mounts.
+  const handleIframeLoad = () => {};
   const handleIframeError = () => {
     cacheRef.current.set(fileUrl, 'error');
     setState('error');
     setErrorMessage(
       t(
         'reviewer.detail.manuscript.corsBlocked',
-        'Your browser blocked the embedded preview due to cross-origin policy. Download or open the manuscript in a new tab to view it.',
+        'The embedded preview was blocked. Download or open the manuscript in a new tab to view it.',
       ),
     );
   };
