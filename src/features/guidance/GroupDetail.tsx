@@ -28,6 +28,7 @@ import { useI18n } from '../../i18n/I18nContext';
 import { useResearchGroups } from '../../hooks/useResearchGroups';
 import { usePhasedReports } from '../../hooks/usePhasedReports';
 import { useLearningMaterials } from '../../hooks/useLearningMaterials';
+import { useTopicLearningMaterials } from '../../hooks/useTopicLearningMaterials';
 import { useLecturerProfile } from '../../hooks/useLecturerProfile';
 import { researchGroupService, deriveGroupStatus } from '../../services/researchGroup.service';
 import type { ResearchGroup } from '../../services/researchGroup.service';
@@ -129,6 +130,19 @@ export const LecturerGroupDetail = (): JSX.Element => {
     if (!group || typeof group.topicId !== 'number') return null;
     return topics.find((t) => t.id === group.topicId) ?? null;
   }, [group, topics]);
+
+  // Topic-level Learning Materials — surfaced when the group has a
+  // research topic. These come from the dedicated
+  // `/api/ResearchTopic/{topicId}/learning-materials` endpoint that
+  // `LearningMaterialModal` writes to. Without this second fetch the
+  // group detail page silently drops every material the lecturer just
+  // attached via "Manage Materials" on the Research Topic page.
+  const {
+    materials: topicMaterials,
+    isLoading: isTopicMaterialsLoading,
+    error: topicMaterialsError,
+    refetch: refetchTopicMaterials,
+  } = useTopicLearningMaterials(relatedTopic?.id ?? null);
 
   const derivedStatus = useMemo(
     () => deriveGroupStatus(group, relatedTopic?.status ?? null),
@@ -481,9 +495,15 @@ export const LecturerGroupDetail = (): JSX.Element => {
         {/* Materials */}
         <MaterialsDisplay
           materials={materials}
+          topicMaterials={topicMaterials}
           isLoading={isMaterialsLoading}
+          isTopicLoading={isTopicMaterialsLoading}
           error={materialsError}
+          topicError={
+            topicMaterialsError ? { message: topicMaterialsError.message } : null
+          }
           onRetry={() => void refetchMaterials()}
+          onRetryTopic={() => void refetchTopicMaterials()}
         />
       </div>
 

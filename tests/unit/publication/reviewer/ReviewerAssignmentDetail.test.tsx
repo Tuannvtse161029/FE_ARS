@@ -9,7 +9,10 @@ import { dictionary } from '../../../../src/i18n/dictionaries/en';
 
 const translate = (key: string, fallback?: string) => dictionary[key] ?? fallback ?? key;
 vi.mock('../../../../src/i18n/I18nContext', () => ({ useT: () => translate }));
-vi.mock('../../../../src/components/PdfViewer', () => ({ PdfViewer: () => <div data-testid="mock-pdf" /> }));
+vi.mock('../../../../src/components/PdfViewer', () => {
+  const MockPdf = () => <div data-testid="mock-pdf" />;
+  return { PdfViewer: MockPdf, default: MockPdf };
+});
 
 beforeEach(() => {
   sessionStorage.clear();

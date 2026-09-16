@@ -62,6 +62,7 @@ import {
   derivePhaseMaterialsForGroup,
   type PhaseMaterialEntry,
 } from '../../utils/phaseMaterials';
+import { useTopicLearningMaterials } from '../../hooks/useTopicLearningMaterials';
 import { useListShortcuts } from '../../hooks/useListShortcuts';
 import type { SubmittedPhasedReport } from '../../services/phasedReport.service';
 import { safeHref } from '../../utils/validationRules';
@@ -790,6 +791,21 @@ function WorkspaceView({
   );
   const materialsLoading = reportsLoading;
 
+  // Topic-level materials — these come from the lecturer's "Manage
+  // Materials" modal on the Research Topic page (writes via
+  // `POST /api/ResearchTopic/{topicId}/learning-materials`). Without this
+  // second fetch, materials attached at the topic level were silently
+  // missing from the graduate-student workspace. We render these as a
+  // separate section above the per-phase materials so a student can see
+  // both "general topic reading" and "phase-specific deliverables" in
+  // one page.
+  const {
+    materials: topicMaterials,
+    isLoading: isTopicMaterialsLoading,
+  } = useTopicLearningMaterials(
+    typeof group.topicId === 'number' ? group.topicId : null,
+  );
+
   const latestRejected = useMemo<SubmittedPhasedReport | null>(
     () => reports.find((r) => r.status === 'REJECTED') ?? null,
     [reports],
@@ -870,49 +886,104 @@ function WorkspaceView({
           <h3 className={styles.sectionTitle}>{copy('Learning materials', 'Tài liệu học tập')}</h3>
           <p className={styles.sectionSubtitle}>
             {copy(
-              'Attached by your lecturer to each milestone of this group\u2019s research topic.',
-              'Được giảng viên đính kèm vào từng mốc của đề tài nghiên cứu mà nhóm này đang thực hiện.',
+              'Attached by your lecturer to the research topic and to each milestone of this group.',
+              'Được giảng viên đính kèm vào đề tài nghiên cứu và các mốc của nhóm này.',
             )}
           </p>
         </div>
-        {materialsLoading ? (
-          <SkeletonRow count={2} rowHeight={48} gap={12} />
-        ) : phaseMaterials.length === 0 ? (
-          <EmptyState
-            icon={<BookOpen size={24} />}
-            title={copy('No materials attached yet', 'Chưa có tài liệu nào được đính kèm')}
-            description={copy(
-              'Your lecturer hasn\u2019t attached any materials to this group\u2019s phase milestones yet. They can do so via \u201cManage phase\u201d on the topic.',
-              'Giảng viên của bạn chưa đính kèm tài liệu nào cho các mốc của nhóm này. Họ có thể thực hiện qua mục \u201cQuản lý giai đoạn\u201d trên đề tài.',
-            )}
-            compact
-          />
-        ) : (
-          <ul className={styles.materialList}>
-            {phaseMaterials.map((m) => (
-              <li
-                key={`phase-material-${m.phasedReportId}`}
-                className={styles.materialItem}
-              >
-                <span className={styles.materialTitle}>
-                  {copy('Phase ', 'Giai đoạn ')}
-                  {m.phaseNumber}
-                  {m.milestoneTitle ? ` · ${m.milestoneTitle}` : ''}
-                </span>
-                {safeHref(m.materialUrl) ? (
-                  <a
-                    href={safeHref(m.materialUrl) ?? '#'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={styles.linkBtn}
-                  >
-                    {copy('Open PDF', 'Xem PDF')}
-                  </a>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        )}
+
+        {/* Topic-level materials — read via
+            /api/ResearchTopic/{topicId}/learning-materials. This block
+            exists because the September 2026 bug was that materials
+            attached via the Research Topic "Manage Materials" modal
+            never surfaced in the graduate student workspace. We now
+            render them as their own subsection, kept distinct from the
+            per-phase materials further down. */}
+        <div className={styles.materialSubsection}>
+          <h4 className={styles.materialSubsectionTitle}>
+            {copy('Attached to research topic', 'Đính kèm cho đề tài')}
+          </h4>
+          {isTopicMaterialsLoading ? (
+            <SkeletonRow count={2} rowHeight={48} gap={12} />
+          ) : topicMaterials.length === 0 ? (
+            <p className={styles.materialSubsectionEmpty}>
+              {copy(
+                'No topic-level materials attached yet.',
+                'Chưa có tài liệu nào được đính kèm cho đề tài.',
+              )}
+            </p>
+          ) : (
+            <ul className={styles.materialList}>
+              {topicMaterials.map((m) => (
+                <li
+                  key={`topic-material-${m.id ?? m.learningMaterialId ?? m.title ?? m.fileUrl ?? ''}`}
+                  className={styles.materialItem}
+                >
+                  <span className={styles.materialTitle}>
+                    {m.title ?? copy('Untitled material', 'Tài liệu chưa đặt tên')}
+                  </span>
+                  {m.fileUrl && safeHref(m.fileUrl) ? (
+                    <a
+                      href={safeHref(m.fileUrl) ?? '#'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.linkBtn}
+                    >
+                      {copy('Open PDF', 'Xem PDF')}
+                    </a>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Per-phase materials — kept from the previous design so that
+            attachments via "Manage phase" still appear alongside the
+            topic-level ones. */}
+        <div className={styles.materialSubsection}>
+          <h4 className={styles.materialSubsectionTitle}>
+            {copy('Attached to each milestone', 'Đính kèm cho từng mốc')}
+          </h4>
+          {materialsLoading ? (
+            <SkeletonRow count={2} rowHeight={48} gap={12} />
+          ) : phaseMaterials.length === 0 ? (
+            <EmptyState
+              icon={<BookOpen size={24} />}
+              title={copy('No materials attached yet', 'Chưa có tài liệu nào được đính kèm')}
+              description={copy(
+                'Your lecturer hasn\u2019t attached any materials to this group\u2019s phase milestones yet. They can do so via \u201cManage phase\u201d on the topic.',
+                'Giảng viên của bạn chưa đính kèm tài liệu nào cho các mốc của nhóm này. Họ có thể thực hiện qua mục \u201cQuản lý giai đoạn\u201d trên đề tài.',
+              )}
+              compact
+            />
+          ) : (
+            <ul className={styles.materialList}>
+              {phaseMaterials.map((m) => (
+                <li
+                  key={`phase-material-${m.phasedReportId}`}
+                  className={styles.materialItem}
+                >
+                  <span className={styles.materialTitle}>
+                    {copy('Phase ', 'Giai đoạn ')}
+                    {m.phaseNumber}
+                    {m.milestoneTitle ? ` · ${m.milestoneTitle}` : ''}
+                  </span>
+                  {safeHref(m.materialUrl) ? (
+                    <a
+                      href={safeHref(m.materialUrl) ?? '#'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.linkBtn}
+                    >
+                      {copy('Open PDF', 'Xem PDF')}
+                    </a>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </section>
 
       <section className={styles.card}>

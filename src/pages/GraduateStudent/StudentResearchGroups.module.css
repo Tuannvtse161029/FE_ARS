@@ -407,6 +407,42 @@
   color: var(--ars-ink);
 }
 
+/* ── Material Subsections ───────────────────────────────── */
+/* The Learning Materials card on the graduate student workspace now
+   shows two distinct buckets: topic-level attachments (read via the
+   ResearchTopic/{id}/learning-materials endpoint) and per-phase
+   attachments (read from PhasedReport.phasedMaterialsUrl). These
+   subsections visually separate the two so the student can tell which
+   is general reading versus a milestone deliverable. */
+.materialSubsection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) 0;
+  border-top: var(--border-thin);
+}
+
+.materialSubsection:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.materialSubsectionTitle {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.materialSubsectionEmpty {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink-muted);
+  font-style: italic;
+}
+
 /* ── Responsive ─────────────────────────────────────────── */
 @media (max-width: 768px) {
   .groupCard {

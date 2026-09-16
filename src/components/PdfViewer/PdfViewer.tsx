@@ -260,6 +260,8 @@ export const PdfViewer = ({
   };
 
   // ── Render a thumbnail (lazy — only when visible or needed) ────────
+  /** Stable ref so the Intersection Observer always calls the current renderThumbnail. */
+  const renderThumbnailRef = useRef<(pageNum: number) => void>(() => {});
   const renderThumbnail = async (pageNum: number) => {
     if (thumbnails.has(pageNum) || renderingPages.has(pageNum)) return;
 
@@ -303,6 +305,8 @@ export const PdfViewer = ({
       });
     }
   };
+  // Keep the stable ref in sync — the Intersection Observer reads from it.
+  renderThumbnailRef.current = renderThumbnail;
 
   // ── Load PDF ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -467,6 +471,8 @@ export const PdfViewer = ({
   };
 
   // ── Intersection Observer for lazy thumbnail loading ───────────────
+  // Uses a stable renderThumbnailRef so the callback always calls the current
+  // renderThumbnail (avoiding stale-closure issues when the effect runs once).
   useEffect(() => {
     if (!totalPages) return;
     const sidebar = sidebarRef.current;
@@ -478,7 +484,7 @@ export const PdfViewer = ({
           if (entry.isIntersecting) {
             const pageNum = Number((entry.target as HTMLElement).dataset.page);
             if (!isNaN(pageNum)) {
-              renderThumbnail(pageNum);
+              renderThumbnailRef.current(pageNum);
               observer.unobserve(entry.target);
             }
           }
@@ -600,15 +606,17 @@ export const PdfViewer = ({
 
   // ── Protected-review notice + watermark overlay ────────────────────────────
   //
-  // Non-interactive: `pointer-events: none` so it never captures focus or clicks.
-  // The watermark uses reviewCopyId (review-request id or reviewer copy token) so
-  // the copy is traceable without exposing researcher identity (double-blind).
+  // Non-interactive by default (`pointer-events: none`) so the watermark
+  // never blocks clicks. The "Open full PDF" button re-enables pointer
+  // events on itself so reviewers can click through to a full-tab view.
+  // The watermark uses reviewCopyId (review-request id or reviewer copy token)
+  // so the copy is traceable without exposing researcher identity (double-blind).
   const renderProtectedOverlay = () => {
     if (!isProtected) return null;
+    const fullPdfUrl = pdfObjectUrlRef.current;
     return (
       <div
         className={styles.protectedOverlay}
-        aria-hidden="true"
         data-testid="pdf-protected-overlay"
       >
         <span className={styles.protectedNotice}>
@@ -618,6 +626,22 @@ export const PdfViewer = ({
           <span className={styles.protectedWatermark} aria-label={t('pdfViewer.protected.reviewCopyAria', 'Review copy identifier')}>
             {reviewCopyId}
           </span>
+        ) : null}
+        {fullPdfUrl ? (
+          <a
+            href={fullPdfUrl}
+            target="_blank"
+            rel="noopener,noreferrer"
+            className={styles.protectedOpenFullBtn}
+            data-testid="pdf-protected-open-full"
+            aria-label={t('pdfViewer.protected.openFullAria', 'Open the full manuscript in a new tab for a wider view')}
+            // Re-enable pointer events on the anchor itself, since the
+            // overlay is non-interactive so the watermark can't block clicks.
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ExternalLink size={12} />
+            {t('pdfViewer.protected.openFull', 'Open full PDF')}
+          </a>
         ) : null}
       </div>
     );
