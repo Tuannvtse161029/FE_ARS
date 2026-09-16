@@ -18,7 +18,7 @@ import ARSLogo from '../../assets/images/ARS_Logo.png';
 import styles from './Register.module.css';
 import { Info } from 'lucide-react';
 import { startRegistrationOrcidLink } from '../../services/orcid.service';
-import { isOrcidEligibleRole, type RequestableRole } from '../../utils/registrationRoles';
+import { isOrcidEligibleRole, isAcademicRole, type RequestableRole } from '../../utils/registrationRoles';
 import { ROLE_INFO, roleDescription } from '../../utils/roleInfo';
 import { FieldError } from '../../components/FieldError';
 import { reviewerOrcidBypassAllowed } from '../../config/featureFlags';
@@ -42,6 +42,9 @@ interface FormState {
   retypePassword: string;
   role: RequestableRole;
   consentAccepted: boolean;
+  identifierType: 'openAlex' | 'semanticScholar';
+  openAlexId: string;
+  semanticScholarId: string;
 }
 
 const initialForm: FormState = {
@@ -53,6 +56,9 @@ const initialForm: FormState = {
   retypePassword: '',
   role: 'Researcher',
   consentAccepted: false,
+  identifierType: 'openAlex',
+  openAlexId: '',
+  semanticScholarId: '',
 };
 
 // Inline name regex is centralised in `src/utils/validationRules.ts` to keep
@@ -222,6 +228,24 @@ export const Register = () => {
         return !value
           ? 'You must accept the Privacy Policy and Terms before registering.'
           : undefined;
+      case 'openAlexId': {
+        if (isAcademicRole(currentForm.role) && currentForm.identifierType === 'openAlex' && !textValue.trim()) {
+          return t(
+            'register.errIdentifierRequired',
+            'Vui lòng nhập mã định danh tương ứng',
+          );
+        }
+        return undefined;
+      }
+      case 'semanticScholarId': {
+        if (isAcademicRole(currentForm.role) && currentForm.identifierType === 'semanticScholar' && !textValue.trim()) {
+          return t(
+            'register.errIdentifierRequired',
+            'Vui lòng nhập mã định danh tương ứng',
+          );
+        }
+        return undefined;
+      }
       default:
         return undefined;
     }
@@ -238,6 +262,12 @@ export const Register = () => {
       ...prev,
       [name]: nextValue,
     }));
+
+    if (name === 'role') {
+      if (!isAcademicRole(nextValue as string)) {
+        setErrors((prev) => ({ ...prev, openAlexId: undefined, semanticScholarId: undefined }));
+      }
+    }
 
     if (errors[name as keyof FormState]) {
       const fieldError = validateField(name as keyof FormState, nextValue, {
@@ -298,6 +328,24 @@ export const Register = () => {
         'Reviewer registration requires a verified ORCID connection. Click "Connect ORCID" above and complete the ORCID authorization first.';
     }
 
+    if (isAcademicRole(form.role)) {
+      if (form.identifierType === 'openAlex') {
+        if (!form.openAlexId.trim()) {
+          next.openAlexId = t(
+            'register.errIdentifierRequired',
+            'Vui lòng nhập mã định danh tương ứng',
+          );
+        }
+      } else if (form.identifierType === 'semanticScholar') {
+        if (!form.semanticScholarId.trim()) {
+          next.semanticScholarId = t(
+            'register.errIdentifierRequired',
+            'Vui lòng nhập mã định danh tương ứng',
+          );
+        }
+      }
+    }
+
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -311,6 +359,10 @@ export const Register = () => {
     if (!pdfUrl) return false;
     if (isUploadingPdf) return false;
     if (!form.consentAccepted) return false;
+    if (isAcademicRole(form.role)) {
+      if (form.identifierType === 'openAlex' && !form.openAlexId.trim()) return false;
+      if (form.identifierType === 'semanticScholar' && !form.semanticScholarId.trim()) return false;
+    }
     return true;
   })();
 
@@ -348,6 +400,14 @@ export const Register = () => {
         // registrations will simply omit the field; the BE accepts an
         // absent `orcidTicket` for those roles.
         ...(orcidTicket ? { orcidTicket } : {}),
+        openAlexId:
+          isAcademicRole(form.role) && form.identifierType === 'openAlex'
+            ? form.openAlexId.trim()
+            : null,
+        semanticScholarId:
+          isAcademicRole(form.role) && form.identifierType === 'semanticScholar'
+            ? form.semanticScholarId.trim()
+            : null,
         // FE_TRIAL_FLOW — flag every self-registration as `isFirstTime`
         // so the BE can launch the 7-day Researcher / Lecturer trial
         // the moment Admin role verification succeeds. Future role-
@@ -402,6 +462,8 @@ export const Register = () => {
         'password',
         'role',
         'pdfUrl',
+        'openAlexId',
+        'semanticScholarId',
       ]);
       if (Object.keys(fieldErrors).length > 0) {
         setErrors((prev) => ({ ...prev, ...fieldErrors }));
@@ -727,6 +789,131 @@ export const Register = () => {
             {roleDescription(form.role, locale === 'vi')}
           </p>
         </section>
+
+        {isAcademicRole(form.role) && (
+          <section
+            className={styles.identifierSection}
+            aria-labelledby="academic-identifier-title"
+            data-testid="register-academic-identifier-section"
+          >
+            <div className={styles.identifierHeader}>
+              <h3
+                id="academic-identifier-title"
+                className={`${styles.identifierTitle} ${styles['identifierTitle--required']}`}
+              >
+                {t('register.academicIdentifierTitle', 'Academic Scholarly Identifier')}
+              </h3>
+              <p className={styles.identifierDesc}>
+                {t('register.academicIdentifierDesc', 'Provide your scholarly author ID to link your research profile.')}
+              </p>
+            </div>
+
+            <div
+              className={styles.identifierRadioGroup}
+              role="radiogroup"
+              aria-labelledby="academic-identifier-title"
+            >
+              <label
+                className={`${styles.radioCard} ${form.identifierType === 'openAlex' ? styles['radioCard--active'] : ''}`}
+              >
+                <input
+                  type="radio"
+                  name="identifierType"
+                  value="openAlex"
+                  checked={form.identifierType === 'openAlex'}
+                  onChange={() => {
+                    setForm((prev) => ({ ...prev, identifierType: 'openAlex' }));
+                    if (errors.semanticScholarId) {
+                      setErrors((prev) => ({ ...prev, semanticScholarId: undefined }));
+                    }
+                  }}
+                  disabled={isSubmitting || isUploadingPdf}
+                  className={styles.radioInput}
+                  data-testid="register-radio-openalex"
+                />
+                <span className={styles.radioText}>
+                  {t('register.identifierTypeOpenAlex', 'OpenAlex ID')}
+                  <span className={styles.recommendedTag}>
+                    {t('register.recommended', 'Recommended')}
+                  </span>
+                </span>
+              </label>
+
+              <label
+                className={`${styles.radioCard} ${form.identifierType === 'semanticScholar' ? styles['radioCard--active'] : ''}`}
+              >
+                <input
+                  type="radio"
+                  name="identifierType"
+                  value="semanticScholar"
+                  checked={form.identifierType === 'semanticScholar'}
+                  onChange={() => {
+                    setForm((prev) => ({ ...prev, identifierType: 'semanticScholar' }));
+                    if (errors.openAlexId) {
+                      setErrors((prev) => ({ ...prev, openAlexId: undefined }));
+                    }
+                  }}
+                  disabled={isSubmitting || isUploadingPdf}
+                  className={styles.radioInput}
+                  data-testid="register-radio-semanticscholar"
+                />
+                <span className={styles.radioText}>
+                  {t('register.identifierTypeSemanticScholar', 'Semantic Scholar ID')}
+                </span>
+              </label>
+            </div>
+
+            {form.identifierType === 'openAlex' ? (
+              <div className={styles.fieldGroup}>
+                <label
+                  htmlFor="openAlexId"
+                  className={`${styles.fieldLabel} ${styles['fieldLabel--required']}`}
+                >
+                  {t('register.openAlexLabel', 'OpenAlex ID')}
+                </label>
+                <input
+                  id="openAlexId"
+                  name="openAlexId"
+                  type="text"
+                  className={`${styles.input} ${errors.openAlexId ? styles['input--error'] : ''}`}
+                  placeholder={t('register.openAlexPlaceholder', 'https://openalex.org/A... or A...')}
+                  value={form.openAlexId}
+                  onChange={handleChange}
+                  onBlur={() => handleBlur('openAlexId')}
+                  disabled={isSubmitting || isUploadingPdf}
+                  aria-invalid={Boolean(errors.openAlexId)}
+                  aria-describedby={errors.openAlexId ? 'openalex-error' : undefined}
+                  data-testid="register-input-openalex"
+                />
+                <FieldError id="openalex-error" testId="openalex-error" message={errors.openAlexId} />
+              </div>
+            ) : (
+              <div className={styles.fieldGroup}>
+                <label
+                  htmlFor="semanticScholarId"
+                  className={`${styles.fieldLabel} ${styles['fieldLabel--required']}`}
+                >
+                  {t('register.semanticScholarLabel', 'Semantic Scholar ID')}
+                </label>
+                <input
+                  id="semanticScholarId"
+                  name="semanticScholarId"
+                  type="text"
+                  className={`${styles.input} ${errors.semanticScholarId ? styles['input--error'] : ''}`}
+                  placeholder={t('register.semanticScholarPlaceholder', '1741101 or https://www.semanticscholar.org/author/...')}
+                  value={form.semanticScholarId}
+                  onChange={handleChange}
+                  onBlur={() => handleBlur('semanticScholarId')}
+                  disabled={isSubmitting || isUploadingPdf}
+                  aria-invalid={Boolean(errors.semanticScholarId)}
+                  aria-describedby={errors.semanticScholarId ? 'semanticscholar-error' : undefined}
+                  data-testid="register-input-semanticscholar"
+                />
+                <FieldError id="semanticscholar-error" testId="semanticscholar-error" message={errors.semanticScholarId} />
+              </div>
+            )}
+          </section>
+        )}
 
         {isOrcidEligibleRole(form.role) && (
           <section

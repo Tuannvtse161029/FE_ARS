@@ -58,10 +58,14 @@ export interface RegisterPayload {
   password: string;
   fullName: string;
   phoneNumber: string;
-  role: UserRole;
+  role: 'Lecturer' | 'Researcher' | 'Reviewer' | 'Graduate Student' | string;
   pdfUrl: string;
   /** Backend RegisterRequest field (the API currently names this ORCID ticket). */
-  orcidTicket?: string;
+  orcidTicket?: string | null;
+  /** Scholarly author identifier on OpenAlex */
+  openAlexId?: string | null;
+  /** Scholarly author identifier on Semantic Scholar */
+  semanticScholarId?: string | null;
   /**
    * First-time registration flag. True when this account has never held
    * the requested role before — the BE uses this to decide whether to
@@ -79,9 +83,11 @@ export interface RegisterRequest {
   password: string;
   fullName: string;
   phoneNumber: string;
-  role: UserRole;
+  role: UserRole | string;
   pdfUrl: string;
-  orcidTicket?: string;
+  orcidTicket?: string | null;
+  openAlexId?: string | null;
+  semanticScholarId?: string | null;
   /** See {@link RegisterPayload.isFirstTime}. */
   isFirstTime?: boolean;
 }

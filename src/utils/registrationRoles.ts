@@ -82,3 +82,19 @@ export function isOrcidEligibleRole(role: string | null | undefined): boolean {
   if (!role) return false;
   return (ORCID_ELIGIBLE_ROLES as ReadonlyArray<string>).includes(role);
 }
+
+/**
+ * Academic roles that require a scholarly author identifier (OpenAlex or Semantic Scholar).
+ * Lecturer, Researcher, and Reviewer.
+ */
+export const ACADEMIC_IDENTIFIER_ROLES: ReadonlyArray<RequestableRole> = [
+  'Lecturer',
+  'Researcher',
+  'Reviewer',
+] as const;
+
+/** True iff the role requires an academic scholarly identifier on registration. */
+export function isAcademicRole(role: string | null | undefined): boolean {
+  if (!role) return false;
+  return (ACADEMIC_IDENTIFIER_ROLES as ReadonlyArray<string>).includes(role);
+}

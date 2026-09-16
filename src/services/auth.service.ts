@@ -402,6 +402,8 @@ export const authService = {
         role: data.role,
         pdfUrl: data.pdfUrl,
         ...(data.orcidTicket ? { orcidTicket: data.orcidTicket } : {}),
+        openAlexId: data.openAlexId ?? null,
+        semanticScholarId: data.semanticScholarId ?? null,
         // First-time registration flag — the BE uses this to decide
         // whether to start the 7-day Researcher / Lecturer trial after
         // Admin role verification succeeds. Default to `true` (the
@@ -478,6 +480,8 @@ export const authService = {
         role: payload.role,
         pdfUrl: payload.pdfUrl,
         ...(payload.orcidTicket ? { orcidTicket: payload.orcidTicket } : {}),
+        openAlexId: payload.openAlexId ?? null,
+        semanticScholarId: payload.semanticScholarId ?? null,
         // First-time registration flag — the BE uses this to decide
         // whether to start the 7-day Researcher / Lecturer trial after
         // Admin role verification succeeds. Default to `true` (the
