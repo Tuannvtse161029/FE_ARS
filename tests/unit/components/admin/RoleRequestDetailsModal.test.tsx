@@ -28,17 +28,21 @@ const REQUEST: RoleRequest = {
   notes: 'Proof document was a CV, not a research focus statement.',
 };
 
+import { I18nProvider } from '../../../../src/i18n/I18nContext';
+
 const renderModal = (
   overrides: Partial<React.ComponentProps<typeof RoleRequestDetailsModal>> = {},
 ) => {
   const onClose = vi.fn();
   const utils = render(
-    <RoleRequestDetailsModal
-      request={REQUEST}
-      open
-      onClose={onClose}
-      {...overrides}
-    />,
+    <I18nProvider>
+      <RoleRequestDetailsModal
+        request={REQUEST}
+        open
+        onClose={onClose}
+        {...overrides}
+      />
+    </I18nProvider>,
   );
   return { onClose, ...utils };
 };
@@ -128,5 +132,29 @@ describe('<RoleRequestDetailsModal>', () => {
     renderModal({ request: legacyRequest });
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).getByText('Reviewer')).toBeInTheDocument();
+  });
+
+  it('renders OpenAlex identifier and external link when present', () => {
+    const openAlexRequest: RoleRequest = {
+      ...REQUEST,
+      openAlexId: 'A5023888391',
+    };
+    renderModal({ request: openAlexRequest });
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText('A5023888391')).toBeInTheDocument();
+    const link = within(dialog).getByRole('link', { name: /View Author Profile|viewProfile/i });
+    expect(link).toHaveAttribute('href', 'https://openalex.org/A5023888391');
+  });
+
+  it('renders Semantic Scholar identifier and external link when present', () => {
+    const s2Request: RoleRequest = {
+      ...REQUEST,
+      semanticScholarId: '1741101',
+    };
+    renderModal({ request: s2Request });
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText('1741101')).toBeInTheDocument();
+    const link = within(dialog).getByRole('link', { name: /View Author Profile|viewProfile/i });
+    expect(link).toHaveAttribute('href', 'https://www.semanticscholar.org/author/1741101');
   });
 });

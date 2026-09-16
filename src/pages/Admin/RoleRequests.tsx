@@ -376,7 +376,7 @@ export const RoleRequests = () => {
                     <th>
                       <SortableHeader
                         column="name"
-                        label={t('admin.roleRequests.table.user')}
+                        label={t('admin.roleRequests.table.user', 'User')}
                         cycleSort={sort.cycleSort}
                         ariaSortFor={sort.ariaSortFor}
                       />
@@ -384,7 +384,7 @@ export const RoleRequests = () => {
                     <th>
                       <SortableHeader
                         column="email"
-                        label={t('admin.roleRequests.table.emailAddress')}
+                        label={t('admin.roleRequests.table.emailAddress', 'Email address')}
                         cycleSort={sort.cycleSort}
                         ariaSortFor={sort.ariaSortFor}
                       />
@@ -392,7 +392,7 @@ export const RoleRequests = () => {
                     <th>
                       <SortableHeader
                         column="requestedRole"
-                        label={t('admin.roleRequests.table.requestedRole')}
+                        label={t('admin.roleRequests.table.requestedRole', 'Requested role')}
                         cycleSort={sort.cycleSort}
                         ariaSortFor={sort.ariaSortFor}
                       />
@@ -400,7 +400,7 @@ export const RoleRequests = () => {
                     <th>
                       <SortableHeader
                         column="requestType"
-                        label={t('admin.roleRequests.table.requestType')}
+                        label={t('admin.roleRequests.table.requestType', 'Request type')}
                         cycleSort={sort.cycleSort}
                         ariaSortFor={sort.ariaSortFor}
                       />
@@ -408,7 +408,7 @@ export const RoleRequests = () => {
                     <th>
                       <SortableHeader
                         column="submittedAt"
-                        label={t('admin.roleRequests.table.submitted')}
+                        label={t('admin.roleRequests.table.submitted', 'Submitted')}
                         cycleSort={sort.cycleSort}
                         ariaSortFor={sort.ariaSortFor}
                       />
@@ -416,19 +416,19 @@ export const RoleRequests = () => {
                     <th>
                       <SortableHeader
                         column="verification"
-                        label={t('admin.roleRequests.table.verificationStatus')}
+                        label={t('admin.roleRequests.table.verificationStatus', 'Verification Status')}
                         cycleSort={sort.cycleSort}
                         ariaSortFor={sort.ariaSortFor}
                         filterOptions={[
-                          { value: 'PENDING', label: t('common.status.pending') },
-                          { value: 'ACCEPTED', label: t('common.status.approved') },
-                          { value: 'REJECTED', label: t('common.status.denied') },
+                          { value: 'PENDING', label: t('common.status.pending', 'Pending') },
+                          { value: 'ACCEPTED', label: t('common.status.approved', 'Approved') },
+                          { value: 'REJECTED', label: t('common.status.denied', 'Denied') },
                         ]}
                         activeFilter={status}
                         onFilterChange={(next) => setStatus(next as StatusFilter)}
                       />
                     </th>
-                    <th>{t('admin.roleRequests.table.actions')}</th>
+                    <th>{t('admin.roleRequests.table.actions', 'Actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -477,14 +477,32 @@ export const RoleRequests = () => {
                           <span className={styles.mono}>
                             {formatDateTime(row.submissionDate)}
                           </span>
-                          {isOrcidVerified && row.orcidId ? (
-                            <span
-                              className={styles.orcidInline}
-                              title={`ORCID ${row.orcidId}`}
-                            >
-                              <Check size={11} aria-hidden="true" /> ORCID
-                            </span>
-                          ) : null}
+                          <div style={{ display: 'flex', gap: '4px', marginTop: '4px', flexWrap: 'wrap' }}>
+                            {isOrcidVerified && row.orcidId ? (
+                              <span
+                                className={styles.orcidInline}
+                                title={`ORCID ${row.orcidId}`}
+                              >
+                                <Check size={11} aria-hidden="true" /> ORCID
+                              </span>
+                            ) : null}
+                            {row.openAlexId ? (
+                              <span
+                                className={styles.authorIdInline}
+                                title={`OpenAlex: ${row.openAlexId}`}
+                              >
+                                OpenAlex
+                              </span>
+                            ) : null}
+                            {row.semanticScholarId ? (
+                              <span
+                                className={styles.authorIdInline}
+                                title={`Semantic Scholar: ${row.semanticScholarId}`}
+                              >
+                                Semantic Scholar
+                              </span>
+                            ) : null}
+                          </div>
                         </td>
                         <td>
                           <span
@@ -505,10 +523,10 @@ export const RoleRequests = () => {
                               className={`${styles.actionButton} ${styles.inspectButton}`}
                               onClick={() => handleOpenDetails(row)}
                               type="button"
-                              title={t('admin.roleRequests.action.viewDetailsTitle')}
+                              title={t('admin.roleRequests.action.viewDetailsTitle', 'View request details and document')}
                             >
                               <Eye size={14} />
-                              {t('admin.roleRequests.action.viewDetails')}
+                              {t('admin.roleRequests.action.viewDetails', 'View Details')}
                             </button>
 
                             {isPending && (
@@ -527,7 +545,7 @@ export const RoleRequests = () => {
                                   data-testid="role-requests-accept"
                                 >
                                   <Check size={14} />
-                                  {t('admin.roleRequests.action.accept')}
+                                  {t('admin.roleRequests.action.accept', 'Accept')}
                                 </button>
                                 <button
                                   className={`${styles.actionButton} ${styles.denyButton}`}
@@ -543,7 +561,7 @@ export const RoleRequests = () => {
                                   data-testid="role-requests-reject"
                                 >
                                   <X size={14} />
-                                  {t('admin.roleRequests.action.reject')}
+                                  {t('admin.roleRequests.action.reject', 'Reject')}
                                 </button>
                               </>
                             )}

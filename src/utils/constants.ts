@@ -264,7 +264,8 @@ export const API_ENDPOINTS = {
       GET_ALL: '/api/RoleRequest',
       GET_BY_ID: (id: number) => `/api/RoleRequest/${id}`,
       APPROVE: (id: number) => `/api/RoleRequest/${id}/approve`,
-      DENY: (id: number) => `/api/RoleRequest/${id}/deny`,
+      DENY: (id: number) => `/api/RoleRequest/${id}/reject`,
+      REJECT: (id: number) => `/api/RoleRequest/${id}/reject`,
     },
     ACCOUNTS: {
       GET_ALL: '/api/Account',

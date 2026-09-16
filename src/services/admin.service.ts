@@ -78,6 +78,8 @@ function normalizeRoleRequest(item: any): RoleRequest | null {
     orcidId: typeof item.orcidId === 'string' ? item.orcidId : null,
     isOrcidVerified: Boolean(item.isOrcidVerified),
     orcidVerifiedAt: typeof item.orcidVerifiedAt === 'string' ? item.orcidVerifiedAt : null,
+    openAlexId: typeof item.openAlexId === 'string' ? item.openAlexId : null,
+    semanticScholarId: typeof item.semanticScholarId === 'string' ? item.semanticScholarId : null,
     proofDocumentUrl: typeof item.proofDocumentUrl === 'string' ? item.proofDocumentUrl : '',
     submissionDate: typeof item.submissionDate === 'string' ? item.submissionDate : '',
     status,

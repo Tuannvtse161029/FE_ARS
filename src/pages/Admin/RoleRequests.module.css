@@ -507,6 +507,21 @@
   letter-spacing: 0.04em;
 }
 
+.authorIdInline {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--accent-primary) 12%, transparent);
+  color: var(--ink-primary);
+  border: 1px solid var(--accent-primary);
+  font-size: 10px;
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 /* ── Spinner ────────────────────────────────────────────── */
 .spinning {
   animation: spin 0.9s linear infinite;

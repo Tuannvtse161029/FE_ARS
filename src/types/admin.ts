@@ -44,6 +44,8 @@ export interface RoleRequest {
   orcidId?: string | null;
   isOrcidVerified?: boolean;
   orcidVerifiedAt?: string | null;
+  openAlexId?: string | null;
+  semanticScholarId?: string | null;
   submissionDate: string;
   status: RoleRequestStatus;
   notes?: string;
