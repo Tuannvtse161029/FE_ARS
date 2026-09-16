@@ -2,6 +2,29 @@ import api from './axios';
 import { API_ENDPOINTS } from '../utils/constants';
 import type { PagedResult, PaginationParams } from '../types/api';
 import type { AxiosRequestConfig } from 'axios';
+import { isAxiosError } from 'axios';
+
+/**
+ * Thrown when the [TEST API] paper update endpoint rejects the request because
+ * the persisted paper is missing fields the BE requires (currently title /
+ * abstract / paperType per the audited Swagger `PaperUpdateRequest`).
+ *
+ * The Admin Accept Identity flow surfaces this as a friendly banner
+ * ("missing paper information") instead of letting the raw HTTP 415 leak to
+ * the operator. See i18n key `admin.paperIntake.missingMetadata`.
+ */
+export class PaperMissingMetadataError extends Error {
+  readonly paperId: number | string;
+  readonly status: 'MISSING_METADATA' = 'MISSING_METADATA';
+
+  constructor(paperId: number | string) {
+    super(
+      `Paper #${paperId} is missing required metadata (title, abstract, or paperType). The researcher must resubmit with all required fields before the identity decision can be recorded.`,
+    );
+    this.name = 'PaperMissingMetadataError';
+    this.paperId = paperId;
+  }
+}
 
 /** Exact `PaperResponse` shape from the checked-in OpenAPI contract. */
 export interface Paper {
@@ -114,14 +137,33 @@ export const paperService = {
     const response = await api.post(API_ENDPOINTS.PAPER.VERIFY_AUTHORSHIP(id), { openAlexWorkId });
     return response.data;
   },
-  testUpdateNoVerify: async (id: number | string): Promise<{
+  testUpdateNoVerify: async (
+    id: number | string,
+    body: PaperUpdateRequest,
+  ): Promise<{
     paperId: number;
     authorshipVerificationStatus?: string | null;
     authorshipVerificationReason?: string | null;
     authorshipVerifiedAt?: string | null;
   }> => {
-    const response = await api.put(API_ENDPOINTS.PAPER.TEST_UPDATE_NO_VERIFY(id));
-    return response.data;
+    // The [TEST API] endpoint /api/Paper/test-update-no-verify/{id} requires
+    // a full PaperUpdateRequest body — sending an empty PUT is rejected by
+    // ASP.NET with HTTP 415 Unsupported Media Type (see tickets/backend/
+    // BE_CRITICAL_ADMIN_PAPER_AUTHORSHIP_VERIFICATION.md). The caller is
+    // responsible for building a body that satisfies the Swagger-required
+    // fields (title, abstract, paperType). When the BE still rejects the
+    // body — typically because the persisted paper is missing those fields —
+    // we surface a typed PaperMissingMetadataError instead of letting the raw
+    // 415 bubble up to the UI as an opaque network failure.
+    try {
+      const response = await api.put(API_ENDPOINTS.PAPER.TEST_UPDATE_NO_VERIFY(id), body);
+      return response.data;
+    } catch (err: unknown) {
+      if (isAxiosError(err) && err.response?.status === 415) {
+        throw new PaperMissingMetadataError(id);
+      }
+      throw err;
+    }
   },
 
   getAll: async (

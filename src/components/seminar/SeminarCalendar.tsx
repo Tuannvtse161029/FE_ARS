@@ -43,6 +43,9 @@ import {
   ChevronRight,
   Clock,
   Video,
+  Loader,
+  AlertTriangle,
+  Inbox,
 } from 'lucide-react';
 import type { Locale } from 'date-fns';
 import { useLocale } from '../../i18n/I18nContext';
@@ -69,6 +72,33 @@ export interface SeminarCalendarProps {
   onEventClick?: (seminar: EnrichedSeminar) => void;
   /** Override the initial date shown (defaults to today). */
   initialDate?: Date;
+  /**
+   * When false, suppress the "Hosting" legend item AND drop any entries
+   * tagged as `calendarRole === 'hosting'`. Reviewer / Graduate Student
+   * never organise seminars, so their calendar should not advertise a
+   * hosting bucket they can never populate. Defaults to true to preserve
+   * the existing Lecturer / Researcher surface.
+   */
+  showHostingLegend?: boolean;
+  /**
+   * When true, the body shows the canonical loading panel instead of the
+   * calendar grid (e.g. while `useSeminarCalendar` is fetching). Defaults
+   * to `false` so the grid renders immediately and is replaced by
+   * seminar blocks once data lands — this is the preferred UX for the
+   * Participations page where a skeleton-with-grid reads better than a
+   * blank panel.
+   */
+  isLoading?: boolean;
+  /**
+   * Error message from the parent hook. When set, an inline error chip
+   * is rendered above the grid so the user can still see the calendar
+   * structure (same rationale as the empty-state hint — never replace
+   * the grid with a full error panel, the user should still be able to
+   * browse dates).
+   */
+  errorMessage?: string | null;
+  /** Called when the user clicks the "Retry" chip on an error banner. */
+  onRetry?: () => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -752,9 +782,21 @@ export function SeminarCalendar({
   joiningSeminars,
   onEventClick,
   initialDate,
+  showHostingLegend = true,
+  isLoading = false,
+  errorMessage = null,
+  onRetry,
 }: SeminarCalendarProps) {
   const locale = useDateFnsLocale();
   const isVi = useLocale() === 'vi';
+
+  // Defensive: even if the caller forgets to filter, never display a
+  // hosting bucket for roles that can't host (Reviewer / Graduate
+  // Student). The hook already gates on `canMutateSeminar`, this is a
+  // belt-and-braces guard for any callers that bypass the hook.
+  const visibleHostingSeminars = showHostingLegend ? hostingSeminars : [];
+  const visibleJoiningSeminars = joiningSeminars;
+  const visibleHostingLegend = showHostingLegend;
 
   const [view, setView] = useState<CalendarView>('week');
   const [currentDate, setCurrentDate] = useState<Date>(
@@ -767,8 +809,8 @@ export function SeminarCalendar({
   }, [initialDate]);
 
   const allSeminars = useMemo(
-    () => [...hostingSeminars, ...joiningSeminars],
-    [hostingSeminars, joiningSeminars],
+    () => [...visibleHostingSeminars, ...visibleJoiningSeminars],
+    [visibleHostingSeminars, visibleJoiningSeminars],
   );
 
   const hasSeminars = allSeminars.length > 0;
@@ -889,13 +931,15 @@ export function SeminarCalendar({
 
           {/* Legend */}
           <div className={styles.legend} aria-label={t('Legend', 'Chú thích')}>
-            <div className={styles.legendItem}>
-              <span
-                className={`${styles.legendDot} ${styles.legendDotHosting}`}
-                aria-hidden
-              />
-              <span>{t('Hosting', 'Đang tổ chức')}</span>
-            </div>
+            {visibleHostingLegend ? (
+              <div className={styles.legendItem}>
+                <span
+                  className={`${styles.legendDot} ${styles.legendDotHosting}`}
+                  aria-hidden
+                />
+                <span>{t('Hosting', 'Đang tổ chức')}</span>
+              </div>
+            ) : null}
             <div className={styles.legendItem}>
               <span
                 className={`${styles.legendDot} ${styles.legendDotJoining}`}
@@ -907,42 +951,79 @@ export function SeminarCalendar({
         </div>
       </div>
 
-      {/* Calendar body */}
-      {!hasSeminars ? (
-        <div className={styles.emptyState} role="status">
-          <Calendar size={24} aria-hidden />
-          <span>{t('No seminars scheduled', 'Chưa có lịch hội thảo nào')}</span>
+      {/* Status banner — loading chip, error chip, or empty hint. The
+          calendar grid ALWAYS renders below these banners so the date /
+          time structure stays visible to every role, regardless of
+          whether they have seminars to display. Replacing the entire
+          grid with a blank panel (the previous behaviour) left
+          Reviewer / Graduate Student with a header-only calendar that
+          gave no sense of where in the month/week they were. */}
+      {isLoading ? (
+        <div className={styles.statusBanner} role="status">
+          <Loader size={14} className={styles.spinningIcon} aria-hidden />
+          <span>{t('Loading seminars…', 'Đang tải hội thảo…')}</span>
         </div>
-      ) : (
-        <>
-          {view === 'month' && (
-            <MonthView
-              currentDate={currentDate}
-              hostingSeminars={hostingSeminars}
-              joiningSeminars={joiningSeminars}
-              onEventClick={onEventClick}
-              onDayClick={handleDayClick}
-            />
-          )}
-          {view === 'week' && (
-            <WeekView
-              currentDate={currentDate}
-              hostingSeminars={hostingSeminars}
-              joiningSeminars={joiningSeminars}
-              onEventClick={onEventClick}
-              onDayClick={handleDayClick}
-            />
-          )}
-          {view === 'day' && (
-            <DayView
-              currentDate={currentDate}
-              hostingSeminars={hostingSeminars}
-              joiningSeminars={joiningSeminars}
-              onEventClick={onEventClick}
-            />
-          )}
-        </>
-      )}
+      ) : null}
+
+      {errorMessage ? (
+        <div className={styles.errorBanner} role="alert">
+          <AlertTriangle size={14} aria-hidden />
+          <span>{errorMessage}</span>
+          {onRetry ? (
+            <button
+              type="button"
+              className={styles.bannerAction}
+              onClick={onRetry}
+            >
+              {t('Retry', 'Thử lại')}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {!isLoading && !errorMessage && !hasSeminars ? (
+        <div className={styles.emptyHint} role="status">
+          <Inbox size={14} aria-hidden />
+          <span>
+            {t(
+              'No seminars in this view. Browse the calendar — seminars appear here once you have invitations or scheduled sessions.',
+              'Chưa có hội thảo nào trong chế độ xem này. Hãy duyệt lịch — các hội thảo sẽ hiện ở đây khi bạn có lời mời hoặc buổi đã lên lịch.',
+            )}
+          </span>
+        </div>
+      ) : null}
+
+      {/* Calendar body — ALWAYS rendered so the date/time grid is
+          visible to every role. The empty/loading banners above are
+          decorative overlays that don't replace the grid. */}
+      <div className={styles.viewContainer}>
+        {view === 'month' && (
+          <MonthView
+            currentDate={currentDate}
+            hostingSeminars={visibleHostingSeminars}
+            joiningSeminars={visibleJoiningSeminars}
+            onEventClick={onEventClick}
+            onDayClick={handleDayClick}
+          />
+        )}
+        {view === 'week' && (
+          <WeekView
+            currentDate={currentDate}
+            hostingSeminars={visibleHostingSeminars}
+            joiningSeminars={visibleJoiningSeminars}
+            onEventClick={onEventClick}
+            onDayClick={handleDayClick}
+          />
+        )}
+        {view === 'day' && (
+          <DayView
+            currentDate={currentDate}
+            hostingSeminars={visibleHostingSeminars}
+            joiningSeminars={visibleJoiningSeminars}
+            onEventClick={onEventClick}
+          />
+        )}
+      </div>
     </div>
   );
 }

@@ -59,7 +59,6 @@ import api from '../../services/axios';
 import type { User } from '../../types/auth';
 import { useResearchGroups } from '../../hooks/useResearchGroups';
 import { usePhasedReports } from '../../hooks/usePhasedReports';
-import { useLearningMaterials } from '../../hooks/useLearningMaterials';
 import { useLecturerProfile } from '../../hooks/useLecturerProfile';
 import { researchGroupService, deriveGroupStatus } from '../../services/researchGroup.service';
 import type { ResearchGroup } from '../../services/researchGroup.service';
@@ -76,6 +75,10 @@ import { ConfirmModal } from '../../components/lecturer/ConfirmModal';
 import { FieldError } from '../../components/FieldError';
 import { ROUTES } from '../../routes/paths';
 import { safeHref } from '../../utils/validationRules';
+import {
+  derivePhaseMaterialsForGroup,
+  type PhaseMaterialEntry,
+} from '../../utils/phaseMaterials';
 import styles from './GroupDetail.module.css';
 
 interface BannerState {
@@ -171,12 +174,30 @@ export const LecturerGroupDetail = (): JSX.Element => {
   } = usePhasedReports(parsedGroupId);
 
   const lecturerId = group?.lecturerId ?? user?.userId ?? null;
-  const {
-    materials,
-    isLoading: isMaterialsLoading,
-    error: materialsError,
-    refetch: refetchMaterials,
-  } = useLearningMaterials({ lecturerId });
+
+  // Materials for the Group Detail page are sourced from THIS group's
+  // PhasedReport rows, NOT from the lecturer's global Learning Material
+  // library. The same `PhasedReport.phasedMaterialsUrl` field that the
+  // lecturer sets via the milestone editor ("Manage phase") is the
+  // single source of truth — mirroring the fix on the GradStudent
+  // Research Group workspace.
+  //
+  // Workflow contract (Sep 2026):
+  //   • To share a material with a research group, the lecturer must
+  //     attach it to a specific phase via the milestone editor.
+  //   • The student side AND the lecturer-side Group Detail page only
+  //     surface those phase attachments — never the global library.
+  //   • The lecturer's Learning Materials page is still where they
+  //     upload / curate the library; it is unaffected by this change.
+  //
+  // Loading is tied to the PhasedReport fetch so we don't double-call
+  // the API: the same `isReportsLoading` already drives the milestone
+  // progress card skeleton.
+  const phaseMaterials = useMemo<PhaseMaterialEntry[]>(
+    () => derivePhaseMaterialsForGroup(reports),
+    [reports],
+  );
+  const materialsLoading = isReportsLoading;
 
   const { topics } = useResearchTopics();
   const relatedTopic = useMemo(() => {
@@ -651,7 +672,7 @@ export const LecturerGroupDetail = (): JSX.Element => {
 
   const handleRefreshAll = async () => {
     try {
-      await Promise.all([refetchGroups(), refetchReports(), refetchMaterials(), loadMembers()]);
+      await Promise.all([refetchGroups(), refetchReports(), loadMembers()]);
     } catch { /* surfaced per-card */ }
   };
 
@@ -998,52 +1019,42 @@ export const LecturerGroupDetail = (): JSX.Element => {
               {t('lecturer.groupDetail.learningMaterialsHint')}
             </span>
           </header>
-          {materialsError && (
-            <div className={styles.errorPanel} role="alert">
-              <AlertTriangle size={14} aria-hidden />
-              <span>{materialsError.message}</span>
-              <button type="button" className={styles.retryBtn} onClick={() => void refetchMaterials()}>
-                {t('lecturer.groupDetail.retry')}
-              </button>
-            </div>
-          )}
-          {isMaterialsLoading ? (
+          {materialsLoading ? (
             <div className={styles.loadingPanel}>
               <Loader size={14} className={styles.spinningIcon} aria-hidden />
               {t('lecturer.groupDetail.loadingMaterials')}
             </div>
-          ) : materials.length === 0 ? (
+          ) : phaseMaterials.length === 0 ? (
             <div className={styles.emptyState}>
               <Library size={18} aria-hidden />
               {t('lecturer.groupDetail.noMaterials')}
             </div>
           ) : (
             <ul className={styles.materialList}>
-              {materials.map((m) => {
-                const id = typeof m.id === 'number' ? m.id : -1;
-                const title = (m.title ?? '').trim() || `${t('lecturer.groupDetail.materialPrefix')}${id}`;
-                return (
-                  <li key={`mat-${id}`} className={styles.materialRow}>
-                    <div className={styles.materialMeta}>
-                      <span className={styles.materialTitle}>{title}</span>
-                      {m.description?.trim() && (
-                        <span className={styles.materialDesc}>{m.description}</span>
-                      )}
-                    </div>
-                    {m.fileUrl && safeHref(m.fileUrl) && (
-                      <a
-                        className={styles.openLink}
-                        href={safeHref(m.fileUrl) ?? "#"}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <ExternalLink size={14} aria-hidden />
-                        {t('lecturer.groupDetail.open')}
-                      </a>
-                    )}
-                  </li>
-                );
-              })}
+              {phaseMaterials.map((m) => (
+                <li
+                  key={`phase-material-${m.phasedReportId}`}
+                  className={styles.materialRow}
+                >
+                  <div className={styles.materialMeta}>
+                    <span className={styles.materialTitle}>
+                      {t('lecturer.groupDetail.materialPhaseLabel', 'Phase {n}', { n: m.phaseNumber })}
+                      {m.milestoneTitle ? ` · ${m.milestoneTitle}` : ''}
+                    </span>
+                  </div>
+                  {safeHref(m.materialUrl) && (
+                    <a
+                      className={styles.openLink}
+                      href={safeHref(m.materialUrl) ?? '#'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <ExternalLink size={14} aria-hidden />
+                      {t('lecturer.groupDetail.open')}
+                    </a>
+                  )}
+                </li>
+              ))}
             </ul>
           )}
         </section>

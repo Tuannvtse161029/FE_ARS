@@ -2,7 +2,7 @@ import {
   detailedEvaluationService,
   type DetailedEvaluation,
 } from '../../../services/detailedEvaluation.service';
-import { paperService, type Paper } from '../../../services/paper.service';
+import { paperService, type Paper, type PaperUpdateRequest, PaperMissingMetadataError } from '../../../services/paper.service';
 import {
   reviewRequestService,
   type ReviewRequest,
@@ -80,7 +80,7 @@ export interface PublicationAdapter {
   assignReviewer(id: string, reviewerId: number): Promise<PublicationPaper>;
   assignReviewers(id: string, reviewerIds: number[]): Promise<PublicationPaper>;
   assignReviewersAuto(id: string, reviewerCount?: number): Promise<unknown>;
-  verifyAuthorship(id: string, allow?: boolean): Promise<PublicationPaper>;
+  verifyAuthorship(id: string, allow?: boolean, reason?: string): Promise<PublicationPaper>;
   publishPaper(id: string): Promise<PublicationPaper>;
   rejectPaper(id: string, reason?: string): Promise<PublicationPaper>;
   deactivatePublishedPaper(id: string): Promise<PublicationPaper>;
@@ -775,17 +775,76 @@ class ApiPublicationAdapter implements PublicationAdapter {
     return result;
   }
 
-  async verifyAuthorship(id: string, _allow = true): Promise<PublicationPaper> {
-    // Uses PUT /api/Paper/test-update-no-verify/{id} — a manual verification
-    // endpoint that bypasses OpenAlex/ORCID checks, allowing admins to verify
-    // authorship for papers that have no OpenAlex ID.
-    const verification = await paperService.testUpdateNoVerify(id);
+  async verifyAuthorship(id: string, allow = true, reason?: string): Promise<PublicationPaper> {
+    // Reads the paper first so we can build the body the [TEST API]
+    // PUT /api/Paper/test-update-no-verify/{id} requires. The BE rejects an
+    // empty PUT with HTTP 415 Unsupported Media Type; missing required fields
+    // get the same response. See tickets/backend/
+    // BE_CRITICAL_ADMIN_PAPER_AUTHORSHIP_VERIFICATION.md for the rationale.
+    const current = await paperService.getById(id);
+
+    // Surface a typed PaperMissingMetadataError WITHOUT calling the BE when
+    // the persisted paper is missing any of the Swagger-required fields. The
+    // Admin UI translates this to the `admin.paperIntake.missingMetadata`
+    // banner so the operator knows what to ask the researcher to fix.
+    const title = current.title ?? '';
+    const abstract = current.abstract ?? '';
+    const paperType = current.paperType === 'Journal' || current.paperType === 'Conference'
+      ? current.paperType
+      : null;
+    if (!title || !abstract || !paperType) {
+      throw new PaperMissingMetadataError(id);
+    }
+
+    const nowIso = new Date().toISOString();
+    const trimmedReason = (reason ?? '').trim();
+    const body: PaperUpdateRequest = {
+      title,
+      abstract,
+      paperType,
+      fileUrl: current.fileUrl ?? null,
+      subFieldId: current.subFieldId ?? null,
+      openAlexWorkId: current.openAlexWorkId ?? null,
+      doi: current.doi ?? null,
+      publicationDate: current.publicationDate ?? null,
+      sourceName: current.sourceName ?? null,
+      issnValue: current.issnValue ?? null,
+      issn: current.issn ?? null,
+      isOpenAccess: current.isOpenAccess ?? null,
+      quartile: current.quartile ?? null,
+      // Preserve any author list that may already be persisted. The wire
+      // schema accepts null when the system never stored one.
+      authors: current.authors ?? null,
+      // The Accept / Reject Identity decision is recorded in the same payload
+      // because the test endpoint bypasses the OpenAlex / ORCID check.
+      authorshipVerificationStatus: allow ? 'VERIFIED' : 'REJECTED',
+      authorshipVerifiedAt: allow ? nowIso : undefined,
+      // For rejections, persist the admin's reason verbatim. For accepts,
+      // clear any previous rejection reason so the verified state is clean.
+      authorshipVerificationReason: allow
+        ? undefined
+        : (trimmedReason || current.authorshipVerificationReason || undefined),
+      // Preserve the editorial status — Accept / Reject Identity must NOT
+      // transition the paper out of its current lifecycle stage (the BE
+      // ticket is explicit on this).
+      status: (current.status as PaperUpdateRequest['status']) ?? null,
+    };
+
+    const verification = await paperService.testUpdateNoVerify(id, body);
     if (verification.paperId !== Number(id)) {
       throw new PublicationBackendContractError('The verification response did not identify the requested paper. Refresh the paper before retrying.');
     }
     const updated = await paperService.getById(id);
     const decision = normalizedText(updated.authorshipVerificationStatus);
-    const confirmed = ['ALLOW', 'ALLOWED', 'VERIFIED'].includes(decision);
+    // Success depends on the admin's intent. Accept Identity succeeds when
+    // the BE persists any of the verified tokens; Reject Identity succeeds
+    // when it persists a rejected / denied token. Treating the two as
+    // separate paths keeps the operator-visible message specific.
+    const acceptedTokens = ['ALLOW', 'ALLOWED', 'VERIFIED'];
+    const rejectedTokens = ['REJECTED', 'DENIED'];
+    const confirmed = allow
+      ? acceptedTokens.includes(decision)
+      : rejectedTokens.includes(decision);
     if (!confirmed) {
       const rawStatus =
         updated.authorshipVerificationStatus ??

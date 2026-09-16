@@ -2,7 +2,20 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../../../src/utils/storage', () => ({ storage: { getUser: () => ({ id: 42, role: 'Reviewer' }) } }));
 vi.mock('../../../../src/services/reviewRequest.service', () => ({ reviewRequestService: { getAll: vi.fn(), getById: vi.fn(), update: vi.fn(), create: vi.fn() } }));
-vi.mock('../../../../src/services/paper.service', () => ({ paperService: { verifyAuthorship: vi.fn(), getById: vi.fn(), create: vi.fn(), update: vi.fn(), getAll: vi.fn() } }));
+vi.mock('../../../../src/services/paper.service', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../../../../src/services/paper.service')>();
+  return {
+    ...original,
+    paperService: {
+      verifyAuthorship: vi.fn(),
+      testUpdateNoVerify: vi.fn(),
+      getById: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      getAll: vi.fn(),
+    },
+  };
+});
 vi.mock('../../../../src/services/detailedEvaluation.service', () => ({ detailedEvaluationService: { create: vi.fn(), getByReviewRequestId: vi.fn() } }));
 vi.mock('../../../../src/services/notification.service', () => ({ notificationService: { create: vi.fn().mockResolvedValue({}) } }));
 
@@ -16,17 +29,33 @@ const request = { id: 7, paperId: 12, reviewerId: 42, status: 'In Progress' };
 const paper = { id: 12, title: 'QA manuscript', abstract: 'QA abstract', status: 'Under Review', paperType: 'Journal', fileUrl: 'https://example.test/document.pdf' };
 
 describe('Publication incident contract guards', () => {
-  it('calls the dedicated verification operation and confirms the persisted decision', async () => {
-    vi.mocked(paperService.getById).mockResolvedValueOnce({ ...paper, openAlexWorkId: 'W123' }).mockResolvedValueOnce({ ...paper, authorshipVerificationStatus: 'VERIFIED' });
-    vi.mocked(paperService.verifyAuthorship).mockResolvedValue({ paperId: 12, authorshipVerificationStatus: 'VERIFIED' });
+  it('sends the full PaperUpdateRequest body via the test-update-no-verify endpoint and confirms the persisted decision', async () => {
+    vi.mocked(paperService.getById)
+      .mockResolvedValueOnce({ ...paper, openAlexWorkId: 'W123' })
+      .mockResolvedValueOnce({ ...paper, authorshipVerificationStatus: 'VERIFIED' });
+    vi.mocked(paperService.testUpdateNoVerify).mockResolvedValue({ paperId: 12, authorshipVerificationStatus: 'VERIFIED' });
     const result = await publicationAdapter.verifyAuthorship('12', true);
-    expect(paperService.verifyAuthorship).toHaveBeenCalledWith('12', 'W123');
+    expect(paperService.testUpdateNoVerify).toHaveBeenCalledTimes(1);
+    const [sentId, sentBody] = vi.mocked(paperService.testUpdateNoVerify).mock.calls[0];
+    expect(sentId).toBe('12');
+    // The BE endpoint rejects empty bodies with HTTP 415. The adapter must
+    // forward a body that satisfies the Swagger-required fields.
+    expect(sentBody).toEqual(expect.objectContaining({
+      title: paper.title,
+      abstract: paper.abstract,
+      paperType: 'Journal',
+      authorshipVerificationStatus: 'VERIFIED',
+      authorshipVerifiedAt: expect.any(String),
+    }));
     expect(paperService.update).not.toHaveBeenCalled();
     expect(result.researcherVerificationStatus).toBe('VERIFIED');
   });
 
   it('does not invent verification when the backend ignores the sent decision', async () => {
-    vi.mocked(paperService.verifyAuthorship).mockResolvedValue({ paperId: 12, authorshipVerificationStatus: 'PENDING_ADMIN_REVIEW' });
+    vi.mocked(paperService.getById)
+      .mockResolvedValueOnce(paper)
+      .mockResolvedValueOnce({ ...paper, authorshipVerificationStatus: 'PENDING_ADMIN_REVIEW' });
+    vi.mocked(paperService.testUpdateNoVerify).mockResolvedValue({ paperId: 12, authorshipVerificationStatus: 'PENDING_ADMIN_REVIEW' });
     // The friendly mapper rewrites structured tokens like
     // PENDING_ADMIN_REVIEW into a human-readable phrase (e.g. "Awaiting
     // admin review"). The contract guarded here is that the adapter still
@@ -34,13 +63,33 @@ describe('Publication incident contract guards', () => {
     // confirm verification, regardless of what the user-visible message
     // looks like.
     await expect(publicationAdapter.verifyAuthorship('12', true)).rejects.toThrow(/Awaiting admin review/i);
-    expect(paperService.verifyAuthorship).toHaveBeenCalledWith('12', null);
     expect(paperService.update).not.toHaveBeenCalled();
   });
-  it('does not send manual rejection to the automatic verification endpoint', async () => {
-    await expect(publicationAdapter.verifyAuthorship('12', false)).rejects.toThrow(/Manual authorship rejection/);
-    expect(paperService.verifyAuthorship).not.toHaveBeenCalled();
-    expect(paperService.update).not.toHaveBeenCalled();
+
+  it('routes a manual rejection through the test endpoint with the supplied reason', async () => {
+    vi.mocked(paperService.getById)
+      .mockResolvedValueOnce(paper)
+      .mockResolvedValueOnce({ ...paper, authorshipVerificationStatus: 'REJECTED' });
+    vi.mocked(paperService.testUpdateNoVerify).mockResolvedValue({ paperId: 12, authorshipVerificationStatus: 'REJECTED' });
+    const result = await publicationAdapter.verifyAuthorship('12', false, 'ORCID does not match the listed author');
+    expect(paperService.testUpdateNoVerify).toHaveBeenCalledTimes(1);
+    const [sentId, sentBody] = vi.mocked(paperService.testUpdateNoVerify).mock.calls[0];
+    expect(sentId).toBe('12');
+    expect(sentBody).toEqual(expect.objectContaining({
+      title: paper.title,
+      abstract: paper.abstract,
+      paperType: 'Journal',
+      authorshipVerificationStatus: 'REJECTED',
+      authorshipVerificationReason: 'ORCID does not match the listed author',
+    }));
+    expect(result.researcherVerificationStatus).toBe('REJECTED');
+  });
+
+  it('throws a PaperMissingMetadataError without hitting the network when the persisted paper lacks required fields', async () => {
+    vi.mocked(paperService.getById).mockResolvedValueOnce({ ...paper, paperType: undefined as unknown as string });
+    const { PaperMissingMetadataError } = await import('../../../../src/services/paper.service');
+    await expect(publicationAdapter.verifyAuthorship('12', true)).rejects.toBeInstanceOf(PaperMissingMetadataError);
+    expect(paperService.testUpdateNoVerify).not.toHaveBeenCalled();
   });
   it('keeps a directly submitted create response without attempting a Draft transition', async () => {
     vi.mocked(paperService.create).mockResolvedValue({ ...paper, status: 'Submitted' });
