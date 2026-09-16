@@ -48,13 +48,16 @@ export const SeminarParticipationsPage= () => {
   const locale = useLocale();
   const copy = (en: string, vi: string): string => (locale === 'vi' ? vi : en);
   const { user } = useAuth();
-  const { currentRole } = useSeminarRoleContext();
+  const { currentRole, canModify } = useSeminarRoleContext();
   const roleLabel = currentRole ? formatRole(currentRole, locale) : 'Participant';
   const displayName = user?.username || user?.email || copy('researcher', 'người dùng');
 
   const {
     hostingSeminars,
     joiningSeminars,
+    isLoading: isCalendarLoading,
+    error: calendarError,
+    refetch: refetchCalendar,
   } = useSeminarCalendar();
 
   // Pull seminar cards so the detail modal has full participant metadata.
@@ -106,7 +109,19 @@ export const SeminarParticipationsPage= () => {
         <SeminarCalendar
           hostingSeminars={hostingSeminars}
           joiningSeminars={joiningSeminars}
+          // The participations page is reachable by every seminar viewer,
+          // including Reviewer / Graduate Student. Only mutator roles
+          // (Lecturer, Researcher) ever organise seminars, so hide the
+          // "Hosting" legend dot for everyone else.
+          showHostingLegend={canModify}
           onEventClick={handleCalendarEventClick}
+          // Surface the calendar hook's loading/error state so the user
+          // sees an inline banner (not a missing grid). The grid itself
+          // still renders underneath — the banner is a status overlay,
+          // not a replacement.
+          isLoading={isCalendarLoading}
+          errorMessage={calendarError}
+          onRetry={() => void refetchCalendar()}
         />
 
         <ParticipationTable />

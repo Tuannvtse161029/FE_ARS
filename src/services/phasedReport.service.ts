@@ -429,6 +429,22 @@ export interface SubmittedPhasedReport {
   status: PhasedReportStatus;
   phaseNumber?: number;
   milestoneTitle?: string;
+  /**
+   * URL of the learning material the lecturer attached to this phase.
+   * Persisted via `PhasedReportResponse.phasedMaterialsUrl` on the BE and
+   * set when the lecturer configures the milestone (see
+   * `PhaseEditorPanel.handleMaterialChange`). Forwarded here from the
+   * raw `PhasedReport` payload by `toStrict()`.
+   *
+   * Workflow contract (Sep 2026): the Research Group workspace surfaces
+   * ONLY the materials attached to this group's phases. The lecturer's
+   * global LearningMaterial library is NOT shared with students — a
+   * lecturer must explicitly attach a material to a phase via the
+   * "Manage phase" milestone editor for it to appear in the student
+   * view. See `derivePhaseMaterialsForGroup` in
+   * `src/utils/phaseMaterials.ts` for the canonical extractor.
+   */
+  phasedMaterialsUrl?: string | null;
   // Forward-compatible lineage pointer — populated by `resubmitPhasedReport`
   // when the BE echoes the structured `PreviousReportId` column back. Until
   // BE ships that column the sentinel-based detection in
@@ -483,6 +499,9 @@ const toStrict = (raw: PhasedReport): SubmittedPhasedReport => {
     ...(typeof raw.groupName === 'string' ? { groupName: raw.groupName } : {}),
     ...(typeof raw.phaseNumber === 'number' ? { phaseNumber: raw.phaseNumber } : {}),
     ...(typeof raw.milestoneTitle === 'string' ? { milestoneTitle: raw.milestoneTitle } : {}),
+    ...(typeof raw.phasedMaterialsUrl === 'string' && raw.phasedMaterialsUrl.length > 0
+      ? { phasedMaterialsUrl: raw.phasedMaterialsUrl }
+      : {}),
     status,
   };
   // BE echoes `previousReportId` (preferred over sentinel detection) when the

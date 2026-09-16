@@ -139,5 +139,104 @@ describe('groupMembershipService', () => {
       const result = await getJoinedGroupsForStudent(9);
       expect(result).toEqual([]);
     });
+
+    // Regression: prior to the September 2026 fix, `toGroupMember`
+    // dropped the `isLeader` and `leaderId` fields, so every GradStudent
+    // view reported `isLeader: false` for the actual group leader. The
+    // selector below pins the round-trip for both the canonical
+    // `isLeader: true` BE payload AND the legacy `leaderId` alias.
+    it('preserves the leader flag from the GroupMember payload', async () => {
+      getMyGroupsMock.mockResolvedValueOnce([
+        { id: 7, name: 'Alpha', members: [] },
+      ]);
+      getMock.mockResolvedValueOnce({
+        data: [
+          {
+            groupMemberId: 42,
+            studentId: 9,
+            researchGroupId: 7,
+            isLeader: true,
+          },
+        ],
+      });
+      getMock.mockResolvedValueOnce({
+        data: [{ id: 7, name: 'Alpha' }],
+      });
+
+      const result = await getJoinedGroupsForStudent(9);
+      const alphaGroup = result.find((g) => g.name === 'Alpha');
+      expect(alphaGroup).toBeDefined();
+      expect(alphaGroup?.isLeader).toBe(true);
+    });
+
+    it('preserves the legacy `leaderId` alias as a leader signal', async () => {
+      getMyGroupsMock.mockResolvedValueOnce([
+        { id: 7, name: 'Alpha', members: [] },
+      ]);
+      getMock.mockResolvedValueOnce({
+        data: [
+          {
+            groupMemberId: 42,
+            studentId: 9,
+            researchGroupId: 7,
+            // No `isLeader` field — older BE deployments only set the
+            // legacy `leaderId` boolean. This must still count as leader.
+            leaderId: true,
+          },
+        ],
+      });
+      getMock.mockResolvedValueOnce({
+        data: [{ id: 7, name: 'Alpha' }],
+      });
+
+      const result = await getJoinedGroupsForStudent(9);
+      const alphaGroup = result.find((g) => g.name === 'Alpha');
+      expect(alphaGroup).toBeDefined();
+      // `isLeader` is derived downstream by `getJoinedGroupsForStudent`
+      // from `isLeader || leaderId`, so it must still be true here even
+      // though the BE didn't include the canonical field.
+      expect(alphaGroup?.isLeader).toBe(true);
+    });
+
+    it('reports `isLeader: false` when neither field is set on the BE row', async () => {
+      getMyGroupsMock.mockResolvedValueOnce([
+        { id: 7, name: 'Alpha', members: [] },
+      ]);
+      getMock.mockResolvedValueOnce({
+        data: [
+          {
+            groupMemberId: 42,
+            studentId: 9,
+            researchGroupId: 7,
+          },
+        ],
+      });
+      getMock.mockResolvedValueOnce({
+        data: [{ id: 7, name: 'Alpha' }],
+      });
+
+      const result = await getJoinedGroupsForStudent(9);
+      const alphaGroup = result.find((g) => g.name === 'Alpha');
+      expect(alphaGroup).toBeDefined();
+      expect(alphaGroup?.isLeader).toBe(false);
+    });
+  });
+
+  describe('getAllGroupMembers leader flag preservation', () => {
+    it('keeps `isLeader: true` after normalization', async () => {
+      getMock.mockResolvedValueOnce({
+        data: [
+          {
+            groupMemberId: 1,
+            studentId: 9,
+            researchGroupId: 7,
+            isLeader: true,
+          },
+        ],
+      });
+      const list = await getAllGroupMembers();
+      expect(list).toHaveLength(1);
+      expect(list[0].isLeader).toBe(true);
+    });
   });
 });

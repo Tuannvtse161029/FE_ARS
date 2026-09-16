@@ -11,6 +11,7 @@ import { Link } from 'react-router-dom';
 import { CircleCheck, CircleX, ExternalLink, FileText, Inbox } from 'lucide-react';
 import { useI18n } from '../../../i18n/I18nContext';
 import { publicationAdapter } from '../api/publication.adapter';
+import { PaperMissingMetadataError } from '../../../services/paper.service';
 import { useTableSort } from '../../../hooks/useTableSort';
 import shared from '../components/PublicationShared.module.css';
 import { PageHeader } from '../../../components/PageHeader';
@@ -165,6 +166,20 @@ export const AdminPaperSubmissions = () => {
       setPapers((items) => items.map((item) => item.id === updated.id ? updated : item));
       await load();
     } catch (cause) {
+      // The paper service signals a missing-metadata rejection (HTTP 415 from
+      // the [TEST API] endpoint, or a pre-flight check on the persisted
+      // record) with a typed PaperMissingMetadataError. Translate it to the
+      // dedicated i18n key so the admin sees a friendly banner instead of a
+      // raw "Unsupported Media Type" message.
+      if (cause instanceof PaperMissingMetadataError) {
+        setActionError(
+          t(
+            'admin.paperIntake.missingMetadata',
+            'This paper is missing the information the backend needs to record your identity decision (title, abstract, or paper type). Ask the researcher to resubmit the paper with all required fields before retrying.',
+          ),
+        );
+        return;
+      }
       setActionError(cause instanceof Error ? cause.message : 'The action could not be saved.');
     } finally {
       mutationBusy.current = false;
@@ -655,7 +670,7 @@ export const AdminPaperSubmissions = () => {
             if (mutationBusy.current || !reason.trim()) return;
             setRejecting(true);
             void runAction(async () => {
-                const updated = await publicationAdapter.verifyAuthorship(rejectingPaper.id, false);
+                const updated = await publicationAdapter.verifyAuthorship(rejectingPaper.id, false, reason.trim());
                 setRejectingPaper(null);
                 return updated;
             });

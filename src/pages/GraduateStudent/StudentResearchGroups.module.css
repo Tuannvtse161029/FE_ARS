@@ -363,6 +363,19 @@
   opacity: 0.92;
 }
 
+/* Small lead paragraph under the rejection banner pointing the leader
+   to the dedicated Submit Report tab for the resubmit action. */
+.resubmitRedirect {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-left: 1.5px solid var(--accent-primary);
+  background: var(--surface-sunken);
+  color: var(--ink-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-normal);
+}
+
 /* ── Member & Material Lists ────────────────────────────── */
 .memberList,
 .materialList {
@@ -664,6 +677,35 @@
 .detailBtn:hover {
   border-color: var(--accent-primary);
   background: var(--surface-sunken);
+}
+
+/* Header CTA pointing back to the Submit Report tab. Shaped like a
+   pill button so it reads as the primary next step on the workspace
+   page. */
+.submitCtaLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2rem;
+  padding: var(--space-1) var(--space-4);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--accent-primary);
+  background: var(--accent-primary);
+  color: var(--ink-on-paper);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.submitCtaLink:hover {
+  border-color: var(--accent-hover);
+  background: var(--accent-hover);
+}
+
+.submitCtaLink:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .submitPhaseBtn {

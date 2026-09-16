@@ -14,7 +14,8 @@
  *  - No inline styles in JSX (CSS Modules only)
  */
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import { ROUTES } from '../../routes/paths';
 import {
   ArrowLeft,
   BookOpen,
@@ -37,7 +38,6 @@ import { useAuth } from '../../hooks/useAuth';
 import { useI18n, useLocale } from '../../i18n/I18nContext';
 import { useStudentGroups } from '../../hooks/useStudentGroups';
 import { usePhasedReports } from '../../hooks/usePhasedReports';
-import { useLearningMaterials } from '../../hooks/useLearningMaterials';
 import { groupMemberService, type GroupMember } from '../../services/groupMember.service';
 import { getAllGroupMembers } from '../../services/groupMembership.service';
 import { researchGroupService, type ResearchGroup } from '../../services/researchGroup.service';
@@ -45,8 +45,6 @@ import { groupJoinRequestService } from '../../services/groupJoinRequest.service
 import { lecturerLookupService } from '../../services/lecturerLookup.service';
 import InvitationBanner from '../../components/gradstudent/InvitationBanner';
 import RejectionFeedbackBanner from '../../components/gradstudent/RejectionFeedbackBanner';
-import SubmitReportModal from '../../components/gradstudent/SubmitReportModal';
-import PhaseReportDetailModal from '../../components/gradstudent/PhaseReportDetailModal';
 import { PageHeader } from '../../components/PageHeader';
 import { EmptyState } from '../../components/EmptyState';
 import { ErrorBanner } from '../../components/ErrorBanner';
@@ -59,13 +57,16 @@ import { SortableHeader } from '../../components/table/SortableHeader';
 import { usePagination } from '../../hooks/usePagination';
 import { useTableSort } from '../../hooks/useTableSort';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
+import { derivePhasedReportDisplay } from '../../utils/phasedReport';
+import {
+  derivePhaseMaterialsForGroup,
+  type PhaseMaterialEntry,
+} from '../../utils/phaseMaterials';
 import { useListShortcuts } from '../../hooks/useListShortcuts';
 import type { SubmittedPhasedReport } from '../../services/phasedReport.service';
-import type { LearningMaterial } from '../../services/learningMaterial.service';
 import { safeHref } from '../../utils/validationRules';
 import styles from './StudentResearchGroups.module.css';
 
-const DEFAULT_FOLDER_KEY = 'milestone';
 const ROLE_ACCENT = 'var(--accent-primary)';
 
 type StatusFilter = 'all' | 'WAITING' | 'SUBMITTED' | 'EVALUATED' | 'REJECTED';
@@ -99,9 +100,6 @@ export const StudentResearchGroups = (): JSX.Element => {
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
   const [searchText, setSearchText] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [submitting, setSubmitting] = useState<boolean>(false);
-  const [resubmitting, setResubmitting] = useState<SubmittedPhasedReport | null>(null);
-  const [lastSubmitted, setLastSubmitted] = useState<SubmittedPhasedReport | null>(null);
   const [lecturerNames, setLecturerNames] = useState<Record<number, string>>({});
 
   const { joinedGroups, isLoading, error, refetch } =
@@ -281,25 +279,6 @@ export const StudentResearchGroups = (): JSX.Element => {
 
   const handleSelectGroup = (groupId: number): void => {
     setSelectedGroupId(groupId);
-    setSubmitting(false);
-    setResubmitting(null);
-    setLastSubmitted(null);
-  };
-
-  const handleOpenSubmit = (report?: SubmittedPhasedReport): void => {
-    if (!selectedGroup) return;
-    setResubmitting(report ?? null);
-    setSubmitting(true);
-  };
-
-  const handleSubmitted = async (report: SubmittedPhasedReport): Promise<void> => {
-    setLastSubmitted(report);
-    await refetchReports();
-  };
-
-  const handleCloseSubmit = (): void => {
-    setSubmitting(false);
-    setResubmitting(null);
   };
 
   if (!user) {
@@ -326,30 +305,8 @@ export const StudentResearchGroups = (): JSX.Element => {
         statusFilter={statusFilter}
         onStatusFilterChange={setStatusFilter}
         onBack={() => setSelectedGroupId(null)}
-        onOpenSubmit={handleOpenSubmit}
-        // Bug fix: the `isSubmitting` prop fed SubmitReportModal's busy
-        // state (`isBusy = isUploading || isSubmittingToServer ||
-        // isSubmitting`), which the modal used to disable every close
-        // surface (X button, Cancel button, overlay click). Because the
-        // WorkspaceView was passing its modal-visibility state as
-        // `isSubmitting`, every close path was disabled the instant the
-        // modal opened — the user was trapped. The actual submission
-        // busy state is already tracked inside the modal by
-        // `useSubmitPhasedReport`, so this prop is always false here.
-        isSubmitting={false}
-        submittingReport={submitting}
-        resubmittingReport={resubmitting}
-        lastSubmitted={lastSubmitted}
-        onCloseSubmit={handleCloseSubmit}
-        onSubmitted={handleSubmitted}
         onRefresh={handleRefresh}
         studentId={studentId}
-        phaseKey={
-          selectedGroup.name
-            ? selectedGroup.name.toLowerCase().replace(/\s+/g, '-')
-            : DEFAULT_FOLDER_KEY
-        }
-        phaseTitle={selectedGroup.name}
       />
     );
   }
@@ -478,7 +435,7 @@ export const StudentResearchGroups = (): JSX.Element => {
                           {g.isLeader ? (
                             <span className={styles.leaderBadge}>
                               <Crown size={13} aria-hidden />
-                              {t('student.researchGroups.leader', 'Trưởng nhóm')}
+                              {t('student.researchGroups.leader', 'Group Leader')}
                             </span>
                           ) : null}
                         </div>
@@ -681,17 +638,8 @@ interface WorkspaceViewProps {
   statusFilter: StatusFilter;
   onStatusFilterChange: (next: StatusFilter) => void;
   onBack: () => void;
-  onOpenSubmit: (report?: SubmittedPhasedReport) => void;
-  isSubmitting: boolean;
-  submittingReport: boolean;
-  resubmittingReport: SubmittedPhasedReport | null;
-  lastSubmitted: SubmittedPhasedReport | null;
-  onCloseSubmit: () => void;
-  onSubmitted: (report: SubmittedPhasedReport) => Promise<void> | void;
   onRefresh: () => Promise<void>;
   studentId: number | null;
-  phaseKey: string;
-  phaseTitle: string;
 }
 
 function WorkspaceView({
@@ -704,22 +652,12 @@ function WorkspaceView({
   statusFilter,
   onStatusFilterChange,
   onBack,
-  onOpenSubmit,
-  isSubmitting,
-  submittingReport,
-  resubmittingReport,
-  lastSubmitted,
-  onCloseSubmit,
-  onSubmitted,
   onRefresh,
   studentId,
-  phaseKey,
-  phaseTitle,
 }: WorkspaceViewProps): JSX.Element {
   const { t } = useI18n();
   const locale = useLocale();
   const copy = (en: string, vi: string): string => (locale === 'en' ? en : vi);
-  const lecturerId = group.lecturerId;
 
   // Default sort by submitted (newest first) so recently submitted
   // reports surface at the top. The user can override per column.
@@ -837,26 +775,25 @@ function WorkspaceView({
   // legacy rows that pre-date the BE column).
   const isGroupActive = group.isActive !== false;
 
-  const { materials, isLoading: materialsLoading } = useLearningMaterials({
-    lecturerId,
-  });
-  const visibleMaterials = useMemo<LearningMaterial[]>(() => {
-    if (materials.length === 0) return [];
-    if (typeof group.topicId === 'number' && group.topicId > 0) {
-      const filtered = materials.filter(
-        (m) => m.subFieldId === group.topicId || m.subFieldId === null,
-      );
-      return filtered.length > 0 ? filtered : materials;
-    }
-    return materials;
-  }, [materials, group.topicId]);
+  // Materials for the Research Group workspace are sourced from THIS
+  // group's PhasedReport rows, NOT from the lecturer's global Learning
+  // Material library. The lecturer must explicitly attach a material to a
+  // phase via "Manage phase" — only those attachments surface here. See
+  // `src/utils/phaseMaterials.ts` for the rationale and contract.
+  //
+  // Loading is tied to the PhasedReport fetch so we don't double-call the
+  // API: the same `reportsLoading` already drives the milestone table
+  // skeleton, and there is no separate materials endpoint to wait for.
+  const phaseMaterials = useMemo<PhaseMaterialEntry[]>(
+    () => derivePhaseMaterialsForGroup(reports),
+    [reports],
+  );
+  const materialsLoading = reportsLoading;
 
   const latestRejected = useMemo<SubmittedPhasedReport | null>(
     () => reports.find((r) => r.status === 'REJECTED') ?? null,
     [reports],
   );
-
-  const [viewDetailReport, setViewDetailReport] = useState<SubmittedPhasedReport | null>(null);
 
   return (
     <div className={styles.page}>
@@ -878,55 +815,93 @@ function WorkspaceView({
         }`}
         accent={ROLE_ACCENT}
         actions={
-          isCurrentUserLeader ? (
-            <Button
-              variant="primary"
-              size="sm"
-              leftIcon={<FileText size={14} />}
-              onClick={() => onOpenSubmit()}
-            >
-              {copy('Submit milestone report', 'Nộp báo cáo giai đoạn')}
-            </Button>
-          ) : (
-            <span className={styles.permissionNote} role="status">
-              {copy('Only your Group Leader can submit this phase report.', 'Chỉ Trưởng nhóm (Leader) mới có thể nộp báo cáo giai đoạn này.')}
-            </span>
-          )
+          // Submission flow lives on the dedicated Submit Report tab — see
+          // `routes/paths.ts:SUBMIT_REPORT`. The Group Workspace is
+          // view-only for milestones by design (the user explicitly asked
+          // for this separation in the August 2026 spec). We still leave
+          // a primary CTA that nudges leaders to the dedicated tab.
+          <Link
+            to={`${ROUTES.SUBMIT_REPORT}?groupId=${group.id}`}
+            className={styles.submitCtaLink}
+          >
+            <FileText size={14} aria-hidden />
+            {copy(
+              'Go to Submit Report tab',
+              'Mở tab Nộp báo cáo',
+            )}
+          </Link>
         }
       />
+
+      {!isGroupActive ? (
+        <p className={styles.permissionNote} role="status">
+          {copy(
+            'This group is inactive. Submissions are paused until your lecturer reactivates the group.',
+            'Nhóm này đang ở trạng thái không hoạt động. Việc nộp báo cáo tạm dừng cho đến khi giảng viên kích hoạt lại nhóm.',
+          )}
+        </p>
+      ) : !isCurrentUserLeader ? (
+        <p className={styles.permissionNote} role="status">
+          {copy(
+            'You are a group member. Submission is restricted to the Group Leader on the Submit Report tab.',
+            'Bạn là thành viên nhóm. Việc nộp báo cáo chỉ dành cho Trưởng nhóm tại tab Nộp báo cáo.',
+          )}
+        </p>
+      ) : null}
 
       {latestRejected ? (
         <RejectionFeedbackBanner
           report={latestRejected}
           lecturerName={lecturerName}
-          onResubmit={isCurrentUserLeader ? onOpenSubmit : undefined}
         />
+      ) : null}
+
+      {latestRejected && isCurrentUserLeader ? (
+        <p className={styles.resubmitRedirect} role="status">
+          {copy(
+            'Read the lecturer’s feedback above. To resubmit a corrected report, open the Submit Report tab — the rejected row will have a Resubmit button.',
+            'Đọc phản hồi của giảng viên ở trên. Để nộp lại báo cáo đã chỉnh sửa, hãy mở tab Nộp báo cáo — hàng bị từ chối sẽ có nút Nộp lại.',
+          )}
+        </p>
       ) : null}
 
       <section className={styles.card}>
         <div className={styles.sectionHeader}>
           <h3 className={styles.sectionTitle}>{copy('Learning materials', 'Tài liệu học tập')}</h3>
           <p className={styles.sectionSubtitle}>
-            {copy('Shared by your lecturer. Files appear here once published.', 'Được chia sẻ bởi giảng viên. Tệp sẽ xuất hiện ở đây sau khi được tải lên.')}
+            {copy(
+              'Attached by your lecturer to each milestone of this group\u2019s research topic.',
+              'Được giảng viên đính kèm vào từng mốc của đề tài nghiên cứu mà nhóm này đang thực hiện.',
+            )}
           </p>
         </div>
         {materialsLoading ? (
           <SkeletonRow count={2} rowHeight={48} gap={12} />
-        ) : visibleMaterials.length === 0 ? (
+        ) : phaseMaterials.length === 0 ? (
           <EmptyState
             icon={<BookOpen size={24} />}
-            title={copy('No learning materials yet', 'Chưa có tài liệu học tập nào')}
-            description={copy('Lecturer materials will appear here once they publish them for this group.', 'Tài liệu từ giảng viên sẽ hiển thị ở đây khi được chia sẻ cho nhóm này.')}
+            title={copy('No materials attached yet', 'Chưa có tài liệu nào được đính kèm')}
+            description={copy(
+              'Your lecturer hasn\u2019t attached any materials to this group\u2019s phase milestones yet. They can do so via \u201cManage phase\u201d on the topic.',
+              'Giảng viên của bạn chưa đính kèm tài liệu nào cho các mốc của nhóm này. Họ có thể thực hiện qua mục \u201cQuản lý giai đoạn\u201d trên đề tài.',
+            )}
             compact
           />
         ) : (
           <ul className={styles.materialList}>
-            {visibleMaterials.map((m) => (
-              <li key={m.id ?? m.learningMaterialId ?? m.title} className={styles.materialItem}>
-                <span className={styles.materialTitle}>{m.title ?? copy('Untitled material', 'Tài liệu chưa đặt tên')}</span>
-                {m.fileUrl && safeHref(m.fileUrl) ? (
+            {phaseMaterials.map((m) => (
+              <li
+                key={`phase-material-${m.phasedReportId}`}
+                className={styles.materialItem}
+              >
+                <span className={styles.materialTitle}>
+                  {copy('Phase ', 'Giai đoạn ')}
+                  {m.phaseNumber}
+                  {m.milestoneTitle ? ` · ${m.milestoneTitle}` : ''}
+                </span>
+                {safeHref(m.materialUrl) ? (
                   <a
-                    href={safeHref(m.fileUrl) ?? "#"}
+                    href={safeHref(m.materialUrl) ?? '#'}
                     target="_blank"
                     rel="noopener noreferrer"
                     className={styles.linkBtn}
@@ -975,21 +950,12 @@ function WorkspaceView({
       <section className={styles.tableCard}>
         <div className={styles.tableHeader}>
           <h3 className={styles.tableTitle}>{copy('Milestone Reports (Phase Reports)', 'Báo cáo giai đoạn (Phase Reports)')}</h3>
-          {/* When the lecturer has deactivated the group, the table
-              needs an unmistakable banner so the student understands
-              why the Submit / Resubmit button is missing. */}
-          {!isGroupActive ? (
-            <p className={styles.permissionNote} role="status">
-              {copy(
-                'This group is inactive. Submissions are paused until your lecturer reactivates the group.',
-                'Nhóm này đang ở trạng thái không hoạt động. Việc nộp báo cáo tạm dừng cho đến khi giảng viên kích hoạt lại nhóm.',
-              )}
-            </p>
-          ) : !isCurrentUserLeader ? (
-            <p className={styles.permissionNote} role="status">
-              {copy('You are a group member. Only the Group Leader can submit progress reports.', 'Bạn là thành viên nhóm. Chỉ Trưởng nhóm (Leader) mới có thể nộp báo cáo tiến độ.')}
-            </p>
-          ) : null}
+          <p className={styles.tableSubtitle}>
+            {copy(
+              'Read-only here. Submissions are handled on the dedicated Submit Report tab.',
+              'Chỉ xem tại đây. Việc nộp báo cáo được thực hiện ở tab Nộp báo cáo chuyên dụng.',
+            )}
+          </p>
         </div>
 
         <TableToolbar
@@ -1099,13 +1065,6 @@ function WorkspaceView({
                 </thead>
                 <tbody>
                   {pagedReports.map((report, index) => {
-                    const canSubmit = isCurrentUserLeader && (
-                      report.status === 'Pending' ||
-                      report.status === 'WAITING' ||
-                      report.status === 'REJECTED' ||
-                      !report.submittedAt
-                    );
-                    const isSubmitted = report.submittedAt || report.status === 'Passed' || report.status === 'SUBMITTED' || report.status === 'EVALUATED';
                     return (
                       <tr
                         key={report.id}
@@ -1138,25 +1097,39 @@ function WorkspaceView({
                           )}
                         </td>
                         <td>
-                          {report.deadlineAt ? (
-                            <span className={`${styles.dateText} ${report.isOverdue ? styles.overdueDate : ''}`}>
-                              <Calendar size={12} />
-                              {new Date(report.deadlineAt).toLocaleDateString(
-                                locale === 'en' ? 'en-US' : 'vi-VN',
-                                { dateStyle: 'medium' },
-                              )}
-                              {report.isOverdue ? (
-                                <span className={styles.overdueLabel}>
-                                  {t('student.phaseReport.overdue', 'Quá hạn')}
-                                </span>
-                              ) : null}
-                            </span>
-                          ) : (
+                          {report.deadlineAt ? (() => {
+                            // Bug fix (Sep 2026): trust the shared
+                            // derivation helper instead of `report.isOverdue`
+                            // directly. See SubmitReport.tsx for the full
+                            // rationale — same BE endpoint, same problem.
+                            const display = derivePhasedReportDisplay(report);
+                            return (
+                              <span className={`${styles.dateText} ${display.overdue ? styles.overdueDate : ''}`}>
+                                <Calendar size={12} />
+                                {new Date(report.deadlineAt).toLocaleDateString(
+                                  locale === 'en' ? 'en-US' : 'vi-VN',
+                                  { dateStyle: 'medium' },
+                                )}
+                                {display.overdue ? (
+                                  <span className={styles.overdueLabel}>
+                                    {t('student.phaseReport.overdue', 'Quá hạn')}
+                                  </span>
+                                ) : null}
+                              </span>
+                            );
+                          })() : (
                             <span className={styles.mutedText}>—</span>
                           )}
                         </td>
                         <td>
-                          <StatusBadge status={report.status} size="sm" />
+                          {(() => {
+                            const display = derivePhasedReportDisplay(report);
+                            const badgeStatus =
+                              display.badge === 'Pending' && report.status
+                                ? report.status
+                                : display.badge;
+                            return <StatusBadge status={badgeStatus} size="sm" />;
+                          })()}
                         </td>
                         <td>
                           {typeof report.lectureFeedback === 'number' ? (
@@ -1169,46 +1142,31 @@ function WorkspaceView({
                         </td>
                         <td>
                           <div className={styles.rowActions}>
-                            {/* View detail button — visible to all */}
-                            {isSubmitted ? (
-                              <button
-                                type="button"
-                                className={styles.detailBtn}
-                                onClick={() => setViewDetailReport(report)}
-                              >
-                                <FileText size={12} aria-hidden />
-                                {t('student.phaseReport.viewDetail', 'Xem chi tiết')}
-                              </button>
-                            ) : null}
+                            {/* View PDF — only when an actual file is on
+                                file. The detail-with-feedback flow has
+                                moved to the Submit Report tab so the
+                                leader can resubmit from the same
+                                context; this page stays read-only. */}
                             {report.reportFileUrl && safeHref(report.reportFileUrl) ? (
-                              <a
-                                href={safeHref(report.reportFileUrl) ?? "#"}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className={styles.linkBtn}
-                              >
-                                {copy('Open PDF', 'Xem PDF')}
-                              </a>
-                            ) : null}
-                            {/* Leader only: Submit or Resubmit */}
-                            {/* When the group is inactive (lecturer
-                                deactivated it), the button is hidden
-                                entirely so there is no temptation to
-                                click into a doomed submit flow. A
-                                banner above the table explains why. */}
-                            {isCurrentUserLeader && canSubmit && isGroupActive ? (
-                              <button
-                                type="button"
-                                className={styles.submitPhaseBtn}
-                                onClick={() => {
-                                  onOpenSubmit(report.status === 'REJECTED' ? report : undefined);
-                                }}
-                              >
-                                {report.status === 'REJECTED'
-                                  ? t('student.phaseReport.resubmit', 'Nộp lại')
-                                  : `${t('student.phaseReport.submit', 'Nộp Phase')} ${report.phaseNumber ?? ''}`}
-                              </button>
-                            ) : null}
+<a
+                              href={safeHref(report.reportFileUrl) ?? '#'}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={styles.linkBtn}
+                            >
+                              <FileText size={12} aria-hidden />
+                              {copy('Open PDF', 'Xem PDF')}
+                            </a>
+                          ) : null}
+                            {/* Submission flow moved to the dedicated
+                                Submit Report tab. The Group Workspace is
+                                strictly view-only — leaders and members
+                                both read the row state here and click
+                                "Go to Submit Report tab" in the page
+                                header to upload. When the lecturer
+                                deactivates the group the status badge
+                                alone tells the student submissions are
+                                paused. */}
                           </div>
                         </td>
                       </tr>
@@ -1232,30 +1190,7 @@ function WorkspaceView({
         )}
       </section>
 
-      {submittingReport ? (
-        <SubmitReportModal
-          isOpen={submittingReport}
-          researchGroupId={group.id}
-          groupMemberId={currentMember?.id ?? currentMember?.groupMemberId ?? undefined}
-          phaseKey={phaseKey}
-          phaseTitle={phaseTitle}
-          lecturerName={lecturerName}
-          resubmittingReport={resubmittingReport}
-          isSubmitting={isSubmitting}
-          lastSubmitted={lastSubmitted}
-          onClose={onCloseSubmit}
-          onSubmitted={onSubmitted}
-        />
-      ) : null}
-
-      <PhaseReportDetailModal
-        isOpen={viewDetailReport !== null}
-        report={viewDetailReport}
-        groupName={group.name}
-        lecturerName={lecturerName}
-        onClose={() => setViewDetailReport(null)}
-      />
-    </div>
+      </div>
   );
 }
 

@@ -266,6 +266,9 @@ export const SeminarWorkspace = () => {
   const {
     hostingSeminars,
     joiningSeminars,
+    isLoading: isCalendarLoading,
+    error: calendarError,
+    refetch: refetchCalendar,
   } = useSeminarCalendar();
 
   const announce = useCallback(
@@ -1042,6 +1045,16 @@ export const SeminarWorkspace = () => {
         <SeminarCalendar
           hostingSeminars={hostingSeminars}
           joiningSeminars={joiningSeminars}
+          // Reviewer / Graduate Student never host seminars — only mutator
+          // roles (Lecturer, Researcher) see the "Hosting" legend dot and
+          // bucket in the calendar.
+          showHostingLegend={canModify}
+          // Surface hook loading/error state. The grid still renders
+          // underneath the banner — see SeminarCalendar.tsx for why
+          // we never blank the whole grid on empty/error.
+          isLoading={isCalendarLoading}
+          errorMessage={calendarError}
+          onRetry={() => void refetchCalendar()}
           onEventClick={(sem) => {
             const id = sem.seminarId;
             if (id == null) return;

@@ -327,6 +327,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           // Mirror trial expiry onto the auth store so the verified-guard
           // and MainLayout can branch on it without re-deriving.
           trialExpiryAt: persistedTrialExpiryAt,
+          // Agent-30 / BTR-AVATAR-SYNC-01: forward the BE-derived
+          // `avatarUrl` so the MainLayout header dropdown shows the
+          // user's chosen avatar instead of falling back to initials
+          // on a fresh login. Without this line, the legacy `ars_user`
+          // blob (written separately by `storage.setUser` above) and the
+          // Zustand `ars-auth-storage` blob drift apart: the Profile
+          // page reads `ars_user` and renders correctly, but every
+          // component that reads from `useAuth()` (header dropdown,
+          // notifications bell, etc.) shows the initial-fallback
+          // because `useAuthStore().user.avatarUrl` is `undefined`.
+          //
+          // Preference order: (1) the freshly-GETed authoritative
+          // record, (2) the login-response payload (older BE shapes
+          // may surface the field here), (3) `null` for users who
+          // have never uploaded an avatar. `null` is correct here —
+          // AvatarVisual treats `null` and `undefined` identically
+          // (both render the initials fallback).
+          avatarUrl: freshUser?.avatarUrl ?? response.avatarUrl ?? null,
         },
         response.token,
         resolveEffectiveRole(freshUser, response, roleToUse) ?? undefined
@@ -1012,10 +1030,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Sync the Zustand store too so the in-memory view matches storage.
         // Agent 39 — also forward `effectiveRole` so the verified-guard and
         // MainLayout reflect the BE's authoritative role without reloading.
+        //
+        // BTR-AVATAR-SYNC-01: forward `avatarUrl` as well. Without this,
+        // a user who saved an avatar while logged in would see the
+        // header revert to initials after every page reload — the
+        // boot-time `GET /api/user/{id}` would overwrite the persisted
+        // Zustand state with a `user` object that omits the avatarUrl,
+        // dropping the avatar the user just picked. Forwarding it here
+        // keeps the in-memory store, the persisted `ars-auth-storage`
+        // blob, and the legacy `ars_user` blob all in sync.
         authStore.updateUser({
           isActive: freshUser.isActive,
           verificationStatus: freshUser.verificationStatus,
           accountTier: freshUser.accountTier,
+          avatarUrl: freshUser.avatarUrl ?? null,
           effectiveRole:
             freshUser.effectiveRole ??
             (freshUser.isActive

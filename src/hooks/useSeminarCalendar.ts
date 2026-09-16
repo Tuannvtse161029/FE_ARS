@@ -145,6 +145,12 @@ export function useSeminarCalendar(): UseSeminarCalendarResult {
   }, [fetchAll]);
 
   // ── Split into hosting vs joining ────────────────────────────────────────
+  //
+  // Only mutator roles (Lecturer, Researcher) ever populate the hosting
+  // bucket. Reviewer / Graduate Student / Admin never organise seminars,
+  // so even if a legacy record still has `organizerId === currentUserId`
+  // it must NOT surface as "hosting" for them — they only ever join.
+  const canHost = canMutateSeminar(currentRole);
 
   const { hostingSeminars, joiningSeminars } = useMemo(() => {
     const hosting: EnrichedSeminar[] = [];
@@ -152,6 +158,7 @@ export function useSeminarCalendar(): UseSeminarCalendarResult {
 
     for (const sem of seminars) {
       const isHost =
+        canHost &&
         currentUserId != null &&
         sem.organizerId != null &&
         sem.organizerId === currentUserId;
@@ -181,7 +188,7 @@ export function useSeminarCalendar(): UseSeminarCalendarResult {
     }
 
     return { hostingSeminars: hosting, joiningSeminars: joining };
-  }, [seminars, participants, currentUserId]);
+  }, [seminars, participants, currentUserId, canHost]);
 
   return {
     hostingSeminars,

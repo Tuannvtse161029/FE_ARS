@@ -31,6 +31,29 @@ const toGroupMember = (raw: unknown): GroupMember | null => {
   if (idCandidate === 0 || researchGroupIdCandidate === 0 || studentIdCandidate === 0) {
     return null;
   }
+  // Preserve leader-signalling fields from the BE payload. `isLeader` is the
+  // canonical boolean on the BE (Swagger: GroupMember.isLeader); `leaderId`
+  // is the legacy alias used by older endpoints (the older BE serialized the
+  // group member id of the leader as a truthy value here, even though the
+  // column type was inconsistent across migrations). The downstream code
+  // (see `getJoinedGroupsForStudent`) treats either as a "this member is the
+  // group leader" signal, so we forward both verbatim.
+  //
+  // Both fields were historically dropped by this normalizer, which made
+  // every GradStudent view report `isLeader: false` for the actual leader —
+  // see the regression test in `groupMembership.service.test.ts` that pins
+  // this round-trip behaviour.
+  const isLeader =
+    typeof r.isLeader === 'boolean'
+      ? r.isLeader
+      : r.isLeader !== undefined && r.isLeader !== null
+        ? Boolean(r.isLeader)
+        : undefined;
+  const leaderIdRaw = r.leaderId;
+  const leaderId =
+    leaderIdRaw === undefined || leaderIdRaw === null
+      ? undefined
+      : (leaderIdRaw as GroupMember['leaderId']);
   return {
     id: idCandidate,
     researchGroupId: researchGroupIdCandidate,
@@ -38,6 +61,8 @@ const toGroupMember = (raw: unknown): GroupMember | null => {
     activityStatus:
       typeof r.activityStatus === 'string' ? r.activityStatus : undefined,
     joinedAt: typeof r.joinedAt === 'string' ? r.joinedAt : undefined,
+    isLeader,
+    leaderId,
   };
 };
 

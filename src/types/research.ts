@@ -59,6 +59,27 @@ export interface GroupMember {
   studentId: number;
   activityStatus?: string;
   joinedAt?: string;
+  /**
+   * Set when the BE payload indicates this member is the group leader.
+   * The canonical BE column is `isLeader` (boolean); the legacy alias
+   * `leaderId` is forwarded too because older BE deployments serialise
+   * the leader signal as a truthy `leaderId` value rather than a
+   * separate boolean. See `groupMembership.service.ts` for the
+   * normaliser that preserves both fields.
+   *
+   * Added Sep 2026 — prior to this, the normalizer dropped both fields,
+   * which made every GradStudent view report `isLeader: false` for the
+   * actual leader (regression covered by
+   * `tests/unit/services/groupMembership.service.test.ts`).
+   */
+  isLeader?: boolean;
+  /**
+   * Legacy alias for `isLeader` — kept so existing code paths that read
+   * `member.leaderId` continue to work. The BE's column type has been
+   * inconsistent across migrations; the FE normaliser accepts either a
+   * boolean or a numeric id here.
+   */
+  leaderId?: number | boolean | null;
 }
 
 export interface LearningMaterial {

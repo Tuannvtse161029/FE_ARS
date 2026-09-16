@@ -229,6 +229,9 @@
 
 /* ── Empty State ──────────────────────────────────────────────────────────── */
 
+/* Filled-with-icon empty state — kept for the case where we want a
+   full-card message (currently unused now that the grid always renders,
+   but retained so consumers can opt back in if they want). */
 .emptyState {
   display: flex;
   flex-direction: column;
@@ -239,6 +242,82 @@
   color: var(--ars-ink-muted, #59627a);
   font-size: var(--font-size-sm, 0.8125rem);
   text-align: center;
+}
+
+/* ── Inline status banners (loading / error / empty hint) ────────────────── */
+/* These overlay the calendar grid; they DO NOT replace it. The grid
+   beneath stays visible so users can browse dates and see the
+   day/time structure even when there are no seminars. */
+
+.statusBanner,
+.errorBanner,
+.emptyHint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-2, 0.5rem) var(--space-4, 1rem);
+  font-size: var(--font-size-sm, 0.8125rem);
+  border-bottom: 1px solid var(--ars-network, rgba(45, 53, 97, 0.08));
+}
+
+.statusBanner {
+  background: var(--ars-surface-toolbar, linear-gradient(180deg, #fffbf4 0%, #fdf6e9 100%));
+  color: var(--ars-ink-muted, #59627a);
+}
+
+.errorBanner {
+  background: var(--ars-error-bg, #fee2e2);
+  color: var(--ars-error, #991b1b);
+}
+
+.emptyHint {
+  background: var(--ars-yellow-soft, #fff3cc);
+  color: var(--ars-ink, #2d3561);
+  font-weight: var(--font-weight-medium, 500);
+}
+
+.bannerAction {
+  margin-left: var(--space-2, 0.5rem);
+  padding: 2px 8px;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-sm, 0.375rem);
+  cursor: pointer;
+  font-size: var(--font-size-sm, 0.8125rem);
+  font-weight: var(--font-weight-semibold, 600);
+  color: inherit;
+  transition: background var(--motion-feedback, 150ms);
+}
+
+.bannerAction:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.bannerAction:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* Spinner used inside the loading banner. */
+.spinningIcon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Wrapper for whichever view (MonthView / WeekView / DayView) is
+   currently mounted. The grid inside this wrapper is the canonical
+   calendar body; we keep this wrapper so any future overlays or
+   relative positioning (tool-tips, drag handles, etc.) have a single
+   parent to anchor to. */
+.viewContainer {
+  position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ── Month View ────────────────────────────────────────────────────────────── */
