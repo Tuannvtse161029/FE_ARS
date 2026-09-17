@@ -334,23 +334,40 @@ export const SubmitReport = (): JSX.Element => {
   }
 
   const getStatusBadge = (status?: string | null) => {
-    switch (status) {
-      case 'Passed':
+    // Normalise to lowercase so the PascalCase labels returned by
+    // `derivePhasedReportBadge` ('Submitted', 'Passed', 'Rejected',
+    // 'Overdue', 'Pending') match the same buckets as the raw BE
+    // strings ('submitted', 'Pending', 'OnTime', 'Overdue', 'SUBMITTED',
+    // 'WAITING', 'EVALUATED', 'REJECTED'). Without this, an `OnTime`
+    // row (post-submit BE timeliness label) flows through
+    // `derivePhasedReportBadge` → `display.badge = 'Submitted'` and
+    // falls through to the default "Pending" branch, which is the
+    // exact bug the user reported on the graduate student Submit
+    // Report page — see ticket screenshots.
+    const key = (status ?? '').toString().trim().toLowerCase();
+    switch (key) {
+      case 'passed':
         return { className: styles.statusPassed, label: t('student.phaseReport.statusPassed', 'Passed') };
-      case 'OnTime':
-        return { className: styles.statusOnTime, label: t('student.phaseReport.statusOnTime', 'On time') };
-      case 'Overdue':
-        return { className: styles.statusOverdue, label: t('student.phaseReport.statusOverdue', 'Overdue') };
-      case 'Rejected':
-      case 'REJECTED':
-        return { className: styles.statusRejected, label: t('student.phaseReport.statusRejected', 'Rejected') };
-      case 'SUBMITTED':
-        return { className: styles.statusPending, label: t('student.phaseReport.submittedShort', 'Submitted') };
-      case 'EVALUATED':
+      case 'evaluated':
+      case 'approved':
+      case 'graded':
+      case 'complete':
         return { className: styles.statusPassed, label: t('student.phaseReport.evaluatedShort', 'Evaluated') };
-      case 'Pending':
-      case 'WAITING':
-        return { className: styles.statusPending, label: t('student.phaseReport.statusPending', 'Pending') };
+      case 'submitted':
+      case 'submittedforreview':
+      case 'pending_review':
+        return { className: styles.statusSubmitted, label: t('student.phaseReport.submittedShort', 'Submitted') };
+      case 'ontime':
+        return { className: styles.statusOnTime, label: t('student.phaseReport.statusOnTime', 'On time') };
+      case 'overdue':
+        return { className: styles.statusOverdue, label: t('student.phaseReport.statusOverdue', 'Overdue') };
+      case 'rejected':
+      case 'denied':
+      case 'declined':
+        return { className: styles.statusRejected, label: t('student.phaseReport.statusRejected', 'Rejected') };
+      case 'waiting':
+      case 'pending':
+      case 'awaiting':
       default:
         return { className: styles.statusPending, label: t('student.phaseReport.statusPending', 'Pending') };
     }

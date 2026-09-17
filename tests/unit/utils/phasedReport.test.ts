@@ -129,6 +129,51 @@ describe('derivePhasedReportBadge', () => {
     const report = { status: 'Rejected' };
     expect(derivePhasedReportBadge(report, NOW)).toBe('Rejected');
   });
+
+  // Regression — September 2026 student-submission status bug:
+  //
+  // `/api/PhasedReport/submit` auto-assigns a timeliness status based
+  // on the deadline (swagger: "Tự động kiểm tra Deadline & gán trạng
+  // thái OnTime / Overdue"). After a successful upload, a milestone
+  // submitted before the deadline comes back from
+  // `/api/PhasedReport/group/{groupId}` as `status: 'OnTime'`. The badge
+  // helper previously only recognised `submitted` / `pending_review`
+  // and fell through to `Pending`, which the StatusBadge rendered as
+  // the grey "WAITING" pill. The lecturer-side `researchStatus.ts`
+  // already maps `OnTime → submitted`; this helper now does the same.
+  it('returns Submitted for an OnTime row (post-submit BE timeliness state)', () => {
+    const report = {
+      status: 'OnTime',
+      submittedAt: '2025-09-30T00:00:00Z',
+      deadlineAt: '2025-10-15T00:00:00Z',
+    };
+    expect(derivePhasedReportBadge(report, NOW)).toBe('Submitted');
+  });
+
+  // A late submission (BE marks `Overdue` once `submittedAt` exceeds
+  // `deadlineAt`) is still a successful submission from the student's
+  // perspective — they uploaded the file and the server acknowledged
+  // it. We render it as "Submitted" rather than leaving the user
+  // staring at "Overdue" without context.
+  it('returns Submitted for an Overdue row that has a submittedAt (late submit)', () => {
+    const report = {
+      status: 'Overdue',
+      submittedAt: '2025-10-15T00:00:00Z',
+      deadlineAt: '2025-10-01T00:00:00Z',
+    };
+    expect(derivePhasedReportBadge(report, NOW)).toBe('Submitted');
+  });
+
+  // But a past-deadline milestone that hasn't been submitted yet must
+  // still read as Overdue/Pending — the previous "Alex" bug fix
+  // guarantees that, and we mustn't regress it.
+  it('returns Overdue for an Overdue row with no submittedAt (not yet submitted)', () => {
+    const report = {
+      status: 'Overdue',
+      deadlineAt: PAST_DEADLINE,
+    };
+    expect(derivePhasedReportBadge(report, NOW)).toBe('Overdue');
+  });
 });
 
 describe('derivePhasedReportDisplay', () => {

@@ -90,6 +90,7 @@ describe('useSubmitPhasedReport', () => {
   it('happy path — Firebase success then BE POST and returns the submitted row', async () => {
     uploadPdfMock.mockImplementation(async () => {
       pdfUrlSetterRef.current?.(FIREBASE_URL);
+      return FIREBASE_URL;
     });
     submitPhasedReportMock.mockResolvedValueOnce({
       id: 100,
@@ -139,6 +140,7 @@ describe('useSubmitPhasedReport', () => {
   it('Firebase success + BE POST failure → postUploadFailure with the cached pdfUrl', async () => {
     uploadPdfMock.mockImplementation(async () => {
       pdfUrlSetterRef.current?.(FIREBASE_URL);
+      return FIREBASE_URL;
     });
     submitPhasedReportMock.mockRejectedValueOnce(
       new Error('Server timeout while saving metadata'),
@@ -159,6 +161,7 @@ describe('useSubmitPhasedReport', () => {
   it('Retry after postUploadFailure uses the cached pdfUrl (no second uploadPdf)', async () => {
     uploadPdfMock.mockImplementation(async () => {
       pdfUrlSetterRef.current?.(FIREBASE_URL);
+      return FIREBASE_URL;
     });
     submitPhasedReportMock
       .mockRejectedValueOnce(new Error('first POST failed'))
@@ -190,6 +193,7 @@ describe('useSubmitPhasedReport', () => {
   it('duplicate submit() invocations are dropped (re-entrancy guard)', async () => {
     uploadPdfMock.mockImplementation(async () => {
       pdfUrlSetterRef.current?.(FIREBASE_URL);
+      return FIREBASE_URL;
     });
     submitPhasedReportMock.mockImplementation(
       () =>
@@ -223,6 +227,7 @@ describe('useSubmitPhasedReport', () => {
   it('isResubmission=true routes to resubmitPhasedReport and threads previousReportId', async () => {
     uploadPdfMock.mockImplementation(async () => {
       pdfUrlSetterRef.current?.(FIREBASE_URL);
+      return FIREBASE_URL;
     });
     resubmitPhasedReportMock.mockResolvedValueOnce({
       id: 201,
@@ -252,6 +257,7 @@ describe('useSubmitPhasedReport', () => {
   it('reset() clears every transient field', async () => {
     uploadPdfMock.mockImplementation(async () => {
       pdfUrlSetterRef.current?.(FIREBASE_URL);
+      return FIREBASE_URL;
     });
     submitPhasedReportMock.mockRejectedValueOnce(new Error('boom'));
 
@@ -270,5 +276,48 @@ describe('useSubmitPhasedReport', () => {
     expect(result.current.postUploadFailure).toBeNull();
     expect(result.current.submitError).toBeNull();
     expect(result.current.lastSubmitted).toBeNull();
+  });
+
+  // Regression test — September 2026 student-submission bug:
+  //
+  // `uploadPdf()` already returns the Firebase download URL on success,
+  // but the consumer (`useSubmitPhasedReport.submit`) used to read it
+  // from `upload.pdfUrl` — which is captured React state at the
+  // render where the submit callback was memoized. The state update
+  // inside `uploadPdf` schedules a re-render, but it has NOT yet
+  // flushed by the time `uploadPdf` resolves, so the closure sees the
+  // pre-upload value (null). The hook then took the
+  // "Upload completed but no PDF URL was returned" branch even though
+  // the URL was right there in the return value, and the BE POST went
+  // out with `reportFileUrl: undefined`. This test pins the fix:
+  // the hook must trust the URL the upload function gave it, even if
+  // the `upload.pdfUrl` state is still stale.
+  it('uses the URL returned by uploadPdf, not the still-stale upload.pdfUrl state', async () => {
+    uploadPdfMock.mockImplementation(async () => {
+      // Simulate the real hook: set state AND return the URL.
+      pdfUrlSetterRef.current?.(FIREBASE_URL);
+      return FIREBASE_URL;
+    });
+    submitPhasedReportMock.mockResolvedValueOnce({
+      id: 300,
+      researchGroupId: 7,
+      reportFileUrl: FIREBASE_URL,
+      status: 'SUBMITTED',
+    });
+
+    const useHook = await loadHook();
+    const { result } = renderHook(() => useHook());
+
+    let submitted: unknown = 'sentinel';
+    await act(async () => {
+      submitted = await result.current.submit(FILE, SUBMIT_OPTIONS);
+    });
+
+    expect(submitted).toMatchObject({ id: 300 });
+    expect(submitPhasedReportMock).toHaveBeenCalledWith(
+      expect.objectContaining({ reportFileUrl: FIREBASE_URL }),
+    );
+    expect(result.current.submitError).toBeNull();
+    expect(result.current.postUploadFailure).toBeNull();
   });
 });

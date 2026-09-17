@@ -54,6 +54,11 @@ import {
   PhaseReportStatusTabs,
   type PhaseReportStatusFilter,
 } from '../../components/lecturer/PhaseReportStatusTabs';
+import {
+  statusFilterOf,
+  statusLabelOf,
+  isLecturerDeadlineOverdue,
+} from '../../utils/lecturerPhaseStatus';
 import { useI18n } from '../../i18n/I18nContext';
 import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/Button/Button';
@@ -65,106 +70,18 @@ import { formatDisplayDate } from '../../utils/datetime';
 import styles from './PhaseReports.module.css';
 
 // ─── Status mapping ─────────────────────────────────────────────────────────
+//
+// `statusFilterOf`, `statusLabelOf`, and `isLecturerDeadlineOverdue` are
+// implemented in `src/utils/lecturerPhaseStatus.ts` so the September
+// 2026 OnTime regression can be pinned by a unit test that imports the
+// pure classifier without mounting the whole PhaseReports page (and
+// its React Router + Auth + ResearchGroups hook chain).
+//
+// The export from that utility is already imported at the top of this
+// file, so the rest of the component is unchanged. The local alias
+// `isDeadlineOverdue` preserves the original call-sites.
 
-/**
- * Map a PhasedReport to one of the page's six status filter buckets.
- * Single source of truth for both filter-tab membership and row badges.
- *
- * "overdueAwaiting" was added so that an unsubmitted report whose deadline
- * has already passed is no longer hidden inside the generic "awaiting" bucket.
- * The lecturer needs to see these in their own tab so they can quickly
- * extend the deadline or chase the student.
- */
-const statusFilterOf = (report: PhasedReport): PhaseReportStatusFilter => {
-  const raw = (report.status ?? '').toLowerCase().trim();
-  if (raw === 'rejected' || raw === 'denied' || raw === 'declined') {
-    return 'rejected';
-  }
-  if (
-    raw === 'evaluated' ||
-    raw === 'passed' ||
-    raw === 'approved' ||
-    raw === 'graded' ||
-    raw === 'complete'
-  ) {
-    return 'evaluated';
-  }
-  if (
-    raw === 'submitted' ||
-    raw === 'submittedforreview' ||
-    raw === 'pending_review'
-  ) {
-    const overdue =
-      report.isOverdue ??
-      Boolean(
-        report.submittedAt &&
-          report.deadlineAt &&
-          new Date(report.submittedAt) > new Date(report.deadlineAt),
-      );
-    return overdue ? 'overdue' : 'submitted';
-  }
-  // Default: anything that is not submitted / evaluated / rejected counts
-  // as "awaiting submission". Includes WAITING, Pending, and any
-  // unknown / null state — the safest fallback for the lecturer.
-  // If the deadline has already passed, promote the row to the dedicated
-  // `overdueAwaiting` bucket so the lecturer sees an at-a-glance count of
-  // unattended past-deadline reports and can extend their deadlines.
-  if (report.deadlineAt) {
-    const d = new Date(report.deadlineAt);
-    if (!Number.isNaN(d.getTime()) && d.getTime() < Date.now()) {
-      return 'overdueAwaiting';
-    }
-  }
-  return 'awaiting';
-};
-
-/**
- * Human-readable status label for the row badge. Matches the labels the
- * existing `PhaseReports` page used so existing screenshots / muscle
- * memory still apply.
- */
-const statusLabelOf = (report: PhasedReport): string => {
-  const filter = statusFilterOf(report);
-  switch (filter) {
-    case 'all':
-      return '—';
-    case 'awaiting':
-      return 'Awaiting Submission';
-    case 'submitted':
-      return 'Submitted On Time';
-    case 'overdue':
-      return 'Overdue Submitted';
-    case 'overdueAwaiting':
-      return 'Overdue';
-    case 'evaluated':
-      return 'Accepted';
-    case 'rejected':
-      return 'Rejected';
-  }
-};
-
-/**
- * True when the lecturer should be allowed to push the deadline forward:
- *   - the BE flagged the report as overdue, OR
- *   - the report's status is overdue (submitted past deadline), OR
- *   - the report's status is awaiting / overdueAwaiting and its deadline
- *     has already passed.
- *
- * Both `awaiting` and `overdueAwaiting` map to the same deadline-check
- * path because `statusFilterOf` already promotes any past-deadline row
- * into `overdueAwaiting`. The fallback `awaiting` branch here is kept
- * for safety in case the deadline string is malformed.
- */
-const isDeadlineOverdue = (report: PhasedReport): boolean => {
-  if (report.isOverdue === true) return true;
-  const filter = statusFilterOf(report);
-  if (filter === 'overdue' || filter === 'overdueAwaiting') return true;
-  if (filter !== 'awaiting') return false;
-  if (!report.deadlineAt) return false;
-  const d = new Date(report.deadlineAt);
-  if (Number.isNaN(d.getTime())) return false;
-  return d.getTime() < Date.now();
-};
+const isDeadlineOverdue = isLecturerDeadlineOverdue;
 
 // ─── Row-span / row layout helpers ──────────────────────────────────────────
 
