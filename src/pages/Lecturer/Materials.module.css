@@ -1736,14 +1736,19 @@
   font-weight: var(--font-weight-semibold);
   color: var(--ars-ink);
   text-align: left;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  /* Wrap long titles across multiple lines instead of overflowing the
+     grid track. The cell already has min-width:0 so the row keeps its
+     canonical grid layout. The wrapper column uses align-items:center
+     so the button stays vertically aligned with the row siblings. */
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  hyphens: auto;
   cursor: pointer;
   transition: color var(--transition-fast);
-  flex: 1;
+  flex: 1 1 0;
   min-width: 0;
-  display: inline-block;
+  display: block;
+  line-height: 1.35;
 }
 
 .sharedRowTitle:hover:not(:disabled) {
@@ -2481,4 +2486,93 @@
   .sharedList {
     border-radius: var(--radius-md);
   }
+}
+
+/* ── My Materials view-mode toggle (Cards / Table) ──────────────────── */
+.viewToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  border: 1px solid var(--ars-network);
+  background: var(--ars-paper-inset);
+}
+
+.viewToggleBtn {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: var(--ars-ink-muted);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.viewToggleBtn:hover {
+  color: var(--ars-ink);
+  background: color-mix(in srgb, var(--ars-ink-muted) 12%, transparent);
+}
+
+.viewToggleBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
+.viewToggleBtnActive {
+  background: var(--ars-lecturer);
+  color: #fff;
+}
+
+/* ── Materials table-view usage chips ──────────────────────────────── */
+.usageList {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+.usageBadge {
+  appearance: none;
+  border: 1px solid var(--ars-network);
+  background: var(--ars-paper-inset);
+  color: var(--ars-ink);
+  font-size: 0.7rem;
+  font-family: var(--font-family-mono);
+  font-weight: var(--font-weight-semibold);
+  padding: 2px 8px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.usageBadge:hover {
+  background: color-mix(
+    in srgb,
+    var(--ars-lecturer) 12%,
+    var(--ars-paper-inset)
+  );
+}
+
+.usageBadgeNone {
+  color: var(--ars-ink-muted);
+  cursor: default;
+}
+
+.usageBadgeHot {
+  background: var(--ars-error-bg);
+  color: var(--ars-error);
+  border-color: color-mix(in srgb, var(--ars-error) 50%, transparent);
+  font-size: 0.7rem;
+  font-family: var(--font-family-mono);
+  font-weight: var(--font-weight-bold);
+  padding: 2px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }

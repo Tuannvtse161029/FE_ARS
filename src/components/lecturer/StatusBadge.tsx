@@ -5,6 +5,8 @@ export type StatusBadgeVariant =
   | 'submitted'
   | 'evaluated'
   | 'rejected'
+  | 'overdue'
+  | 'overdueAwaiting'
   | 'open'
   | 'assigned'
   | 'completed'
@@ -32,6 +34,10 @@ const NORMALISE_TABLE: Record<string, StatusBadgeVariant> = {
   rejected: 'rejected',
   denied: 'rejected',
   declined: 'rejected',
+  // Synthetic PhaseReport statuses (computed from deadline checks,
+  // not raw BE strings). Page-level code passes these directly.
+  overdue: 'overdue',
+  overdue_awaiting: 'overdueAwaiting',
   // ResearchTopic statuses
   open: 'open',
   assigned: 'assigned',

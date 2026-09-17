@@ -30,7 +30,7 @@ import { Star, Eye, AlertCircle } from 'lucide-react';
 
 import { useLocale } from '../../i18n/I18nContext';
 
-import type { FeedbackQuestion, FeedbackAnswer } from '../../types/seminarFeedback';
+import { resolveGeneralQuestionText, type FeedbackQuestion, type FeedbackAnswer } from '../../types/seminarFeedback';
 
 import styles from './DynamicQuestionRenderer.module.css';
 
@@ -252,7 +252,9 @@ export const DynamicQuestionRenderer = ({
 
                 <h4 className={styles.questionTitle}>
 
-                  {q.questionText}
+                  {q.questionText.startsWith('general_')
+                    ? resolveGeneralQuestionText(q.questionText, isVi)
+                    : q.questionText}
 
                   {q.isRequired ? (
 
@@ -393,11 +395,10 @@ export const DynamicQuestionRenderer = ({
                   value={textVal}
 
                   placeholder={
-
-                    q.placeholder ||
-
-                    copy('Write your answer here...', 'Nhập câu trả lời của bạn tại đây...')
-
+                    q.placeholder?.startsWith('general_')
+                      ? resolveGeneralQuestionText(q.placeholder ?? '', isVi)
+                      : q.placeholder ||
+                        copy('Write your answer here...', 'Nhập câu trả lời của bạn tại đây...')
                   }
 
                   onChange={(e) => handleTextChange(q, e.target.value)}

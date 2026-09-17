@@ -69,6 +69,11 @@ import styles from './PhaseReports.module.css';
 /**
  * Map a PhasedReport to one of the page's six status filter buckets.
  * Single source of truth for both filter-tab membership and row badges.
+ *
+ * "overdueAwaiting" was added so that an unsubmitted report whose deadline
+ * has already passed is no longer hidden inside the generic "awaiting" bucket.
+ * The lecturer needs to see these in their own tab so they can quickly
+ * extend the deadline or chase the student.
  */
 const statusFilterOf = (report: PhasedReport): PhaseReportStatusFilter => {
   const raw = (report.status ?? '').toLowerCase().trim();
@@ -101,6 +106,15 @@ const statusFilterOf = (report: PhasedReport): PhaseReportStatusFilter => {
   // Default: anything that is not submitted / evaluated / rejected counts
   // as "awaiting submission". Includes WAITING, Pending, and any
   // unknown / null state — the safest fallback for the lecturer.
+  // If the deadline has already passed, promote the row to the dedicated
+  // `overdueAwaiting` bucket so the lecturer sees an at-a-glance count of
+  // unattended past-deadline reports and can extend their deadlines.
+  if (report.deadlineAt) {
+    const d = new Date(report.deadlineAt);
+    if (!Number.isNaN(d.getTime()) && d.getTime() < Date.now()) {
+      return 'overdueAwaiting';
+    }
+  }
   return 'awaiting';
 };
 
@@ -120,6 +134,8 @@ const statusLabelOf = (report: PhasedReport): string => {
       return 'Submitted On Time';
     case 'overdue':
       return 'Overdue Submitted';
+    case 'overdueAwaiting':
+      return 'Overdue';
     case 'evaluated':
       return 'Accepted';
     case 'rejected':
@@ -131,18 +147,18 @@ const statusLabelOf = (report: PhasedReport): string => {
  * True when the lecturer should be allowed to push the deadline forward:
  *   - the BE flagged the report as overdue, OR
  *   - the report's status is overdue (submitted past deadline), OR
- *   - the report's status is awaiting / pending and its deadline has
- *     already passed.
+ *   - the report's status is awaiting / overdueAwaiting and its deadline
+ *     has already passed.
  *
- * This is separate from `statusFilterOf` because we don't want to move
- * "awaiting + past deadline" reports into the `overdue` filter bucket
- * (they're still awaiting submission), but we DO want the lecturer to be
- * able to extend the deadline for them.
+ * Both `awaiting` and `overdueAwaiting` map to the same deadline-check
+ * path because `statusFilterOf` already promotes any past-deadline row
+ * into `overdueAwaiting`. The fallback `awaiting` branch here is kept
+ * for safety in case the deadline string is malformed.
  */
 const isDeadlineOverdue = (report: PhasedReport): boolean => {
   if (report.isOverdue === true) return true;
   const filter = statusFilterOf(report);
-  if (filter === 'overdue') return true;
+  if (filter === 'overdue' || filter === 'overdueAwaiting') return true;
   if (filter !== 'awaiting') return false;
   if (!report.deadlineAt) return false;
   const d = new Date(report.deadlineAt);
@@ -297,6 +313,7 @@ export const PhaseReports = () => {
       awaiting: 0,
       submitted: 0,
       overdue: 0,
+      overdueAwaiting: 0,
       evaluated: 0,
       rejected: 0,
     };
@@ -323,16 +340,18 @@ export const PhaseReports = () => {
           .some((v) => String(v).toLowerCase().includes(q)),
       );
     }
-    // Stable ordering: overdue first, then submitted (awaiting review),
-    // then evaluated, then awaiting. Within each bucket sort by topic
-    // title so the rowspan merging kicks in cleanly.
+    // Stable ordering: overdue (any flavour) first, then submitted (awaiting
+    // review), then rejected, then awaiting, then evaluated. The
+    // `overdueAwaiting` bucket sits right after `overdue` so a lecturer
+    // triaging at-risk rows sees them clustered at the top.
     const bucketOrder: Record<PhaseReportStatusFilter, number> = {
       overdue: 0,
-      submitted: 1,
-      rejected: 2,
-      awaiting: 3,
-      evaluated: 4,
-      all: 5,
+      overdueAwaiting: 1,
+      submitted: 2,
+      rejected: 3,
+      awaiting: 4,
+      evaluated: 5,
+      all: 6,
     };
     return [...rows].sort((a, b) => {
       const order =
@@ -440,6 +459,10 @@ export const PhaseReports = () => {
               'lecturer.phaseReports.filters.overdue',
               'Overdue',
             ),
+            overdueAwaiting: t(
+              'lecturer.phaseReports.filters.overdueAwaiting',
+              'Overdue awaiting',
+            ),
             evaluated: t(
               'lecturer.phaseReports.filters.evaluated',
               'Evaluated',
@@ -539,7 +562,9 @@ export const PhaseReports = () => {
                   report.milestoneTitle ??
                   `Phase ${report.phaseNumber ?? '—'}`;
                 const deadlineText = formatDisplayDate(report.deadlineAt);
-                const overdue = statusFilterOf(report) === 'overdue';
+                const filter = statusFilterOf(report);
+                const overdue =
+                  filter === 'overdue' || filter === 'overdueAwaiting';
                 const canExtendDeadline = isDeadlineOverdue(report);
                 const colTopic = t(
                   'lecturer.phaseReports.columns.topic',

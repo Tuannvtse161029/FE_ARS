@@ -299,16 +299,28 @@
   padding-top: var(--space-3);
 }
 
+/* Action zone — slightly lifted panel so the action buttons read as a
+   separate control surface, not part of the card chrome. */
 .iconBtnGroup {
   display: flex;
   gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  background: var(--ars-paper-inset);
+  border: 1px solid var(--ars-paper-rule);
+  border-radius: var(--radius-md);
 }
 
+/* Base icon-only action button — must read as a control, distinct from
+   both the card and the action zone panel above. We use the neutral
+   `--ars-paper` surface (lighter than the inset panel that wraps the
+   group) plus a coloured border so the button has a visible silhouette
+   against the card. The Deactivate / Delete semantic colours are layered
+   on top via the `.iconBtnDanger*` modifiers below. */
 .iconBtn {
-  background: var(--ars-paper);
-  border: var(--border-thin);
-  border-radius: var(--radius-md);
-  color: var(--ars-ink-muted);
+  background: var(--ars-paper-card);
+  border: 1px solid var(--ars-paper-rule);
+  border-radius: var(--radius-sm);
+  color: var(--ars-ink);
   padding: var(--space-1) var(--space-2);
   cursor: pointer;
   display: inline-flex;
@@ -317,7 +329,7 @@
 }
 
 .iconBtn:hover:not(:disabled) {
-  background: var(--ars-paper-inset);
+  background: var(--ars-paper);
   border-color: var(--ars-ink-muted);
   color: var(--ars-ink);
 }
@@ -332,6 +344,35 @@
   outline-offset: 2px;
 }
 
+/* Deactivate (Power) — warn-amber surface so the user notices the
+   toggle without it being mistaken for the destructive Delete action. */
+.iconBtnWarn {
+  background: var(--ars-warning-bg);
+  border-color: var(--ars-warning);
+  color: var(--ars-warning);
+}
+
+.iconBtnWarn:hover:not(:disabled) {
+  background: var(--ars-warning);
+  border-color: var(--ars-warning);
+  color: var(--ars-paper-card);
+}
+
+/* Delete (Trash) — danger-red surface so it clearly reads as the
+   destructive action in the row. Pair with the existing destructive
+   ConfirmModal pattern. */
+.iconBtnDanger {
+  background: var(--ars-error-bg);
+  border-color: var(--ars-error);
+  color: var(--ars-error);
+}
+
+.iconBtnDanger:hover:not(:disabled) {
+  background: var(--ars-error);
+  border-color: var(--ars-error);
+  color: var(--ars-paper-card);
+}
+
 /* The Power toggle — when the group is inactive, the icon is visually de‑emphasised
    to signal "off". We reduce its opacity so it reads as "currently inactive". */
 .iconBtnInactive {
@@ -340,9 +381,10 @@
 }
 
 .iconBtnInactive:hover:not(:disabled) {
+  background: var(--ars-success-bg);
+  border-color: var(--ars-success);
   color: var(--ars-success);
   opacity: 1;
-  border-color: var(--ars-success);
 }
 
 .viewBtn {

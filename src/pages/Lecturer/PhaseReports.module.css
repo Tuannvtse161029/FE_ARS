@@ -153,28 +153,24 @@
   color: var(--ars-ink);
 }
 
-/* Paper-Day header band: yellow surface with near-black ink, matching
-   the design tokens in ars-tokens.css. No white-on-yellow. */
-.reportsTable thead {
-  background: var(--accent-primary);
-  color: var(--ink-primary);
+/* Canonical muted-inset table header used across the Lecturer workspace:
+   uppercase monospace labels on a subtle `--ars-paper-inset` background.
+   Matches ResearchTopics / LearningMaterials table headers. */
+.reportsTable thead tr {
+  background: var(--ars-paper-inset);
 }
 
-/* Big, bold, centred column labels. The rows underneath stay small /
-   left-aligned (see .reportsTable td below) — only the header reads as
-   a heavy "title band". */
 .reportsTable th {
-  text-align: center;
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
-  /* Big bold header; sat 5pt lower than the original 1.5rem (~24px / 18pt)
-     so it reads as a calmer title band while still clearly outranking
-     the small body rows below. */
-  font-size: calc(1.5rem - 5pt);
-  padding: var(--space-4) var(--space-4);
+  font-family: var(--font-family-mono);
+  color: var(--ars-ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  border-bottom: var(--border-thin);
   white-space: nowrap;
-  font-family: var(--font-family-ui);
-  color: var(--ink-primary);
-  border-bottom: 1px solid color-mix(in srgb, var(--ink-primary) 18%, transparent);
 }
 
 /* Rows: revert to the original smaller, left-aligned, default-weight

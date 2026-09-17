@@ -885,9 +885,22 @@ export const ResearchGroup = () => {
                       <span className={styles.memberPill}>{t('lecturer.researchGroups.noMembersYet')}</span>
                     ) : (
                       roster.map((m, idx) => {
-                        const label = m.studentId
+                        // Prefer the BE-supplied full name when present so
+                        // the pill reads naturally (e.g. "Nguyen Van A")
+                        // instead of the legacy fallback "student #25".
+                        // Fall back to the student id when the BE hasn't
+                        // populated the name column (older deployments
+                        // before the joined-name integration landed).
+                        const trimmedName =
+                          typeof m.studentName === 'string'
+                            ? m.studentName.trim()
+                            : '';
+                        const label = trimmedName
+                          ? trimmedName
+                          : m.studentId
                           ? `${t('lecturer.researchGroups.studentId')}${m.studentId}`
                           : `${t('lecturer.researchGroups.memberId')}${m.id ?? idx}`;
+                        const initialsSource = trimmedName || label;
                         const isLeader = Boolean(m.isLeader);
                         return (
                           <span
@@ -908,7 +921,7 @@ export const ResearchGroup = () => {
                               className={styles.memberAvatar}
                               data-avatar-tone={avatarToneAt(idx)}
                             >
-                              {initialsOf(label)}
+                              {initialsOf(initialsSource)}
                             </span>
                             {label}
                             {m.activityStatus && (
@@ -925,10 +938,12 @@ export const ResearchGroup = () => {
 
                 <div className={styles.cardFooter}>
                   <div className={styles.iconBtnGroup}>
-                    {/* Toggle active / inactive — Power icon, same footprint as Trash2 */}
+                    {/* Toggle active / inactive — Power icon, same footprint as Trash2.
+                        Coloured amber (warn) so it's distinct from the card surface
+                        and the red Delete button sitting next to it. */}
                     <button
                       type="button"
-                      className={`${styles.iconBtn} ${grp.isActive === false ? styles.iconBtnInactive : ''}`}
+                      className={`${styles.iconBtn} ${styles.iconBtnWarn} ${grp.isActive === false ? styles.iconBtnInactive : ''}`}
                       title={
                         grp.isActive === false
                           ? t('lecturer.researchGroups.activate')
@@ -950,7 +965,7 @@ export const ResearchGroup = () => {
                     </button>
                     <button
                       type="button"
-                      className={styles.iconBtn}
+                      className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
                       title={t('lecturer.researchGroups.deleteGroup')}
                       aria-label={t('lecturer.researchGroups.deleteGroup')}
                       onClick={() =>
