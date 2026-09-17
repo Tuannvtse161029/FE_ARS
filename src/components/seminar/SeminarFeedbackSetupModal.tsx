@@ -1,9 +1,6 @@
 /**
-
  * SeminarFeedbackSetupModal.tsx
-
  *
-
  * Full setup UI for the Lecturer to configure Seminar Feedback:
  * 1. Choose between ARS General Feedback Form (standard 4 questions) or Custom Form
  * 2. In Custom Form: Add, reorder (Move Up/Down), delete, toggle Rating vs Text, toggle Required
@@ -11,874 +8,307 @@
  * 4. Save & persist to Seminar.feedback (JSON in NVARCHAR(MAX)) & localStorage
  */
 
-
-
 import { useEffect, useMemo, useState } from 'react';
-
-
 import {
-
-
   X,
-
-
   Plus,
-
-
   Eye,
-
-
   Sliders,
-
-
   CheckCircle2,
-
-
   AlertCircle,
-
-
   Clock4,
-
-
   FileCheck2,
-
-
   Star,
-
-
   Loader,
-
-
   Send,
-
-
 } from 'lucide-react';
-
-
 import { useLocale } from '../../i18n/I18nContext';
-
-
 import { Button } from '../Button/Button';
-
-
 import { SEMINAR_FEEDBACK_WINDOW_HOURS } from '../../utils/constants';
 import { getSeminarFeedbackWindow } from '../../utils/seminarFeedbackWindow';
 import { formatDisplayDateTime } from '../../utils/datetime';
-
-
 import {
-
-
   type FeedbackQuestion,
-
-
   DEFAULT_GENERAL_QUESTIONS,
-
-
   parseSeminarQuestions,
-
-
   getCachedSeminarQuestions,
-
-
   setCachedSeminarQuestions,
-
-
   generateStableQuestionId,
-
-
 } from '../../types/seminarFeedback';
-
-
 import { DynamicQuestionRenderer } from './DynamicQuestionRenderer';
-
-
 import { QuestionEditorCard } from './QuestionEditorCard';
-
-
 import { seminarService } from '../../services/seminar.service';
-
-
 import styles from './SeminarFeedbackSetupModal.module.css';
 
-
-
-
+/** Resolve a DEFAULT_GENERAL_QUESTIONS questionText to the active locale. */
+const resolveGeneralQuestionText = (raw: string, isVi: boolean): string => {
+  const map: Record<string, { en: string; vi: string }> = {
+    'Content relevance and practical value': {
+      en: 'Content relevance and practical value',
+      vi: 'Mức độ hữu ích và thực tế của nội dung hội thảo',
+    },
+    'Speaker presentation and clarity': {
+      en: 'Speaker presentation and clarity',
+      vi: 'Chất lượng truyền đạt và giải đáp của diễn giả',
+    },
+    'Key takeaways & highlights': {
+      en: 'Key takeaways & highlights',
+      vi: 'Điểm nổi bật hoặc bài học tâm đắc nhất bạn nhận được',
+    },
+    'Suggestions for improvement': {
+      en: 'Suggestions for improvement',
+      vi: 'Góp ý hoặc đề xuất để cải thiện các buổi hội thảo tiếp theo',
+    },
+  };
+  return map[raw]?.[isVi ? 'vi' : 'en'] ?? raw;
+};
 
 export interface SeminarFeedbackSetupModalProps {
-
-
   isOpen: boolean;
-
-
   onClose: () => void;
-
-
   seminarId: number;
-
-
   seminarTitle?: string;
-
-
   existingFeedbackRaw?: string | null;
-
-
   onSuccess?: (questions: FeedbackQuestion[]) => void;
-
-
 }
 
-
-
-
-
 type FormMode = 'general' | 'custom';
-
-
 type TabType = 'setup' | 'preview';
 
-
-
-
-
 export const SeminarFeedbackSetupModal = ({
-
-
   isOpen,
-
-
   onClose,
-
-
   seminarId,
-
-
   seminarTitle,
-
-
   existingFeedbackRaw,
-
-
   onSuccess,
-
-
 }: SeminarFeedbackSetupModalProps) => {
-
-
   const locale = useLocale();
-
-
   const isVi = locale === 'vi';
-
-
   const copy = (en: string, vi: string) => (isVi ? vi : en);
-
-
-
-
 
   // Fetch the seminar's `endTime` so the 72-hour feedback window banner
   // can show an absolute deadline (rather than only "the next 72 hours").
-  // The call is silent on failure — the banner gracefully degrades to
-  // showing the window length alone.
   const [seminarEndTime, setSeminarEndTime] = useState<string | null>(null);
-
-
   const feedbackWindowInfo = useMemo(
     () => getSeminarFeedbackWindow(seminarEndTime),
     [seminarEndTime],
   );
 
-
   const [activeTab, setActiveTab] = useState<TabType>('setup');
-
-
   const [formMode, setFormMode] = useState<FormMode>('custom');
-
-
   const [customQuestions, setCustomQuestions] = useState<FeedbackQuestion[]>([]);
-
-
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
-
-
   const [isSaving, setIsSaving] = useState(false);
-
-
   const [generalStatusMsg, setGeneralStatusMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
 
-
-
-
-
   // Initialize or prefill existing questions on open
-
-
   useEffect(() => {
-
-
     if (!isOpen) return;
 
-
-
-
-
     setSeminarEndTime(null);
-
-
     setActiveTab('setup');
-
-
     setValidationErrors({});
-
-
     setGeneralStatusMsg(null);
 
-
-
-
-
-    // Best-effort fetch of the seminar so we can show an absolute
-    // deadline for the 72-hour feedback window. The banner renders
-    // fine without it — only the "closes at …" line is gated on
-    // `seminarEndTime` being present.
-
-
     let isMountedForSeminar = true;
-
-
     seminarService
-
-
       .getById(seminarId)
-
-
       .then((sem) => {
-
-
         if (!isMountedForSeminar) return;
-
-
         if (sem?.endTime) setSeminarEndTime(sem.endTime);
-
-
       })
-
-
-      .catch(() => {
-
-
-        /* silent — banner degrades to showing window length only */
-
-
-      });
-
-
-
-
+      .catch(() => { /* silent — banner degrades gracefully */ });
 
     let isMounted = true;
 
-
-
-
-
     const applyQuestions = (questionsList: FeedbackQuestion[]) => {
-
-
       const isDefault =
-
-
         questionsList.length === DEFAULT_GENERAL_QUESTIONS.length &&
-
-
         questionsList.every((q, i) => q.id === DEFAULT_GENERAL_QUESTIONS[i].id);
 
-
-
-
-
       if (isDefault) {
-
-
         setFormMode('general');
-
-
         setCustomQuestions([...DEFAULT_GENERAL_QUESTIONS]);
-
-
       } else {
-
-
         setFormMode('custom');
-
-
         setCustomQuestions(questionsList);
-
-
       }
-
-
     };
-
-
-
-
 
     // 1. Try parsing from prop
-
-
     const fromProp = parseSeminarQuestions(existingFeedbackRaw);
-
-
     if (fromProp.length > 0) {
-
-
       applyQuestions(fromProp);
-
-
       return;
-
-
     }
 
-
-
-
-
     // 2. Try fetching from live backend
-
-
     seminarService
-
-
       .getFeedbackQuestions(seminarId)
-
-
       .then((liveQuestions) => {
-
-
         if (!isMounted) return;
-
-
         if (liveQuestions && liveQuestions.length > 0) {
-
-
           applyQuestions(liveQuestions);
-
-
         } else {
-
-
           // 3. Fallback to cached or fresh custom template
-
-
           const cached = getCachedSeminarQuestions(seminarId);
-
-
           if (cached && cached.length > 0) {
-
-
             applyQuestions(cached);
-
-
           } else {
-
-
             setFormMode('custom');
-
-
             setCustomQuestions([
-
-
               {
-
-
                 id: generateStableQuestionId(),
-
-
                 orderIndex: 0,
-
-
                 type: 'rating',
-
-
                 questionText: copy(
-
-
                   'How relevant and insightful was this seminar?',
-
-
-                  'Mức độ hữu ích và thực tế của buổi hội thảo này đối với bạn?'
-
-
+                  'Mức độ hữu ích và thực tế của buổi hội thảo này đối với bạn?',
                 ),
-
-
                 isRequired: true,
-
-
                 maxStar: 5,
-
-
               },
-
-
               {
-
-
                 id: generateStableQuestionId(),
-
-
                 orderIndex: 1,
-
-
                 type: 'text',
-
-
                 questionText: copy(
-
-
                   'What key takeaways or constructive feedback do you have for the speaker?',
-
-
-                  'Điều bạn tâm đắc nhất hoặc đóng góp ý kiến cho diễn giả?'
-
-
+                  'Điều bạn tâm đắc nhất hoặc đóng góp ý kiến cho diễn giả?',
                 ),
-
-
                 isRequired: false,
-
-
                 placeholder: copy('Enter your response...', 'Nhập câu trả lời...'),
-
-
               },
-
-
             ]);
-
-
           }
-
-
         }
-
-
       })
-
-
       .catch(() => {
-
-
         if (!isMounted) return;
-
-
         const cached = getCachedSeminarQuestions(seminarId);
-
-
         if (cached && cached.length > 0) {
-
-
           applyQuestions(cached);
-
-
         }
-
-
       });
 
-
-
-
-
     return () => {
-
-
       isMounted = false;
-
-
       isMountedForSeminar = false;
-
-
     };
-
-
   }, [isOpen, seminarId, existingFeedbackRaw]);
-
-
-
-
 
   if (!isOpen) return null;
 
-
-
-
-
   // Active question set depending on selected mode
-
-
   const currentQuestions: FeedbackQuestion[] =
-
-
     formMode === 'general' ? [...DEFAULT_GENERAL_QUESTIONS] : customQuestions;
 
-
-
-
-
-  // Question editing handlers
-
-
   const handleAddQuestion = () => {
-
-
     const newQ: FeedbackQuestion = {
-
-
       id: generateStableQuestionId(),
-
-
       orderIndex: customQuestions.length,
-
-
       type: 'rating',
-
-
       questionText: '',
-
-
       isRequired: true,
-
-
       maxStar: 5,
-
-
     };
-
-
     setCustomQuestions([...customQuestions, newQ]);
-
-
   };
-
-
-
-
 
   const handleUpdateQuestion = (id: string, patch: Partial<FeedbackQuestion>) => {
-
-
     setCustomQuestions((prev) =>
-
-
-      prev.map((q) => (q.id === id ? { ...q, ...patch } : q))
-
-
+      prev.map((q) => (q.id === id ? { ...q, ...patch } : q)),
     );
-
-
     if (patch.questionText && patch.questionText.trim().length > 0) {
-
-
       setValidationErrors((prev) => {
-
-
         const next = { ...prev };
-
-
         delete next[id];
-
-
         return next;
-
-
       });
-
-
     }
-
-
   };
-
-
-
-
 
   const handleDeleteQuestion = (id: string) => {
-
-
     if (customQuestions.length <= 1) return;
-
-
     const filtered = customQuestions.filter((q) => q.id !== id);
-
-
-    // Re-index
-
-
     const reindexed = filtered.map((q, idx) => ({ ...q, orderIndex: idx }));
-
-
     setCustomQuestions(reindexed);
-
-
     setValidationErrors((prev) => {
-
-
       const next = { ...prev };
-
-
       delete next[id];
-
-
       return next;
-
-
     });
-
-
   };
-
-
-
-
 
   const handleMoveQuestion = (index: number, direction: 'up' | 'down') => {
-
-
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
-
-
     if (targetIndex < 0 || targetIndex >= customQuestions.length) return;
-
-
-
-
-
     const list = [...customQuestions];
-
-
     const temp = list[index];
-
-
     list[index] = list[targetIndex];
-
-
     list[targetIndex] = temp;
-
-
-
-
-
-    // Update orderIndex
-
-
     const reindexed = list.map((q, idx) => ({ ...q, orderIndex: idx }));
-
-
     setCustomQuestions(reindexed);
-
-
   };
-
-
-
-
-
-  // Validate questions
-
 
   const validate = (): boolean => {
-
-
     if (formMode === 'general') return true;
 
-
-
-
-
     const errors: Record<string, string> = {};
-
-
     if (customQuestions.length === 0) {
-
-
       setGeneralStatusMsg({
-
-
         type: 'error',
-
-
         text: copy('Please add at least one question.', 'Vui lòng thêm ít nhất một câu hỏi.'),
-
-
       });
-
-
       return false;
-
-
     }
-
-
-
-
 
     customQuestions.forEach((q, idx) => {
-
-
       if (!q.questionText || !q.questionText.trim()) {
-
-
         errors[q.id] = copy(
-
-
           `Question #${idx + 1} content cannot be empty.`,
-
-
-          `Nội dung câu hỏi #${idx + 1} không được để trống.`
-
-
+          `Nội dung câu hỏi #${idx + 1} không được để trống.`,
         );
-
-
       }
-
-
     });
 
-
-
-
-
     setValidationErrors(errors);
-
-
     if (Object.keys(errors).length > 0) {
-
-
       setGeneralStatusMsg({
-
-
         type: 'error',
-
-
         text: copy(
-
-
           'Please complete all required question titles before saving.',
-
-
-          'Vui lòng điền đầy đủ tiêu đề các câu hỏi trước khi lưu.'
-
-
+          'Vui lòng điền đầy đủ tiêu đề các câu hỏi trước khi lưu.',
         ),
-
-
       });
-
-
       return false;
-
-
     }
-
-
-
-
-
     return true;
-
-
   };
 
-
-
-
-
   const handleSaveAndSend = async () => {
-
-
     if (!validate()) return;
 
-
-
-
-
     setIsSaving(true);
-
-
     setGeneralStatusMsg(null);
 
-
-
-
-
     const questionsToSave =
-
-
       formMode === 'general' ? [...DEFAULT_GENERAL_QUESTIONS] : customQuestions;
 
-
-
-
-
     try {
-
-
-      // 1. Cache locally so the form remains usable even during transient
-      //    network failures. The canonical request body is the array of
-      //    questions (ticket §14) and is sent via PUT in the service.
       setCachedSeminarQuestions(seminarId, questionsToSave);
-
-
-
-
-
-      // 2. Persist to the BE (canonical PUT /api/Seminar/{id}/feedback-form).
       await seminarService.saveFeedbackQuestions(seminarId, questionsToSave);
 
-
-
-
-
       setGeneralStatusMsg({
-
-
         type: 'success',
-
-
         text: copy(
-
-
           'Feedback form configured and saved successfully!',
-
-
-          'Đã thiết lập và lưu biểu mẫu đánh giá thành công!'
-
-
+          'Đã thiết lập và lưu biểu mẫu đánh giá thành công!',
         ),
-
-
       });
-
-
-
-
-
       onSuccess?.(questionsToSave);
-
-
-
-
-
-      // Close modal after brief success confirmation.
-      setTimeout(() => {
-        onClose();
-      }, 1200);
+      setTimeout(() => { onClose(); }, 1200);
     } catch (err: unknown) {
       const resp = (err as { response?: { status?: number; data?: { message?: string; title?: string } } })?.response;
       const serverMsg =
@@ -886,19 +316,14 @@ export const SeminarFeedbackSetupModal = ({
         (err instanceof Error ? err.message : '');
       const friendly = serverMsg ||
         copy('Failed to save the feedback form. Please try again.', 'Không thể lưu biểu mẫu đánh giá. Vui lòng thử lại.');
-      setGeneralStatusMsg({
-        type: 'error',
-        text: friendly,
-      });
+      setGeneralStatusMsg({ type: 'error', text: friendly });
     } finally {
       setIsSaving(false);
     }
   };
 
-
   const isWindowClosed =
     feedbackWindowInfo.state === 'closed' && Boolean(feedbackWindowInfo.deadline);
-
 
   return (
     <div className={styles.modalOverlay} role="dialog" aria-modal="true">
@@ -930,7 +355,6 @@ export const SeminarFeedbackSetupModal = ({
           </button>
         </div>
 
-
         {/* Navigation Tabs */}
         <div className={styles.navTabs}>
           <button
@@ -945,22 +369,16 @@ export const SeminarFeedbackSetupModal = ({
           <button
             type="button"
             className={`${styles.navTab} ${activeTab === 'preview' ? styles.navTabActive : ''}`}
-            onClick={() => {
-              if (validate()) setActiveTab('preview');
-            }}
+            onClick={() => { if (validate()) setActiveTab('preview'); }}
           >
             <Eye size={16} aria-hidden />
             <span>{copy('2. Participant Preview', '2. Xem trước giao diện')}</span>
           </button>
         </div>
 
-
         {/* Modal Content */}
         <div className={styles.modalBody}>
-          {/* 72-hour feedback-window notice — single source of truth lives
-              in `utils/seminarFeedbackWindow.ts`. Tells the lecturer when
-              the participant-side submission window opens / closes so they
-              know how long their invitees have to respond. */}
+          {/* 72-hour feedback-window notice */}
           <div
             className={`${styles.feedbackWindowBanner} ${
               isWindowClosed ? styles.feedbackWindowBannerClosed : styles.feedbackWindowBannerOpen
@@ -1002,7 +420,6 @@ export const SeminarFeedbackSetupModal = ({
             </div>
           )}
 
-
           {activeTab === 'setup' ? (
             <>
               {/* Form Mode Selection */}
@@ -1031,11 +448,10 @@ export const SeminarFeedbackSetupModal = ({
                   <p className={styles.modeDesc}>
                     {copy(
                       'Build your own questions. Tailor rating criteria and custom text questions specifically for this topic.',
-                      'Tự do thêm câu hỏi, lựa chọn định dạng đánh giá sao hoặc nhập văn bản theo đúng nội dung buổi chia sẻ này.'
+                      'Tự do thêm câu hỏi, lựa chọn định dạng đánh giá sao hoặc nhập văn bản theo đúng nội dung buổi chia sẻ này.',
                     )}
                   </p>
                 </div>
-
 
                 <div
                   className={`${styles.modeOption} ${
@@ -1061,12 +477,11 @@ export const SeminarFeedbackSetupModal = ({
                   <p className={styles.modeDesc}>
                     {copy(
                       'Use ARS standard evaluation (4 balanced questions: Content & Speaker ratings + Takeaways & Improvements text).',
-                      'Sử dụng bộ câu hỏi mẫu của hệ thống (4 câu: Đánh giá sao nội dung & diễn giả + Trả lời bài học & góp ý).'
+                      'Sử dụng bộ câu hỏi mẫu của hệ thống (4 câu: Đánh giá sao nội dung & diễn giả + Trả lời bài học & góp ý).',
                     )}
                   </p>
                 </div>
               </div>
-
 
               {/* Mode-Specific Content */}
               {formMode === 'general' ? (
@@ -1085,12 +500,14 @@ export const SeminarFeedbackSetupModal = ({
                     </Button>
                   </div>
 
-
                   <ul className={styles.generalList}>
                     {DEFAULT_GENERAL_QUESTIONS.map((q, idx) => (
                       <li key={q.id} className={styles.generalItem}>
                         <span className={styles.generalItemTitle}>
-                          <strong>#{idx + 1}.</strong> {q.questionText}
+                          <strong>#{idx + 1}.</strong>{' '}
+                          {q.questionText.startsWith('general_')
+                            ? resolveGeneralQuestionText(q.questionText, isVi)
+                            : q.questionText}
                         </span>
                         <span className={styles.typeBadge}>
                           {q.type === 'rating' ? copy('Rating (1–5)', '1–5 Sao') : copy('Text', 'Văn bản')}
@@ -1118,7 +535,6 @@ export const SeminarFeedbackSetupModal = ({
                     ))}
                   </div>
 
-
                   <div className={styles.addQuestionRow}>
                     <button
                       type="button"
@@ -1144,7 +560,6 @@ export const SeminarFeedbackSetupModal = ({
           )}
         </div>
 
-
         {/* Modal Footer */}
         <div className={styles.modalFooter}>
           <div className={styles.footerLeft}>
@@ -1152,7 +567,6 @@ export const SeminarFeedbackSetupModal = ({
               {copy('Total:', 'Tổng:')} <strong>{currentQuestions.length}</strong> {copy('questions', 'câu hỏi')}
             </span>
           </div>
-
 
           <div className={styles.footerRight}>
             <Button variant="outline" size="md" onClick={onClose} disabled={isSaving}>
@@ -1163,9 +577,7 @@ export const SeminarFeedbackSetupModal = ({
                 variant="outline"
                 size="md"
                 leftIcon={<Eye size={14} aria-hidden />}
-                onClick={() => {
-                  if (validate()) setActiveTab('preview');
-                }}
+                onClick={() => { if (validate()) setActiveTab('preview'); }}
               >
                 {copy('Preview Form', 'Xem trước')}
               </Button>
@@ -1207,6 +619,5 @@ export const SeminarFeedbackSetupModal = ({
     </div>
   );
 };
-
 
 export default SeminarFeedbackSetupModal;

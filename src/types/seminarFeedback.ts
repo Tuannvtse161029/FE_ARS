@@ -62,13 +62,17 @@ export const generateStableQuestionId = (): string => {
 
 /**
  * Standard default ARS feedback questions used for the "General Feedback Form".
+ * questionText / placeholder are in English (the application default).
+ * The participant-facing display components resolve these to the active
+ * locale via `resolveGeneralQuestionText()` so the questions appear in the
+ * correct language for both English and Vietnamese users.
  */
 export const DEFAULT_GENERAL_QUESTIONS: readonly FeedbackQuestion[] = [
   {
     id: 'q_gen_relevance',
     orderIndex: 0,
     type: 'rating',
-    questionText: 'Mức độ hữu ích và thực tế của nội dung hội thảo / Content relevance and practical value',
+    questionText: 'Content relevance and practical value',
     isRequired: true,
     maxStar: 5,
   },
@@ -76,7 +80,7 @@ export const DEFAULT_GENERAL_QUESTIONS: readonly FeedbackQuestion[] = [
     id: 'q_gen_speaker',
     orderIndex: 1,
     type: 'rating',
-    questionText: 'Chất lượng truyền đạt và giải đáp thắc mắc của diễn giả / Speaker presentation and clarity',
+    questionText: 'Speaker presentation and clarity',
     isRequired: true,
     maxStar: 5,
   },
@@ -84,19 +88,53 @@ export const DEFAULT_GENERAL_QUESTIONS: readonly FeedbackQuestion[] = [
     id: 'q_gen_takeaway',
     orderIndex: 2,
     type: 'text',
-    questionText: 'Điểm nổi bật hoặc bài học tâm đắc nhất bạn nhận được / Key takeaways & highlights',
+    questionText: 'Key takeaways & highlights',
     isRequired: false,
-    placeholder: 'Chia sẻ ấn tượng hoặc kiến thức hữu ích nhất bạn đã tiếp thu...',
+    placeholder: 'Share your most impactful impressions or knowledge gained…',
   },
   {
     id: 'q_gen_improvement',
     orderIndex: 3,
     type: 'text',
-    questionText: 'Góp ý hoặc đề xuất để cải thiện các buổi hội thảo tiếp theo / Suggestions for improvement',
+    questionText: 'Suggestions for improvement',
     isRequired: false,
-    placeholder: 'Những điều có thể cải thiện về thời lượng, tổ chức hoặc chủ đề tiếp theo...',
+    placeholder: 'Areas that could be improved regarding duration, organisation, or topics for next time…',
   },
 ];
+
+/**
+ * Resolves a DEFAULT_GENERAL_QUESTIONS questionText or placeholder to the
+ * active locale's human-readable string. Falls back to English.
+ */
+export const resolveGeneralQuestionText = (raw: string, isVi: boolean): string => {
+  const map: Record<string, { en: string; vi: string }> = {
+    'Content relevance and practical value': {
+      en: 'Content relevance and practical value',
+      vi: 'Mức độ hữu ích và thực tế của nội dung hội thảo',
+    },
+    'Speaker presentation and clarity': {
+      en: 'Speaker presentation and clarity',
+      vi: 'Chất lượng truyền đạt và giải đáp của diễn giả',
+    },
+    'Key takeaways & highlights': {
+      en: 'Key takeaways & highlights',
+      vi: 'Điểm nổi bật hoặc bài học tâm đắc nhất bạn nhận được',
+    },
+    'Suggestions for improvement': {
+      en: 'Suggestions for improvement',
+      vi: 'Góp ý hoặc đề xuất để cải thiện các buổi hội thảo tiếp theo',
+    },
+    'Share your most impactful impressions or knowledge gained…': {
+      en: 'Share your most impactful impressions or knowledge gained…',
+      vi: 'Chia sẻ ấn tượng hoặc kiến thức hữu ích nhất bạn đã tiếp thu…',
+    },
+    'Areas that could be improved regarding duration, organisation, or topics for next time…': {
+      en: 'Areas that could be improved regarding duration, organisation, or topics for next time…',
+      vi: 'Những điều có thể cải thiện về thời lượng, tổ chức hoặc chủ đề tiếp theo…',
+    },
+  };
+  return map[raw]?.[isVi ? 'vi' : 'en'] ?? raw;
+};
 
 /** Local storage keys for caching and seamless persistence */
 export const FEEDBACK_QUESTIONS_STORAGE_KEY_PREFIX = 'ars_seminar_feedback_questions_';

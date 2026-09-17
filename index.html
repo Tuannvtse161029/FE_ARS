@@ -2,7 +2,16 @@
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/logo.png" />
+    <!-- ARS favicon. The file lives at public/ars_favicon.png (a copy
+         of src/assets/images/ars_favicon.png so it ships as a static
+         asset the browser can request synchronously while parsing the
+         <head>). When the bundle is deployed, Vite copies every file
+         in public/ to the build output root, so the deployed URL is
+         `/ars_favicon.png`. We declare the PNG first (modern browsers
+         and tab UIs) and the legacy .ico second as a graceful
+         fallback so very old browsers still get a tab icon. -->
+    <link rel="icon" type="image/png" href="/ars_favicon.png" />
+    <link rel="shortcut icon" href="/ars_favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!-- SECURITY (SEC-005): Defense-in-depth Content Security Policy.
          The .NET BE sets the response header in production; this <meta>

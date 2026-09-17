@@ -9,12 +9,15 @@
  * active search query.
  *
  * Status taxonomy:
- *   - all       Every report owned by the lecturer.
- *   - awaiting  No submission yet (status WAITING / Pending).
- *   - submitted Submitted on time (status SUBMITTED, before deadline).
- *   - overdue   Submitted after the deadline (status SUBMITTED, isOverdue).
- *   - evaluated Approved by the lecturer (status EVALUATED / Passed).
- *   - rejected  Request-resubmit decision returned (status REJECTED).
+ *   - all             Every report owned by the lecturer.
+ *   - awaiting        No submission yet (status WAITING / Pending).
+ *   - submitted       Submitted on time (status SUBMITTED, before deadline).
+ *   - overdue         Submitted after the deadline (status SUBMITTED, isOverdue).
+ *   - overdueAwaiting No submission yet AND deadline has passed.
+ *                     Separated from `awaiting` so the lecturer can see and
+ *                     extend the deadline for at-risk rows quickly.
+ *   - evaluated       Approved by the lecturer (status EVALUATED / Passed).
+ *   - rejected        Request-resubmit decision returned (status REJECTED).
  */
 
 import styles from './PhaseReportStatusTabs.module.css';
@@ -24,6 +27,7 @@ export type PhaseReportStatusFilter =
   | 'awaiting'
   | 'submitted'
   | 'overdue'
+  | 'overdueAwaiting'
   | 'evaluated'
   | 'rejected';
 
@@ -35,6 +39,7 @@ export interface PhaseReportStatusTabsProps {
     awaiting: number;
     submitted: number;
     overdue: number;
+    overdueAwaiting: number;
     evaluated: number;
     rejected: number;
   };
@@ -43,6 +48,7 @@ export interface PhaseReportStatusTabsProps {
     awaiting: string;
     submitted: string;
     overdue: string;
+    overdueAwaiting: string;
     evaluated: string;
     rejected: string;
   };
@@ -63,6 +69,7 @@ export const PhaseReportStatusTabs = ({
   const tabs: TabSpec[] = [
     { key: 'all', label: labels.all, count: counts.all },
     { key: 'awaiting', label: labels.awaiting, count: counts.awaiting },
+    { key: 'overdueAwaiting', label: labels.overdueAwaiting, count: counts.overdueAwaiting },
     { key: 'submitted', label: labels.submitted, count: counts.submitted },
     { key: 'overdue', label: labels.overdue, count: counts.overdue },
     { key: 'evaluated', label: labels.evaluated, count: counts.evaluated },

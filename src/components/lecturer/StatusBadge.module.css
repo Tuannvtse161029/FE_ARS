@@ -62,6 +62,22 @@
   border-color: color-mix(in srgb, var(--ars-error) 30%, transparent);
 }
 
+/* Synthetic overdue variants (computed in PhaseReports when deadline has
+ * passed). Both use the danger palette but with a slightly stronger stroke
+ * for awaiting-but-overdue so it stands out from the regular awaiting/waiting
+ * blue. */
+.overdue {
+  background-color: var(--ars-error-bg);
+  color: var(--ars-error);
+  border-color: color-mix(in srgb, var(--ars-error) 50%, transparent);
+}
+
+.overdueAwaiting {
+  background-color: var(--ars-error-bg);
+  color: var(--ars-error);
+  border-color: var(--ars-error);
+}
+
 /* ResearchTopic variants */
 .open {
   background-color: var(--ars-info-bg);

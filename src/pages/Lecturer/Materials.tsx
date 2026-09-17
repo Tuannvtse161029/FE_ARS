@@ -45,6 +45,8 @@ import {
   Clock,
   User,
   Users,
+  LayoutGrid,
+  List,
 } from 'lucide-react';
 import api from '../../services/axios';
 import { API_ENDPOINTS } from '../../utils/constants';
@@ -60,13 +62,14 @@ import {
   type SharedMaterial,
 } from '../../services/sharedMaterial.service';
 import { notificationService } from '../../services/notification.service';
-import { researchTopicService } from '../../services/researchTopic.service';
+import { researchTopicService, topicLearningMaterialService } from '../../services/researchTopic.service';
 // NOTE: import the canonical `ResearchTopic` from the shared types module,
 // NOT from `researchTopic.service`. The service exposes a BE-response shape
 // (with optional `id`) that is intentionally wider than the canonical type
 // the rest of the FE uses. `MaterialUsageModal` accepts the canonical shape,
 // so the service result is cast at the fetch boundary below.
 import type { ResearchTopic } from '../../types/research';
+import type { TopicLearningMaterialResponse } from '../../types/researchWorkflowDtos';
 import { phasedReportService } from '../../services/phasedReport.service';
 import type { PhasedReport } from '../../services/phasedReport.service';
 import {
@@ -79,8 +82,10 @@ import { Button } from '../../components/Button/Button';
 import { BackendGapBanner } from '../../components/BackendGapBanner';
 import { useT } from '../../i18n/I18nContext';
 import { ROUTES } from '../../routes/paths';
-import { validateHttpsUrl } from '../../utils/validationRules';
+import { validateHttpsUrl, safeHref } from '../../utils/validationRules';
 import { formatDisplayDateTime } from '../../utils/datetime';
+import { SortableHeader } from '../../components/table/SortableHeader';
+import { useTableSort } from '../../hooks/useTableSort';
 import {
   buildConfigureMilestonesUrl,
   buildResearchTopicsUrl,
@@ -370,6 +375,12 @@ export const LecturerMaterialsPage = () => {
   // change frequently while the lecturer is browsing this tab.
   const [topics, setTopics] = useState<ResearchTopic[]>([]);
   const [phases, setPhases] = useState<PhasedReport[]>([]);
+  // Junction rows from `ResearchTopicLearningMaterial` — one per attached
+  // material. Not all BE responses include `learningMaterialId`, so we
+  // normalise defensively below.
+  const [topicMaterialJunctions, setTopicMaterialJunctions] = useState<
+    TopicLearningMaterialResponse[]
+  >([]);
   const [crossRefLoading, setCrossRefLoading] = useState(true);
 
   const loadCrossReference = useCallback(async () => {
@@ -385,12 +396,28 @@ export const LecturerMaterialsPage = () => {
         researchTopicService.getAll().catch(() => []),
         phasedReportService.getAll().catch(() => [] as PhasedReport[]),
       ]);
-      setTopics(
-        (topicList as ResearchTopic[]).filter(
-          (t): t is ResearchTopic => typeof t.id === 'number',
+      const canonicalTopics = (topicList as ResearchTopic[]).filter(
+        (t): t is ResearchTopic => typeof t.id === 'number',
+      );
+      setTopics(canonicalTopics);
+      setPhases(phaseList);
+
+      // Fan out one junction fetch per topic so the usage counter can
+      // recognise materials attached via the newer
+      // `ResearchTopicLearningMaterial` table (in addition to the legacy
+      // `topic.materialsUrl === url` link). The list of topics per
+      // lecturer is small (<50 in practice) so the N+1 cost is
+      // acceptable; a dedicated reverse-lookup endpoint is tracked in
+      // `tickets/backend/BE_MATERIAL_USAGE_REVERSE_LOOKUP.md` and would
+      // replace this fan-out once shipped.
+      const junctionLists = await Promise.all(
+        canonicalTopics.map((t) =>
+          topicLearningMaterialService
+            .getByTopicId(t.id as number)
+            .catch(() => [] as TopicLearningMaterialResponse[]),
         ),
       );
-      setPhases(phaseList);
+      setTopicMaterialJunctions(junctionLists.flat());
     } finally {
       setCrossRefLoading(false);
     }
@@ -408,8 +435,31 @@ export const LecturerMaterialsPage = () => {
     if (!usageModalMaterial) return [];
     const url = usageModalMaterial.fileUrl?.trim();
     if (!url) return [];
-    return topics.filter((t) => (t.materialsUrl ?? '').trim() === url);
-  }, [usageModalMaterial, topics]);
+    // Legacy URL match — same as before.
+    const matched = topics.filter((t) => (t.materialsUrl ?? '').trim() === url);
+    const seenTopicIds = new Set(matched.map((t) => t.id));
+    // Junction-table match — surfaces topics that attached this material
+    // via `POST /api/ResearchTopic/{id}/learning-materials` (and may or
+    // may not have had `materialsUrl` updated at the same time).
+    for (const row of topicMaterialJunctions) {
+      if ((row.fileUrl ?? '').trim() !== url) continue;
+      if (
+        typeof row.learningMaterialId === 'number' &&
+        row.learningMaterialId > 0 &&
+        typeof usageModalMaterial.id === 'number' &&
+        row.learningMaterialId !== usageModalMaterial.id
+      ) {
+        continue;
+      }
+      if (typeof row.topicId !== 'number') continue;
+      if (seenTopicIds.has(row.topicId)) continue;
+      const t = topics.find((x) => x.id === row.topicId);
+      if (!t) continue;
+      matched.push(t);
+      seenTopicIds.add(t.id);
+    }
+    return matched;
+  }, [usageModalMaterial, topics, topicMaterialJunctions]);
 
   const usedByPhasesForModal = useMemo(() => {
     if (!usageModalMaterial) return [];
@@ -418,37 +468,86 @@ export const LecturerMaterialsPage = () => {
     return phases.filter((p) => (p.phasedMaterialsUrl ?? '').trim() === url);
   }, [usageModalMaterial, phases]);
 
-  // Map fileUrl → { topicCount, phaseCount, hasOpenTopic } for the usage chip.
-  const usageByUrl = useMemo(() => {
-    const map = new Map<
-      string,
-      { topicCount: number; phaseCount: number; hasOpenTopic: boolean }
-    >();
-    for (const m of materials) {
-      const url = m.fileUrl?.trim();
-      if (!url) continue;
-      const entry = map.get(url) ?? {
-        topicCount: 0,
-        phaseCount: 0,
-        hasOpenTopic: false,
-      };
-      for (const topic of topics) {
-        if ((topic.materialsUrl ?? '').trim() === url) {
-          entry.topicCount += 1;
-          if ((topic.status ?? '').toUpperCase() === 'OPEN') {
-            entry.hasOpenTopic = true;
-          }
-        }
-      }
-      for (const phase of phases) {
-        if ((phase.phasedMaterialsUrl ?? '').trim() === url) {
-          entry.phaseCount += 1;
-        }
-      }
-      map.set(url, entry);
+// Map fileUrl → { topicCount, phaseCount, hasOpenTopic } for the usage chip.
+// Sources counted as topic usage:
+//   1. The legacy single-URL link `topic.materialsUrl === url`.
+//   2. The newer `ResearchTopicLearningMaterial` junction rows attached via
+//      `POST /api/ResearchTopic/{id}/learning-materials`. We match those
+//      against the same material `fileUrl` so the count is consistent
+//      regardless of which attachment pathway the lecturer used.
+// Sources counted as phase usage:
+//   - `phase.phasedMaterialsUrl === url` (same as before).
+const usageByUrl = useMemo(() => {
+  const map = new Map<
+    string,
+    { topicCount: number; phaseCount: number; hasOpenTopic: boolean }
+  >();
+  // Pre-index the topic junctions by fileUrl so we don't do an O(N*M)
+  // scan inside the per-material loop below.
+  const topicJunctionsByUrl = new Map<string, TopicLearningMaterialResponse[]>();
+  for (const row of topicMaterialJunctions) {
+    const key = (row.fileUrl ?? '').trim();
+    if (!key) continue;
+    const bucket = topicJunctionsByUrl.get(key) ?? [];
+    bucket.push(row);
+    topicJunctionsByUrl.set(key, bucket);
+  }
+  const openTopicIdsByMaterialId = new Set<number>();
+  for (const t of topics) {
+    if ((t.status ?? '').toUpperCase() === 'OPEN' && typeof t.id === 'number') {
+      openTopicIdsByMaterialId.add(t.id);
     }
-    return map;
-  }, [materials, topics, phases]);
+  }
+  for (const m of materials) {
+    const url = m.fileUrl?.trim();
+    if (!url) continue;
+    const entry = map.get(url) ?? {
+      topicCount: 0,
+      phaseCount: 0,
+      hasOpenTopic: false,
+    };
+    // Legacy single-URL link, per topic.
+    for (const topic of topics) {
+      if ((topic.materialsUrl ?? '').trim() === url) {
+        entry.topicCount += 1;
+        if ((topic.status ?? '').toUpperCase() === 'OPEN') {
+          entry.hasOpenTopic = true;
+        }
+      }
+    }
+    // Junction-table references — count one per matching row, and mark
+    // the material as `hasOpenTopic` if any of the referencing topics is
+    // currently OPEN so the lecturer sees actionable urgency. Matching is
+    // primarily by `fileUrl` (the columns in this map are keyed by URL
+    // anyway); when both sides expose a numeric `learningMaterialId` we
+    // also require the IDs to match so we never double-count a row that
+    // was attached to a sibling material sharing the same URL.
+    const junctionRows = topicJunctionsByUrl.get(url) ?? [];
+    for (const row of junctionRows) {
+      if (
+        typeof row.learningMaterialId === 'number' &&
+        row.learningMaterialId > 0 &&
+        typeof m.id === 'number'
+      ) {
+        if (row.learningMaterialId !== m.id) continue;
+      }
+      entry.topicCount += 1;
+      if (
+        typeof row.topicId === 'number' &&
+        openTopicIdsByMaterialId.has(row.topicId)
+      ) {
+        entry.hasOpenTopic = true;
+      }
+    }
+    for (const phase of phases) {
+      if ((phase.phasedMaterialsUrl ?? '').trim() === url) {
+        entry.phaseCount += 1;
+      }
+    }
+    map.set(url, entry);
+  }
+  return map;
+}, [materials, topics, phases, topicMaterialJunctions]);
 
   // Add-form state (Learning Materials)
   const [lmSearch, setLmSearch] = useState('');
@@ -513,6 +612,30 @@ export const LecturerMaterialsPage = () => {
       return db - da;
     });
   }, [filteredMaterials]);
+
+  // Cards ↔ Table layout toggle. Default to "cards" so today's first
+  // impression is preserved. The choice is intentionally *not* persisted
+  // across reloads — this is a quick accessibility nicety, not a user
+  // preference.
+  const [lmViewMode, setLmViewMode] = useState<'cards' | 'table'>('cards');
+
+  // Sort hook for the table view. Independent from `sortedMaterials`
+  // (which keeps the cards in their default newest-first order).
+  const lmTableSort = useTableSort<LearningMaterial, 'title' | 'updatedAt'>();
+  const sortedTableMaterials = useMemo(
+    () =>
+      lmTableSort.sortedItemsBy(sortedMaterials, (m) => {
+        switch (lmTableSort.sortState.column) {
+          case 'title':
+            return formatTitle(m).toLowerCase();
+          case 'updatedAt':
+            return m.updatedAt ?? m.createdAt ?? null;
+          default:
+            return null;
+        }
+      }),
+    [lmTableSort, sortedMaterials],
+  );
 
   // ESC key closes the Add Material modal.
   useEffect(() => {
@@ -1227,6 +1350,51 @@ export const LecturerMaterialsPage = () => {
             >
               {t('lecturer.materials.action.add', 'Add Material')}
             </Button>
+            <div
+              className={styles.viewToggle}
+              role="group"
+              aria-label={t(
+                'lecturer.materials.view.toggleAria',
+                'Toggle between card and table view',
+              )}
+            >
+              <button
+                type="button"
+                className={`${styles.viewToggleBtn} ${
+                  lmViewMode === 'cards' ? styles.viewToggleBtnActive : ''
+                }`}
+                aria-pressed={lmViewMode === 'cards'}
+                aria-label={t(
+                  'lecturer.materials.view.cards',
+                  'Card view',
+                )}
+                title={t(
+                  'lecturer.materials.view.cards',
+                  'Card view',
+                )}
+                onClick={() => setLmViewMode('cards')}
+              >
+                <LayoutGrid size={14} aria-hidden />
+              </button>
+              <button
+                type="button"
+                className={`${styles.viewToggleBtn} ${
+                  lmViewMode === 'table' ? styles.viewToggleBtnActive : ''
+                }`}
+                aria-pressed={lmViewMode === 'table'}
+                aria-label={t(
+                  'lecturer.materials.view.table',
+                  'Table view',
+                )}
+                title={t(
+                  'lecturer.materials.view.table',
+                  'Table view',
+                )}
+                onClick={() => setLmViewMode('table')}
+              >
+                <List size={14} aria-hidden />
+              </button>
+            </div>
           </div>
         )}
 
@@ -1567,7 +1735,7 @@ export const LecturerMaterialsPage = () => {
               {t('lecturer.materials.empty.search', `No materials match "${lmSearch.trim()}".`,)}
             </span>
           </div>
-        ) : (
+        ) : lmViewMode === 'cards' ? (
           <ul className={styles.materialGrid} aria-label="Learning materials">
             {sortedMaterials.map((material) => {
               const id = typeof material.id === 'number' ? material.id : -1;
@@ -1865,6 +2033,193 @@ export const LecturerMaterialsPage = () => {
               );
             })}
           </ul>
+        ) : (
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>
+                    <SortableHeader
+                      column="title"
+                      label={t(
+                        'lecturer.materials.table.colTitle',
+                        'Title',
+                      )}
+                      cycleSort={lmTableSort.cycleSort}
+                      ariaSortFor={lmTableSort.ariaSortFor}
+                    />
+                  </th>
+                  <th>
+                    <SortableHeader
+                      column="updatedAt"
+                      label={t(
+                        'lecturer.materials.table.colUpdated',
+                        'Updated',
+                      )}
+                      cycleSort={lmTableSort.cycleSort}
+                      ariaSortFor={lmTableSort.ariaSortFor}
+                    />
+                  </th>
+                  <th>
+                    {t('lecturer.materials.table.colUsedIn', 'Used in')}
+                  </th>
+                  <th>
+                    {t('lecturer.materials.table.colAction', 'Action')}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedTableMaterials.map((material) => {
+                  const id = typeof material.id === 'number' ? material.id : -1;
+                  const url = material.fileUrl?.trim() ?? '';
+                  const usage = usageByUrl.get(url) ?? {
+                    topicCount: 0,
+                    phaseCount: 0,
+                    hasOpenTopic: false,
+                  };
+                  const usageTotal = usage.topicCount + usage.phaseCount;
+                  const disabledDelete = usageTotal > 0;
+                  const isConfirming = pendingDeleteId === id;
+                  const subtitle =
+                    material.description?.trim() ||
+                    url ||
+                    '';
+                  const updatedLabel = material.updatedAt
+                    ? material.updatedAt.split('T')[0]
+                    : material.createdAt
+                    ? material.createdAt.split('T')[0]
+                    : '—';
+                  return (
+                    <tr key={String(material.id ?? id)} data-testid="learning-material-row">
+                      <td>
+                        <span className={styles.topicNameText}>
+                          {formatTitle(material)}
+                        </span>
+                        {subtitle && (
+                          <div className={styles.topicDescText}>{subtitle}</div>
+                        )}
+                      </td>
+                      <td>{updatedLabel}</td>
+                      <td>
+                        {crossRefLoading && usageTotal === 0 ? (
+                          <span className={styles.usageBadge}>
+                            {t(
+                              'lecturer.materials.usage.checking',
+                              'Checking…',
+                            )}
+                          </span>
+                        ) : usageTotal === 0 ? (
+                          <span
+                            className={`${styles.usageBadge} ${styles.usageBadgeNone}`}
+                          >
+                            {t(
+                              'lecturer.materials.usage.notUsed',
+                              'Not used',
+                            )}
+                          </span>
+                        ) : (
+                          <div className={styles.usageList}>
+                            {usage.topicCount > 0 && (
+                              <button
+                                type="button"
+                                className={styles.usageBadge}
+                                onClick={() => openUsageModal(material)}
+                                title={t(
+                                  'lecturer.materials.usage.viewTopicsTitle',
+                                  'See which research topics reference this material.',
+                                )}
+                              >
+                                {t(
+                                  'lecturer.materials.usage.topics',
+                                  'Topic(s)',
+                                )}: {usage.topicCount}
+                              </button>
+                            )}
+                            {usage.phaseCount > 0 && (
+                              <button
+                                type="button"
+                                className={styles.usageBadge}
+                                onClick={() => openUsageModal(material)}
+                                title={t(
+                                  'lecturer.materials.usage.viewPhasesTitle',
+                                  'See which phases reference this material.',
+                                )}
+                              >
+                                {t(
+                                  'lecturer.materials.usage.phases',
+                                  'Phase(s)',
+                                )}: {usage.phaseCount}
+                              </button>
+                            )}
+                            {usage.hasOpenTopic && (
+                              <span
+                                className={styles.usageBadgeHot}
+                                title={t(
+                                  'lecturer.materials.usage.openTopicTitle',
+                                  'At least one referencing topic is currently OPEN.',
+                                )}
+                              >
+                                {t(
+                                  'lecturer.materials.usage.open',
+                                  'Open',
+                                )}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      <td>
+                        <div className={styles.topicActionStack}>
+                          {url && safeHref(url) && (
+                            <a
+                              className={styles.assignGroupBtn}
+                              href={safeHref(url) ?? '#'}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <ExternalLink size={14} aria-hidden />
+                              {t('lecturer.materials.action.open', 'Open')}
+                            </a>
+                          )}
+                          <button
+                            type="button"
+                            className={styles.closeTopicBtn}
+                            onClick={() => {
+                              if (!disabledDelete && id >= 0) {
+                                setPendingDeleteId(id);
+                              }
+                            }}
+                            disabled={disabledDelete || id < 0}
+                            title={
+                              disabledDelete
+                                ? t(
+                                    'lecturer.materials.action.deleteBlockedTitle',
+                                    'This material is in use and cannot be deleted.',
+                                  )
+                                : undefined
+                            }
+                            aria-label={t(
+                              'lecturer.materials.action.deleteAria',
+                              'Delete material',
+                              { title: formatTitle(material) },
+                            )}
+                          >
+                            <Trash2 size={14} aria-hidden />
+                            {t(
+                              isConfirming
+                                ? 'lecturer.materials.action.confirmDelete'
+                                : 'lecturer.materials.action.delete',
+                              isConfirming ? 'Confirm?' : 'Delete',
+                            )}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
