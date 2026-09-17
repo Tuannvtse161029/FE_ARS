@@ -33,7 +33,9 @@ describe('Publication incident contract guards', () => {
     vi.mocked(paperService.getById)
       .mockResolvedValueOnce({ ...paper, openAlexWorkId: 'W123' })
       .mockResolvedValueOnce({ ...paper, authorshipVerificationStatus: 'VERIFIED' });
-    vi.mocked(paperService.testUpdateNoVerify).mockResolvedValue({ paperId: 12, authorshipVerificationStatus: 'VERIFIED' });
+    // The Swagger contract for PUT /api/Paper/test-update-no-verify/{id}
+    // returns the full `PaperResponse` whose identifier field is `id`.
+    vi.mocked(paperService.testUpdateNoVerify).mockResolvedValue({ id: 12, authorshipVerificationStatus: 'VERIFIED' });
     const result = await publicationAdapter.verifyAuthorship('12', true);
     expect(paperService.testUpdateNoVerify).toHaveBeenCalledTimes(1);
     const [sentId, sentBody] = vi.mocked(paperService.testUpdateNoVerify).mock.calls[0];
@@ -51,19 +53,55 @@ describe('Publication incident contract guards', () => {
     expect(result.researcherVerificationStatus).toBe('VERIFIED');
   });
 
-  it('does not invent verification when the backend ignores the sent decision', async () => {
+  it('accepts a legacy paperId field on the verification response', async () => {
+    // Older BE snapshots returned `{ paperId, ... }`. The adapter must keep
+    // working with that shape so a rollback on the BE side never silently
+    // re-enables the "verification response did not identify the requested
+    // paper" banner.
     vi.mocked(paperService.getById)
       .mockResolvedValueOnce(paper)
-      .mockResolvedValueOnce({ ...paper, authorshipVerificationStatus: 'PENDING_ADMIN_REVIEW' });
-    vi.mocked(paperService.testUpdateNoVerify).mockResolvedValue({ paperId: 12, authorshipVerificationStatus: 'PENDING_ADMIN_REVIEW' });
-    // The friendly mapper rewrites structured tokens like
-    // PENDING_ADMIN_REVIEW into a human-readable phrase (e.g. "Awaiting
-    // admin review"). The contract guarded here is that the adapter still
-    // throws — never invents a verified Paper — when the BE does not
-    // confirm verification, regardless of what the user-visible message
-    // looks like.
-    await expect(publicationAdapter.verifyAuthorship('12', true)).rejects.toThrow(/Awaiting admin review/i);
-    expect(paperService.update).not.toHaveBeenCalled();
+      .mockResolvedValueOnce({ ...paper, authorshipVerificationStatus: 'VERIFIED' });
+    vi.mocked(paperService.testUpdateNoVerify).mockResolvedValue({ paperId: 12, authorshipVerificationStatus: 'VERIFIED' });
+    const result = await publicationAdapter.verifyAuthorship('12', true);
+    expect(result.researcherVerificationStatus).toBe('VERIFIED');
+  });
+
+  it('throws when the verification response omits both id and paperId', async () => {
+    vi.mocked(paperService.getById).mockResolvedValueOnce(paper);
+    vi.mocked(paperService.testUpdateNoVerify).mockResolvedValue({ authorshipVerificationStatus: 'VERIFIED' });
+    await expect(publicationAdapter.verifyAuthorship('12', true)).rejects.toThrow(/did not identify the requested paper/i);
+  });
+
+  it('throws when the verification response carries the wrong paper identifier', async () => {
+    vi.mocked(paperService.getById).mockResolvedValueOnce(paper);
+    vi.mocked(paperService.testUpdateNoVerify).mockResolvedValue({ id: 999, authorshipVerificationStatus: 'VERIFIED' });
+    await expect(publicationAdapter.verifyAuthorship('12', true)).rejects.toThrow(/did not identify the requested paper/i);
+  });
+
+  it('honours the admin Accept decision even when the BE keeps the pending token', async () => {
+    // Live Swagger contract: `PaperUpdateRequest` is `additionalProperties:
+    // false` and does NOT list `authorshipVerificationStatus`. The BE
+    // therefore silently drops the verification fields the FE PUTs, and
+    // `getById` keeps returning whatever token the paper had before
+    // (commonly `PENDING_ADMIN_REVIEW` or `AWAITING_ADMIN_VERIFICATION`).
+    // The admin's manual decision is the authoritative signal — surface
+    // it on the returned paper so the UI badge flips to Verified/Rejected.
+    vi.mocked(paperService.getById)
+      .mockResolvedValueOnce(paper)
+      .mockResolvedValueOnce({ ...paper, authorshipVerificationStatus: 'AWAITING_ADMIN_VERIFICATION' });
+    vi.mocked(paperService.testUpdateNoVerify).mockResolvedValue({ id: 12, authorshipVerificationStatus: 'AWAITING_ADMIN_VERIFICATION' });
+    const result = await publicationAdapter.verifyAuthorship('12', true);
+    expect(result.researcherVerificationStatus).toBe('VERIFIED');
+  });
+
+  it('honours the admin Reject decision even when the BE keeps the pending token', async () => {
+    vi.mocked(paperService.getById)
+      .mockResolvedValueOnce(paper)
+      .mockResolvedValueOnce({ ...paper, authorshipVerificationStatus: 'AWAITING_ADMIN_VERIFICATION' });
+    vi.mocked(paperService.testUpdateNoVerify).mockResolvedValue({ id: 12, authorshipVerificationStatus: 'AWAITING_ADMIN_VERIFICATION' });
+    const result = await publicationAdapter.verifyAuthorship('12', false, 'ORCID does not match the listed author');
+    expect(result.researcherVerificationStatus).toBe('REJECTED');
+    expect(result.authorshipVerificationReason).toBe('ORCID does not match the listed author');
   });
 
   it('routes a manual rejection through the test endpoint with the supplied reason', async () => {

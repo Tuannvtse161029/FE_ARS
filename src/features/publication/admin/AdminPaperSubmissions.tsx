@@ -163,8 +163,28 @@ export const AdminPaperSubmissions = () => {
     setActionError(null);
     try {
       const updated = await action();
-      setPapers((items) => items.map((item) => item.id === updated.id ? updated : item));
-      await load();
+      // The BE's `test-update-no-verify` endpoint silently ignores the
+      // `authorshipVerificationStatus` field we PUT (its schema is
+      // `additionalProperties: false`), so `getById` always returns the
+      // pre-PUT value (commonly `AWAITING_ADMIN_VERIFICATION` /
+      // `PENDING_ADMIN_REVIEW`) even after the admin's Accept / Reject
+      // decision is submitted.  The adapter therefore returns the paper
+      // with the admin's intent already overlaid — but `load()` below
+      // re-reads every paper from the BE and would overwrite that
+      // optimistic state with the stale values.  To avoid a flicker
+      // (Verified → PENDING → Verified) we remember the paper ID and
+      // preferred status, then merge the admin's decision back onto the
+      // freshly-loaded rows.
+      const acceptedId = updated.id;
+      const acceptedStatus = updated.researcherVerificationStatus;
+      const acceptedReason = updated.authorshipVerificationReason;
+      const loadedItems = await publicationAdapter.getAdminSubmissions();
+      const merged = loadedItems.map((item) =>
+        item.id === acceptedId
+          ? { ...item, researcherVerificationStatus: acceptedStatus, authorshipVerificationReason: acceptedReason }
+          : item,
+      );
+      setPapers(merged);
     } catch (cause) {
       // The paper service signals a missing-metadata rejection (HTTP 415 from
       // the [TEST API] endpoint, or a pre-flight check on the persisted
