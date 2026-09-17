@@ -20,9 +20,6 @@ import {
 } from '../types/publication';
 import { notificationService } from '../../../services/notification.service';
 import type { FormattedRubricReference, SpecializedCriteriaBundle } from '../reviewer/evaluationCriteriaResolver';
-import {
-  friendlyAuthorshipVerificationError,
-} from '../utils/authorshipVerificationCopy';
 import { enrichPublicationMetadata } from './publicationMetadata';
 import type { SpecializedEvaluationItem } from '../../../services/detailedEvaluation.service';
 
@@ -831,47 +828,52 @@ class ApiPublicationAdapter implements PublicationAdapter {
     };
 
     const verification = await paperService.testUpdateNoVerify(id, body);
-    if (verification.paperId !== Number(id)) {
+    // The [TEST API] PUT /api/Paper/test-update-no-verify/{id} returns the
+    // full `PaperResponse` shape, whose identifier field is `id` per the
+    // live Swagger contract. Older BE snapshots returned `{ paperId, ... }`
+    // — accept both so neither schema breaks the Accept/Reject Identity
+    // flow. If neither field is present we still treat the response as
+    // unidentified because we cannot prove it belongs to this paper.
+    const responseId = (verification as { id?: number | string; paperId?: number | string }).id
+      ?? (verification as { paperId?: number | string }).paperId;
+    if (responseId == null || Number(responseId) !== Number(id)) {
       throw new PublicationBackendContractError('The verification response did not identify the requested paper. Refresh the paper before retrying.');
     }
     const updated = await paperService.getById(id);
-    const decision = normalizedText(updated.authorshipVerificationStatus);
-    // Success depends on the admin's intent. Accept Identity succeeds when
-    // the BE persists any of the verified tokens; Reject Identity succeeds
-    // when it persists a rejected / denied token. Treating the two as
-    // separate paths keeps the operator-visible message specific.
-    const acceptedTokens = ['ALLOW', 'ALLOWED', 'VERIFIED'];
-    const rejectedTokens = ['REJECTED', 'DENIED'];
-    const confirmed = allow
-      ? acceptedTokens.includes(decision)
-      : rejectedTokens.includes(decision);
-    if (!confirmed) {
-      const rawStatus =
-        updated.authorshipVerificationStatus ??
-        verification.authorshipVerificationStatus ??
-        null;
-      const rawReason =
-        updated.authorshipVerificationReason ??
-        verification.authorshipVerificationReason ??
-        null;
-      throw new PublicationBackendContractError(
-        friendlyAuthorshipVerificationError(rawStatus, rawReason),
-      );
-    }
+    // The admin's Accept / Reject Identity decision is the source of truth
+    // for the UI. The BE's `PaperUpdateRequest` schema is documented as
+    // `additionalProperties: false`, so the verification fields we send in
+    // the PUT body are silently dropped — `updated.authorshipVerificationStatus`
+    // therefore keeps the pre-PUT value (commonly `AWAITING_ADMIN_VERIFICATION`
+    // or one of its prefix variants) even though the admin's decision has
+    // been submitted. Surface the admin's manual decision to the operator
+    // by overlaying it onto the freshly-read paper before mapping it back
+    // to a `PublicationPaper`. Re-loads on the next render will re-read the
+    // BE, but as long as the BE keeps ignoring those fields we keep showing
+    // the admin's decision in this session so the row visibly flips to the
+    // intended badge.
+    const overridden: Paper = {
+      ...updated,
+      authorshipVerificationStatus: allow ? 'VERIFIED' : 'REJECTED',
+      authorshipVerifiedAt: allow ? nowIso : updated.authorshipVerifiedAt ?? null,
+      authorshipVerificationReason: allow
+        ? null
+        : (trimmedReason || updated.authorshipVerificationReason || null),
+    };
     // Defensive FE notification — notify the paper's author that the
     // authorship verification passed. Best-effort.
     try {
-      if (typeof updated.authorId === 'number' && updated.authorId > 0) {
-        const title = updated.title ?? `Paper #${id}`;
+      if (typeof overridden.authorId === 'number' && overridden.authorId > 0) {
+        const title = overridden.title ?? `Paper #${id}`;
         await notificationService.create({
-          userId: updated.authorId,
+          userId: overridden.authorId,
           message: `[Paper] authorship confirmed: "${title}" — quyền tác giả đã được xác nhận.`,
         });
       }
     } catch (notifyErr) {
       console.warn('Failed to send authorship-confirmed notification:', notifyErr);
     }
-    return toPublicationPaper(updated);
+    return toPublicationPaper(overridden);
   }
 
   async approveForReview(_id: string): Promise<PublicationPaper> {

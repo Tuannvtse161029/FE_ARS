@@ -654,39 +654,3 @@
   white-space: nowrap;
   opacity: 0.4;
 }
-
-/**
- * "Open full PDF" action — bright-red pill anchored beside the watermark
- * so reviewers can jump straight into a full-tab view without hunting for
- * the toolbar button. Re-enables pointer events on the anchor itself
- * because the parent overlay is `pointer-events: none`.
- */
-.protectedOpenFullBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 10px;
-  border: 1px solid var(--status-danger-text);
-  border-radius: var(--radius-md);
-  background: var(--status-danger-text);
-  color: #ffffff;
-  font-size: 11px;
-  font-weight: var(--font-weight-semibold);
-  font-family: var(--font-family-ui);
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  text-decoration: none;
-  cursor: pointer;
-  pointer-events: auto;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
-}
-
-.protectedOpenFullBtn:hover {
-  background: color-mix(in srgb, var(--status-danger-text) 85%, #ffffff);
-  border-color: color-mix(in srgb, var(--status-danger-text) 85%, #ffffff);
-}
-
-.protectedOpenFullBtn:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}

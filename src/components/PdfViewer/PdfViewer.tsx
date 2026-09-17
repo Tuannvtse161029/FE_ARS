@@ -613,7 +613,6 @@ export const PdfViewer = ({
   // so the copy is traceable without exposing researcher identity (double-blind).
   const renderProtectedOverlay = () => {
     if (!isProtected) return null;
-    const fullPdfUrl = pdfObjectUrlRef.current;
     return (
       <div
         className={styles.protectedOverlay}
@@ -626,22 +625,6 @@ export const PdfViewer = ({
           <span className={styles.protectedWatermark} aria-label={t('pdfViewer.protected.reviewCopyAria', 'Review copy identifier')}>
             {reviewCopyId}
           </span>
-        ) : null}
-        {fullPdfUrl ? (
-          <a
-            href={fullPdfUrl}
-            target="_blank"
-            rel="noopener,noreferrer"
-            className={styles.protectedOpenFullBtn}
-            data-testid="pdf-protected-open-full"
-            aria-label={t('pdfViewer.protected.openFullAria', 'Open the full manuscript in a new tab for a wider view')}
-            // Re-enable pointer events on the anchor itself, since the
-            // overlay is non-interactive so the watermark can't block clicks.
-            onClick={(e) => e.stopPropagation()}
-          >
-            <ExternalLink size={12} />
-            {t('pdfViewer.protected.openFull', 'Open full PDF')}
-          </a>
         ) : null}
       </div>
     );
@@ -734,26 +717,42 @@ export const PdfViewer = ({
               not treat the response as a forced "save as" download — the
               user already sees the PDF inline and just wants a new tab.
               Hidden in protected-review mode. */}
-          {totalPages > 0 && !isProtected && !loading && !error && pdfObjectUrlRef.current ? (
+          {totalPages > 0 && !loading && !error && pdfObjectUrlRef.current ? (
             <div className={styles.toolbarActions}>
-              <button
-                type="button"
-                className={styles.toolbarOpenBtn}
-                onClick={openResolvedInNewTab}
-                aria-label={t('pdfViewer.openInNewTabAria', 'Open PDF in new tab')}
-                title={t('pdfViewer.openInNewTab', 'Open in new tab')}
-                data-testid="pdf-open-newtab-btn"
-              >
-                <ExternalLink size={14} /> {t('pdfViewer.openInNewTab', 'Open in new tab')}
-              </button>
-              <a
-                href={pdfObjectUrlRef.current ?? undefined}
-                download={url instanceof File ? url.name : 'manuscript.pdf'}
-                className={styles.toolbarOpenBtn}
-                data-testid="pdf-download-link"
-              >
-                <Download size={14} /> {t('pdfViewer.download', 'Download PDF')}
-              </a>
+              {isProtected ? (
+                <a
+                  href={pdfObjectUrlRef.current}
+                  target="_blank"
+                  rel="noopener,noreferrer"
+                  className={styles.toolbarOpenBtn}
+                  data-testid="pdf-open-newtab-btn"
+                  aria-label={t('pdfViewer.protected.openFullAria', 'Open the full manuscript in a new tab for a wider view')}
+                  title={t('pdfViewer.protected.openFull', 'Open full PDF')}
+                >
+                  <ExternalLink size={14} /> {t('pdfViewer.protected.openFull', 'Open full PDF')}
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  className={styles.toolbarOpenBtn}
+                  onClick={openResolvedInNewTab}
+                  aria-label={t('pdfViewer.openInNewTabAria', 'Open PDF in new tab')}
+                  title={t('pdfViewer.openInNewTab', 'Open in new tab')}
+                  data-testid="pdf-open-newtab-btn"
+                >
+                  <ExternalLink size={14} /> {t('pdfViewer.openInNewTab', 'Open in new tab')}
+                </button>
+              )}
+              {!isProtected ? (
+                <a
+                  href={pdfObjectUrlRef.current ?? undefined}
+                  download={url instanceof File ? url.name : 'manuscript.pdf'}
+                  className={styles.toolbarOpenBtn}
+                  data-testid="pdf-download-link"
+                >
+                  <Download size={14} /> {t('pdfViewer.download', 'Download PDF')}
+                </a>
+              ) : null}
             </div>
           ) : null}
         </div>

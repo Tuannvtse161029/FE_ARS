@@ -187,3 +187,38 @@ Return the final Swagger operation, a controlled paper ID, sanitized before/afte
 verification fields, separate-session GET results, and focused backend test
 results. This ticket is complete only when the API persists the decision and the
 Admin frontend can observe it through normal reads.
+
+## Frontend Investigation Update (2026-09-17)
+
+The frontend has been wired against this ticket. Live behavior on the production
+Swagger:
+
+- `PUT /api/Paper/test-update-no-verify/{id}` accepts the FE PUT (returns HTTP 200
+  with `id` / `paperId` populated) but the persisted `AuthorshipVerificationStatus`
+  is unchanged on subsequent `GET /api/Paper/{id}`. The status is commonly
+  `AWAITING_ADMIN_VERIFICATION` or `PENDING_ADMIN_REVIEW`.
+- `PaperUpdateRequest` schema is `additionalProperties: false` and does NOT list
+  `authorshipVerificationStatus`, `authorshipVerifiedAt`, or
+  `authorshipVerificationReason` as accepted fields. The test endpoint's summary
+  documents "Không reset verification status khi sửa metadata" which we read as
+  "does not reset", but in practice the BE also does not accept new values either.
+- `POST /api/Paper/{id}/verify-authorship` uses the creator's verified ORCID for
+  the OpenAlex lookup. It is not an admin override mechanism.
+
+What the frontend currently does (FE branch phuongpdse140481_FE):
+
+1. The admin clicks Accept / Reject on `AdminPaperSubmissions.tsx`.
+2. `verifyAuthorship()` sends a PUT to `/api/Paper/test-update-no-verify/{id}`
+   with the verification fields included (the FE honors the documented intent
+   even though the BE schema does not).
+3. After the PUT the adapter overlays the admin's decision onto the freshly-read
+   `Paper` object before mapping to `PublicationPaper`, so the in-session UI
+   shows Verified / Rejected immediately.
+4. `AdminPaperSubmissions.runAction` fetches the fresh list and merges the admin's
+   decision onto the matching paper so the row no longer flickers Pending.
+5. On a full page refresh, `GET /api/Paper/{id}` returns the original pending
+   token, so the row reverts to PENDING. No FE-side cache is used (per the
+   ticket's "no browser-local flag" rule).
+
+Until the dedicated `PUT /api/Paper/{paperId}/authorship-decision` endpoint
+proposed above is shipped, the verified badge will not survive a refresh.
