@@ -94,20 +94,35 @@ export function useSubmitPhasedReport(): UseSubmitPhasedReportState {
       // ----- Phase 1: Firebase upload -----
       let pdfUrl = postUploadFailure?.pdfUrl ?? null;
       if (!pdfUrl) {
-        await upload.uploadPdf(file);
+        // `uploadPdf` returns the download URL on success and `null` on
+        // failure (with `upload.error` populated). We MUST use the
+        // returned value rather than `upload.pdfUrl` because:
+        //   - `upload.pdfUrl` is React state captured at the render where
+        //     this `submit` callback was last memoized.
+        //   - `setPdfUrl(url)` inside `uploadPdf` schedules a re-render,
+        //     but it has NOT yet flushed by the time `uploadPdf` resolves.
+        //   - Reading `upload.pdfUrl` here therefore sees the stale
+        //     pre-upload value (null), the fallback error fires
+        //     ("Upload completed but no PDF URL was returned."), and the
+        //     BE POST receives `reportFileUrl: undefined`. That was the
+        //     exact failure the user reported — the upload completed but
+        //     the submission failed because the hook fell through to the
+        //     "no pdfUrl" branch instead of using the URL `uploadPdf`
+        //     already gave us.
+        const uploadedUrl = await upload.uploadPdf(file);
         if (upload.error) {
           setSubmitError(new Error(upload.error));
           inFlightRef.current = false;
           return null;
         }
-        if (!upload.pdfUrl) {
+        if (!uploadedUrl) {
           setSubmitError(
             new Error('Upload completed but no PDF URL was returned.'),
           );
           inFlightRef.current = false;
           return null;
         }
-        pdfUrl = upload.pdfUrl;
+        pdfUrl = uploadedUrl;
       }
 
       // ----- Phase 2: BE POST -----

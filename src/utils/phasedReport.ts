@@ -150,7 +150,37 @@ export const derivePhasedReportBadge = (
   ) {
     return 'Passed';
   }
-  if (status === 'submitted' || status === 'pending_review') {
+  // Bug fix (September 2026): the `/api/PhasedReport/submit` BE endpoint
+  // auto-assigns timeliness states `OnTime` or `Overdue` based on the
+  // configured `deadlineAt` (see swagger §
+  // "Trưởng nhóm (Leader) nộp bài báo cáo vào giai đoạn Phase Report
+  // (Tự động kiểm tra Deadline & gán trạng thái OnTime / Overdue)").
+  // Previously this helper only recognised `submitted` / `pending_review`
+  // as the "submitted" sentinel, so a freshly submitted milestone came
+  // back as `status: 'OnTime'` from `/api/PhasedReport/group/{groupId}`
+  // and the badge logic fell through to `Pending` — which the StatusBadge
+  // then rendered as the grey "WAITING" pill. The lecturer-side
+  // `researchStatus.ts` already maps `OnTime → submitted` for the
+  // milestone summary count; this helper now does the same for the
+  // row-level badge so the graduate student sees the yellow "Submitted"
+  // pill after a successful upload.
+  //
+  // Distinguishing the two timeliness variants:
+  //   - `OnTime`             → submitted before the deadline  → "Submitted".
+  //   - `Overdue` + submittedAt → submitted after the deadline   → "Submitted"
+  //                              (still considered submitted, the late flag
+  //                              is informational only).
+  //   - `Overdue` + no submission → past-deadline, not yet submitted
+  //                                 → falls through to the Overdue/Pending
+  //                                 branches below (unchanged behaviour).
+  if (status === 'submitted' || status === 'pending_review' || status === 'ontime') {
+    return 'Submitted';
+  }
+  if (
+    status === 'overdue' &&
+    typeof report.submittedAt === 'string' &&
+    report.submittedAt.length > 0
+  ) {
     return 'Submitted';
   }
   if (derivePhasedReportOverdue(report, now)) {
@@ -180,9 +210,15 @@ export const derivePhasedReportDisplay = (
       // Don't override a Submitted/Passed/Rejected row with Overdue just
       // because of a stale BE payload — only flip a still-pending row.
       const status = toLower(report.status);
-      if (
+      const isSubmittedLike =
         status === 'submitted' ||
         status === 'pending_review' ||
+        status === 'ontime' ||
+        (status === 'overdue' &&
+          typeof report.submittedAt === 'string' &&
+          report.submittedAt.length > 0);
+      if (
+        isSubmittedLike ||
         status === 'evaluated' ||
         status === 'passed' ||
         status === 'approved' ||

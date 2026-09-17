@@ -228,6 +228,7 @@
 
 .statusPassed { background: var(--ars-success-bg); border-color: var(--ars-success); color: var(--ars-success); }
 .statusOnTime { background: var(--ars-info-bg); border-color: var(--ars-info); color: var(--ars-info); }
+.statusSubmitted { background: var(--ars-warning-bg); border-color: var(--ars-warning); color: var(--ars-warning); }
 .statusOverdue,
 .statusRejected { background: var(--ars-error-bg); border-color: var(--ars-error); color: var(--ars-error); }
 .statusPending { background: var(--status-draft-surface); border-color: var(--status-draft-text); color: var(--status-draft-text); }

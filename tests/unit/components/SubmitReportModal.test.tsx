@@ -158,6 +158,7 @@ describe('<SubmitReportModal>', () => {
       pdfUrlSetterRef.current?.(
         'https://fb.storage/research-groups/7/phased-reports/x.pdf',
       );
+      return 'https://fb.storage/research-groups/7/phased-reports/x.pdf';
     });
     submitPhasedReportMock.mockResolvedValueOnce({
       id: 100,
@@ -219,6 +220,7 @@ describe('<SubmitReportModal>', () => {
     });
     uploadPdfMock.mockImplementation(async () => {
       pdfUrlSetterRef.current?.('https://fb/x.pdf');
+      return 'https://fb/x.pdf';
     });
 
     renderModal();
@@ -242,6 +244,7 @@ describe('<SubmitReportModal>', () => {
     // First attempt: Firebase succeeds, BE rejects.
     uploadPdfMock.mockImplementation(async () => {
       pdfUrlSetterRef.current?.('https://fb/x.pdf');
+      return 'https://fb/x.pdf';
     });
     submitPhasedReportMock
       .mockRejectedValueOnce(new Error('Server timeout'))
@@ -292,6 +295,7 @@ describe('<SubmitReportModal>', () => {
     );
     uploadPdfMock.mockImplementation(async () => {
       pdfUrlSetterRef.current?.('https://fb/x.pdf');
+      return 'https://fb/x.pdf';
     });
 
     renderModal();
