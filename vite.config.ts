@@ -2,8 +2,35 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
 
+/**
+ * Workaround for `@microsoft/signalr` shipping its ESM bundle with
+ * `/*#__PURE__*\/` placed BEFORE the `function` keyword instead of
+ * immediately before the function name. Rollup rejects the comment
+ * position and warns, but the warning is harmless — this plugin rewrites
+ * the malformed comments to the correct position so the warning disappears.
+ *
+ * Pattern to fix:  `/*#__PURE__*\/ function name()` (wrong)
+ * Result:          `function /*#__PURE__*\/ name()` (correct)
+ *
+ * NOTE: `renderChunk` alone is NOT sufficient — Rollup emits the warning
+ * during its internal bundle/transform phase before chunk rendering, so
+ * we need `transform` to catch every module individually.
+ */
+const fixPureCommentPosition: import('rollup').PluginModule = {
+  name: 'fix-pure-comment-position',
+  transform(code) {
+    return {
+      code: code.replace(
+        /\/\* *#__PURE__\*\/\s+function\s+/g,
+        'function /*#__PURE__*/ ',
+      ),
+      map: null,
+    }
+  },
+}
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), fixPureCommentPosition],
   server: {
     port: 3000,
     // Be explicit: never silently shift to port 3001. If 3000 is taken
@@ -131,7 +158,8 @@ export default defineConfig({
       'zustand',
       // Sub-path used by src/store/authSlice.ts — without this Vite
       // discovers `zustand/middleware` at request time and triggers a
-      // full reload (see dev-out.log lines 1:27:49 PM).
+      // full reload (see dev-out.log "✨ optimized dependencies changed.
+      // reloading" lines).
       'zustand/middleware',
       'axios',
       'react-hook-form',
@@ -181,30 +209,30 @@ export default defineConfig({
               id.includes('scheduler') ||
               id.includes('use-sync-external-store')
             ) {
-              return 'vendor-react';
+              return 'vendor-react'
             }
             if (id.includes('firebase')) {
-              return 'vendor-firebase';
+              return 'vendor-firebase'
             }
             if (id.includes('pdfjs-dist')) {
-              return 'vendor-pdfjs';
+              return 'vendor-pdfjs'
             }
             if (id.includes('react-hook-form') || id.includes('@hookform') || id.includes('yup')) {
-              return 'vendor-forms';
+              return 'vendor-forms'
             }
             if (id.includes('axios')) {
-              return 'vendor-axios';
+              return 'vendor-axios'
             }
             if (id.includes('zustand')) {
-              return 'vendor-state';
+              return 'vendor-state'
             }
             if (id.includes('recharts') || id.includes('d3-')) {
-              return 'vendor-charts';
+              return 'vendor-charts'
             }
             if (id.includes('lucide-react') || id.includes('@heroicons') || id.includes('react-icons')) {
-              return 'vendor-icons';
+              return 'vendor-icons'
             }
-            return 'vendor-misc';
+            return 'vendor-misc'
           }
         },
       },
