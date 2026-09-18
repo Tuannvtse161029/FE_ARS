@@ -14,17 +14,22 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useNotifications } from '../../../src/hooks/useNotifications';
 import { notificationService } from '../../../src/services/notification.service';
+import { signalrService } from '../../../src/services/signalr.service';
 
-vi.mock('../../../src/services/notification.service', () => ({
-  notificationService: {
-    getAll: vi.fn(),
-    getById: vi.fn(),
-    markRead: vi.fn(),
-    markAllRead: vi.fn(),
-    delete: vi.fn(),
-    create: vi.fn(),
-  },
-}));
+vi.mock('../../../src/services/notification.service', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/services/notification.service')>();
+  return {
+    ...actual,
+    notificationService: {
+      getAll: vi.fn(),
+      getById: vi.fn(),
+      markRead: vi.fn(),
+      markAllRead: vi.fn(),
+      delete: vi.fn(),
+      create: vi.fn(),
+    },
+  };
+});
 
 const mocked = notificationService as unknown as {
   getAll: ReturnType<typeof vi.fn>;
@@ -261,6 +266,35 @@ describe('useNotifications', () => {
 
       expect(mocked.getAll).toHaveBeenCalledTimes(2);
       if (secondResolver) secondResolver([]);
+    });
+  });
+
+  describe('real-time SignalR integration', () => {
+    it('prepends incoming real-time notification and increments unreadCount by +1', async () => {
+      mocked.getAll.mockResolvedValueOnce([
+        { id: 1, userId: 7, message: 'Existing message', isRead: false },
+      ]);
+
+      const { result } = renderHook(() => useNotifications(7));
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+      expect(result.current.notifications).toHaveLength(1);
+      expect(result.current.unreadCount).toBe(1);
+
+      // Trigger incoming real-time notification
+      act(() => {
+        (signalrService as unknown as { handleReceiveNotification: (data: unknown) => void })
+          .handleReceiveNotification({
+            id: 2,
+            userId: 7,
+            message: '[Paper] status changed',
+            isRead: false,
+          });
+      });
+
+      expect(result.current.notifications).toHaveLength(2);
+      expect(result.current.notifications[0].id).toBe(2);
+      expect(result.current.unreadCount).toBe(2);
     });
   });
 });

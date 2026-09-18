@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Inbox, Plus, X } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
+import { signalrService } from '../../../services/signalr.service';
 import { useTableSort } from '../../../hooks/useTableSort';
 import { PageHeader } from '../../../components/PageHeader';
 import { EmptyState } from '../../../components/EmptyState';
@@ -13,6 +14,7 @@ import { SortableHeader } from '../../../components/table/SortableHeader';
 import {
   paperTypeLabel,
   type PublicationPaper,
+  type PublicationStatus,
 } from '../types/publication';
 import { formatDisplayDate } from '../../../utils/datetime';
 import { useT } from '../../../i18n/I18nContext';
@@ -76,25 +78,54 @@ export const ResearcherSubmissions = () => {
   // submissions surface at the top. The user can override per column.
   const sort = useTableSort<PublicationPaper, SortColumn>('submittedAt', 'desc');
 
-  useEffect(() => {
-    let cancelled = false;
+  const fetchPapers = useCallback(() => {
     setError(null);
     publicationAdapter
       .getResearcherSubmissions()
       .then((items) => {
-        if (cancelled) return;
         setPapers(items);
       })
       .catch(() => {
-        if (!cancelled) setError(t('researcher.submissions.loadError.body'));
+        setError(t('researcher.submissions.loadError.body'));
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        setLoading(false);
       });
-    return () => {
-      cancelled = true;
-    };
   }, [t]);
+
+  useEffect(() => {
+    fetchPapers();
+  }, [fetchPapers]);
+
+  // Real-time paper status updates via SignalR
+  useEffect(() => {
+    const unsub = signalrService.onPaperStatusUpdated((data: unknown) => {
+      try {
+        if (data && typeof data === 'object') {
+          const rawId = (data as { paperId?: unknown; id?: unknown }).paperId ?? (data as { id?: unknown }).id;
+          const nextStatus = (data as { status?: unknown }).status;
+          if (rawId !== undefined && typeof nextStatus === 'string') {
+            setPapers((prev) =>
+              prev.map((p) => {
+                if (String(p.id) === String(rawId)) {
+                  return { ...p, status: nextStatus as PublicationStatus };
+                }
+                return p;
+              }),
+            );
+          }
+        }
+      } catch (err) {
+        console.error('[ResearcherSubmissions] Failed to apply real-time paper update:', err);
+      }
+      // Trigger background refetch to synchronize all associated metadata
+      fetchPapers();
+    });
+
+    return () => {
+      unsub();
+    };
+  }, [fetchPapers]);
 
   // Papers that need immediate researcher action — draft, revision, or
   // authorship verification. Shown in the attention banner.

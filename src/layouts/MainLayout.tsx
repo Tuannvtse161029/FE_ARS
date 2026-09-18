@@ -19,6 +19,7 @@ import { PublicationToastViewport } from '../features/publication/components/Pub
 import { useShortcuts } from '../hooks/useShortcuts';
 import { useThemeToggle } from '../hooks/useThemeToggle';
 import { useI18n, useLocale } from '../i18n/I18nContext';
+import { useSignalR } from '../hooks/useSignalR';
 import styles from './MainLayout.module.css';
 import arsLogo from '../assets/images/ARS_Logo.png';
 
@@ -301,6 +302,7 @@ const isNavItemActive = (item: NavItem, pathname: string): boolean => {
 };
 
 export const MainLayout = () => {
+  useSignalR();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();

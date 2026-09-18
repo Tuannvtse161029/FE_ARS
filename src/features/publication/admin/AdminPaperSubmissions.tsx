@@ -24,7 +24,8 @@ import { OpenAlexBrandLogo } from '../../../components/openalex/OpenAlexBrandLog
 import { SkeletonRow } from '../../../components/SkeletonRow';
 import { Button } from '../../../components/Button/Button';
 import { DEFAULT_PAGE_SIZE } from '../../../utils/tableConstants';
-import { isAuthorshipAllowed, paperTypeLabel, type PublicationPaper } from '../types/publication';
+import { isAuthorshipAllowed, paperTypeLabel, type PublicationPaper, type PublicationStatus } from '../types/publication';
+import { signalrService } from '../../../services/signalr.service';
 import {
   doiHref,
   publicReviewerName,
@@ -233,6 +234,35 @@ export const AdminPaperSubmissions = () => {
   useEffect(() => {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Real-time paper status updates via SignalR
+  useEffect(() => {
+    const unsub = signalrService.onPaperStatusUpdated((data: unknown) => {
+      try {
+        if (data && typeof data === 'object') {
+          const rawId = (data as { paperId?: unknown; id?: unknown }).paperId ?? (data as { id?: unknown }).id;
+          const nextStatus = (data as { status?: unknown }).status;
+          if (rawId !== undefined && typeof nextStatus === 'string') {
+            setPapers((prev) =>
+              prev.map((p) => {
+                if (String(p.id) === String(rawId)) {
+                  return { ...p, status: nextStatus as PublicationStatus };
+                }
+                return p;
+              }),
+            );
+          }
+        }
+      } catch (err) {
+        console.error('[AdminPaperSubmissions] Failed to apply real-time paper update:', err);
+      }
+      void load();
+    });
+
+    return () => {
+      unsub();
+    };
   }, []);
 
   // Filter papers based on search and verification tab
