@@ -27,6 +27,47 @@ export interface SubFieldCreateRequest {
   description?: string | null;
 }
 
+// ── GradingRubric ─────────────────────────────────────────────────────────────
+/**
+ * A single scoring criterion within a SubField's GradingRubric.
+ * The `code` field is the stable identifier used by Reviewer evaluations —
+ * changing it will break existing DetailedEvaluation records.
+ */
+export interface GradingRubricCriterion {
+  code: string;
+  title: string;
+  description: string;
+  maxScore: number;
+  order: number;
+  standardReferences: string[];
+}
+
+/** SubField with rubric data as returned by GET /api/SubField and GET /api/SubField/{id}. */
+export interface SubFieldWithRubric {
+  id?: number;
+  subFieldId: number;
+  majorFieldId?: number | null;
+  name: string;
+  majorFieldName: string;
+  description?: string | null;
+  gradingRubric: GradingRubricCriterion[];
+}
+
+/** Request body for PUT /api/SubField/{id}. */
+export interface SubFieldUpdateRequest {
+  majorFieldId?: number | null;
+  name?: string | null;
+  description?: string | null;
+  gradingRubric?: GradingRubricCriterion[] | null;
+}
+
+/** Request body for PATCH /api/SubField/{id}/rubric. */
+export interface PatchRubricRequest {
+  gradingRubric: GradingRubricCriterion[];
+}
+
+
+
 // ── Follower ─────────────────────────────────────────────────────────────────
 export interface Follower {
   id?: number;

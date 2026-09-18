@@ -7,6 +7,7 @@
 - [What is ARS?](#what-is-ars)
 - [Repository Scope](#repository-scope)
 - [Tech Stack](#tech-stack)
+- [Frontend Design & Localization Rule](#frontend-design--localization-rule)
 - [Quick Start](#quick-start)
 - [Prerequisites](#prerequisites)
 - [Environment Variables](#environment-variables)
@@ -30,7 +31,7 @@
 
 ## What is ARS?
 
-The **Academic Research Sharing Platform** is a capstone-grade academic collaboration tool that connects five user roles — **System Admins**, **Lecturers**, **Researchers**, **Reviewers**, and **Graduate Students** — around the lifecycle of a research paper: from manuscript submission, through peer review, to a defended seminar and follow-up research group work.
+The **Academic Research Sharing Platform** is a capstone-grade academic collaboration tool that connects five user roles — **System Admins**, **Lecturers**, **Researchers**, **Reviewers**, and **Graduate Students** in a shared academic workflow. It supports paper discovery, research collaboration, review lifecycle management, seminar coordination, role switching, and community moderation across a single production-grade frontend shell.
 
 This repository hosts the **frontend web client** built with React, TypeScript, and Vite. It talks to a separate .NET Core REST backend (MySQL + Firebase Cloud Storage) over JSON.
 
@@ -71,6 +72,59 @@ If you find yourself reaching for one of the above, double-check before you do.
 
 ---
 
+## Frontend Design & Localization Rule
+
+This rule is mandatory for every new or modified UI component, page, modal, notification, empty state, and form in the ARS frontend.
+
+Before changing UI code, inspect the existing project theme tokens, typography styles, localization setup, and installed dependencies. Reuse them; do not create a parallel design system.
+
+### 1. Theme and color system
+
+- ARS uses a yellow, white, and black/charcoal visual identity.
+- Use the project’s existing CSS variables, tokens, shared components, and approved color variants.
+- Do not hardcode arbitrary hex colors when an existing token or component variant exists.
+- Do not introduce unrelated palettes, gradients, neon colors, or inconsistent button colors.
+- Preserve accessible contrast in all normal, hover, focus-visible, active, disabled, loading, light-mode, and dark-mode states.
+- For dark/yellow filled buttons, ensure text and icons remain readable; use the project-approved white foreground when appropriate.
+
+### 2. Icons
+
+- Use the existing `lucide-react` icon library already implemented in the project.
+- Reuse existing shared icon wrappers and icon conventions where available.
+- Do not use emoji, Unicode symbols, random SVG files, Font Awesome, Material Icons, image icons, or a new icon library unless the project owner explicitly approves it.
+- Use icons that accurately describe the action and include accessible labels/tooltips where required.
+
+### 3. Language and localization
+
+- Every application-controlled user-facing string must match the currently selected system language.
+- When the locale is English, do not show Vietnamese labels, placeholders, validation messages, button text, status labels, modal text, empty states, success/error toasts, or help text.
+- When the locale is Vietnamese, use Vietnamese translations consistently.
+- Use the project’s translation mechanism and translation keys; do not hardcode new English or Vietnamese strings directly inside components.
+- Keep user-generated content, paper titles, abstracts, names, uploaded documents, and external source metadata in their original language.
+- After modifying a page, check the full screen for mixed-language UI text.
+
+### 4. Typography
+
+- Use the project’s existing font stack and typography tokens, including Roboto and any established editorial-heading font.
+- Do not introduce a new web font, inline `font-family`, or unrelated typography style without approval.
+- Reuse shared text, heading, label, table, button, and form styles.
+- Keep font size, weight, line height, and spacing consistent with nearby ARS screens.
+
+### 5. Required completion check
+
+Before declaring UI work complete:
+
+1. Confirm colors use existing ARS theme tokens/components.
+2. Confirm all icons come from `lucide-react`.
+3. Test the page in English and Vietnamese and remove mixed-language interface text.
+4. Confirm typography uses existing project styles.
+5. Check hover/focus/disabled states and responsive layout.
+6. Report any missing theme token, icon, translation key, or font rule instead of inventing a new pattern.
+
+> If an existing screen violates this rule, preserve the rule for all new work and flag the inconsistency for a separate, scoped cleanup task.
+
+---
+
 ## Quick Start
 
 ```bash
@@ -102,7 +156,7 @@ You will need a reachable backend (or a local mock). The default `VITE_API_BASE_
 
 ## Environment Variables
 
-All env vars are **public** values consumed at build time via `import.meta.env.VITE_*`. No real secrets should ever be committed — the `.env.example` file documents every key with empty placeholders.
+All env vars are **public** values consumed at build time via `import.meta.env.VITE_*`. No real secrets should ever be committed — the `.env.example` file documents every key with empty placeholders; fill in local overrides in `.env.local`.
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
@@ -115,7 +169,7 @@ All env vars are **public** values consumed at build time via `import.meta.env.V
 | `VITE_FIREBASE_APP_ID` | ✅ | Firebase app id |
 | `VITE_GOOGLE_CLIENT_ID` | ⚠️ | Google OAuth (only if Google sign-in is enabled) |
 
-> **Never** commit `.env.local`, `.env.*.local`, `appsettings.Development.json`, or any file containing real credentials. See [SECURITY](docs/local-only/SECURITY.md) (if present locally) for the credential-handling checklist.
+> **Never** commit `.env.local`, `.env.*.local`, `appsettings.Development.json`, or any file containing real credentials. See [SECURITY](docs/local-only/SECURITY.md) (if present locally) for the local-only security guidance.
 
 ---
 
@@ -223,115 +277,11 @@ src/
 ├── styles/
 ├── types/
 ├── utils/
-# ARS Platform — Frontend
-
-> Academic Research Sharing (ARS) — the web client for managing research papers, peer reviews, seminars, research groups, and student supervision in a multi-role academic environment.
-
-[![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![Vite](https://img.shields.io/badge/Vite-6-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev)
-[![License](https://img.shields.io/badge/License-Proprietary-orange?style=flat-square)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-Active-success?style=flat-square)]()
-
----
-
-## Table of Contents
-
-<!-- toc -->
-
-- [What is ARS?](#what-is-ars)
-- [Repository Scope](#repository-scope)
-- [Tech Stack](#tech-stack)
-- [Quick Start](#quick-start)
-- [Prerequisites](#prerequisites)
-- [Environment Variables](#environment-variables)
-- [Available Scripts](#available-scripts)
-- [Project Structure](#project-structure)
-- [Barrel Files](#barrel-files)
-- [Feature Surfaces by Role](#feature-surfaces-by-role)
-- [Internationalization](#internationalization)
-- [API Reference](#api-reference)
-- [Project Integration](#project-integration)
-- [API integration surface](#api-integration-surface)
-- [Service layer](#service-layer)
-- [Internationalization](#internationalization-1)
-- [Third-party libraries](#third-party-libraries)
-- [Recent incident reports](#recent-incident-reports)
-- [Testing](#testing)
-- [Contributing](#contributing)
-- [License](#license)
-- [Related Repositories](#related-repositories)
-
-<!-- tocstop -->
-
----
-
-## What is ARS?
-
-The **Academic Research Sharing Platform** is a capstone-grade academic collaboration tool that connects five user roles — **System Admins**, **Lecturers**, **Researchers**, **Reviewers**, and **Graduate Students** — around the lifecycle of a research paper: from manuscript submission, through peer review, to a defended seminar and follow-up research group work.
-
-This repository hosts the **frontend web client** built with React, TypeScript, and Vite. It talks to a separate .NET Core REST backend (MySQL + Firebase Cloud Storage) over JSON.
-
----
-
-## Repository Scope
-
-This repo is the **frontend only**. We deliberately keep the following out of scope — they live in separate repos or are owned by the backend team:
-
-- Database schema, migrations, and ORM code
-- ASP.NET Core controllers, business logic, JWT issuance
-- Firebase Admin SDK (this client uploads PDFs to Storage via the public web SDK)
-- CI / CD pipelines, Dockerfiles, server infra
-- API contract definitions (we **consume** the Swagger contract — we do not author it)
-
-If you find yourself reaching for one of the above, double-check before you do.
-
----
-
-## Tech Stack
-
-| Concern | Choice |
-| --- | --- |
-| UI framework | React 18 |
-| Language | TypeScript 5.6 (strict) |
-| Build tool | Vite 6 |
-| Routing | React Router DOM 7 |
-| State management | Zustand |
-| Forms | React Hook Form + Yup |
-| HTTP | Axios |
-| PDF rendering | PDF.js, pdf-lib |
-| File storage | Firebase Cloud Storage (browser SDK) |
-| Charts | Recharts |
-| Icons | Lucide React |
-| Styling | CSS Modules (no global utility framework) |
-| Unit tests | Vitest + Testing Library |
-| E2E tests | Playwright |
-
----
-
-## Quick Start
-
-```bash
-# 1. Clone
-git clone <repository-url>
-cd ARS_FE
-
-# 2. Install dependencies
-npm install
-
-# 3. Configure environment (see Environment Variables below)
-cp .env.example .env.local
-# …then edit .env.local with your local values
-
-# 4. Start the dev server
-npm run dev
-
-# 5. Visit the printed URL (default: http://localhost:3000)
 ```
 
-You will need a reachable backend (or a local mock). The default `VITE_API_BASE_URL` points at the public Swagger host — see [API Reference](#api-reference).
+---
 
-### Barrel Files
+## Barrel Files
 
 The following folders maintain index barrel files for clean re-exports:
 
@@ -361,7 +311,7 @@ The following folders maintain index barrel files for clean re-exports:
 | Role | Highlights |
 | --- | --- |
 | **Admin** | User moderation, payout clearance, audit log CSV export, accounts management, content reports |
-| **Lecturer** | Seminar scheduling with Google Meet generation, research group supervision, topic + phase planning, material library, shared materials with other lecturers, peer review of phased reports |
+| **Lecturer** | Seminar scheduling with Google Meet generation, research group supervision, topic + phase planning, material library, shared materials with other lecturers, peer review of phased research workflow |
 | **Researcher** | Manuscript submission, revision tracking, status pipeline |
 | **Reviewer** | Peer review desk, DOI/PDF upload, feedback composer, wallet + withdrawals |
 | **Graduate Student** | Phased report submission, research group access |
@@ -376,7 +326,7 @@ The common shell includes:
 
 ## Internationalization
 
-Two dictionaries live in `src/i18n/dictionaries/` — `vi.ts` and `en.ts`. Each one is a separate Vite chunk, lazy-loaded on demand so the entry bundle never carries both at once (English is the default and is preloaded; Vietnamese is fetched the first time the user picks it). The provider lives in `src/i18n/I18nContext.tsx` and keeps both dictionaries in memory once loaded. Use the `useI18n()` hook:
+Two dictionaries live in `src/i18n/dictionaries/` — `vi.ts` and `en.ts`. Each one is a separate Vite chunk, lazy-loaded on demand so the entry bundle never carries both at once (English is the default to keep the initial render lightweight while Vietnamese can be loaded on demand).
 
 ```tsx
 import { useI18n } from '@/i18n/I18nContext';
@@ -397,7 +347,7 @@ The backend is documented via Swagger:
 
 **<https://arsplatform.onrender.com/swagger/index.html>**
 
-Always cross-check the database schema in `docs/local-only/erd-schema-reference.md` (kept out of git) before assuming an endpoint payload is final. When Swagger and the DB diverge, **flag it** in your PR and ask the backend team.
+Always cross-check the database schema in `docs/local-only/erd-schema-reference.md` (kept out of git) before assuming an endpoint payload is final. When Swagger and the DB diverge, **flag it** in the issue or PR and confirm the frontend contract before wiring a screen to the API.
 
 Authentication is JWT-based. Tokens are stored in `sessionStorage` by default (cleared on tab close); if the user ticks **Remember Me**, they are persisted to `localStorage`. Logout clears both.
 
@@ -503,8 +453,8 @@ Each entry below is a live API client wrapper in `src/services/`:
 
 ### Recent incident reports
 
-- [LECTURER_RESEARCH_WORKFLOW_COMPLETION_REPORT.md](docs\LECTURER_RESEARCH_WORKFLOW_COMPLETION_REPORT.md)
-- [PUBLICATION_MAIN_FLOW_INCIDENT_REPORT.md](docs\PUBLICATION_MAIN_FLOW_INCIDENT_REPORT.md)
+- [LECTURER_RESEARCH_WORKFLOW_COMPLETION_REPORT.md](docs/LECTURER_RESEARCH_WORKFLOW_COMPLETION_REPORT.md)
+- [PUBLICATION_MAIN_FLOW_INCIDENT_REPORT.md](docs/PUBLICATION_MAIN_FLOW_INCIDENT_REPORT.md)
 
 <!-- INTEGRATIONS:END -->
 

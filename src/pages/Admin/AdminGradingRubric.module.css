@@ -1,0 +1,197 @@
+/**
+ * AdminGradingRubric — ARS Research Constellation
+ * Admin GradingRubric management page.
+ * Uses ARS design tokens from src/styles/ars-tokens.css
+ */
+
+/* ── Page Shell ─────────────────────────────────────────────── */
+.page {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  font-family: var(--font-family-ui);
+  color: var(--ars-ink);
+}
+
+/* ── Search ─────────────────────────────────────────────────── */
+.searchWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.searchIcon {
+  position: absolute;
+  left: var(--space-3);
+  color: var(--ars-ink-muted);
+  pointer-events: none;
+}
+
+.searchInput {
+  padding: var(--space-2) var(--space-3) var(--space-2) calc(var(--space-3) + 20px);
+  border: 1px solid var(--ars-node);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper);
+  color: var(--ars-ink);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  min-width: 220px;
+  transition: border-color var(--transition-fast);
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: var(--ars-admin);
+  box-shadow: 0 0 0 3px rgba(76, 29, 149, 0.12);
+}
+
+/* ── Table Wrapper ──────────────────────────────────────────── */
+.tableWrap {
+  background: var(--ars-paper);
+  border: 1px solid var(--ars-paper-rule);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.th {
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-family: var(--font-family-mono);
+  border-bottom: 1px solid var(--ars-paper-rule);
+  background: var(--ars-paper-alt);
+  white-space: nowrap;
+}
+
+.row {
+  border-bottom: 1px solid var(--ars-paper-rule);
+  transition: background var(--transition-fast);
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.row:hover {
+  background: var(--ars-paper-alt);
+}
+
+.td {
+  padding: var(--space-3) var(--space-4);
+  vertical-align: middle;
+}
+
+/* ── Cell content ───────────────────────────────────────────── */
+.subFieldName {
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
+}
+
+.majorField {
+  color: var(--ars-ink-soft);
+  font-size: var(--font-size-sm);
+}
+
+.count {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: var(--ars-info-bg);
+  color: var(--ars-info);
+  border: 1px solid var(--ars-info);
+  border-radius: 999px;
+  padding: 2px var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  white-space: nowrap;
+}
+
+.countZero {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: var(--ars-warning-bg);
+  color: var(--ars-warning);
+  border: 1px solid var(--ars-warning);
+  border-radius: 999px;
+  padding: 2px var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  white-space: nowrap;
+}
+
+/* ── Actions ────────────────────────────────────────────────── */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.actionButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-family-ui);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+  white-space: nowrap;
+  min-height: 30px;
+}
+
+.actionButton:focus-visible {
+  outline: 2px solid var(--ars-admin-mid);
+  outline-offset: 2px;
+}
+
+.manageButton {
+  background: var(--ars-paper-alt);
+  border-color: var(--ars-node);
+  color: var(--ars-ink-soft);
+}
+
+.manageButton:hover {
+  background: var(--ars-admin-light, rgba(76, 29, 149, 0.08));
+  border-color: var(--ars-admin);
+  color: var(--ars-admin);
+}
+
+.editButton {
+  background: var(--ars-paper-alt);
+  border-color: var(--ars-node);
+  color: var(--ars-ink-soft);
+}
+
+.editButton:hover {
+  background: var(--ars-paper-inset);
+  color: var(--ars-ink);
+  border-color: var(--ars-ink-muted);
+}
+
+.deleteButton {
+  background: var(--ars-paper-alt);
+  border-color: var(--ars-node);
+  color: var(--ars-error);
+}
+
+.deleteButton:hover {
+  background: var(--ars-error-bg);
+  border-color: var(--ars-error);
+  color: var(--ars-error);
+}
+

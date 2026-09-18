@@ -1,0 +1,451 @@
+/**
+ * GradingRubricModal — ARS Research Constellation
+ * Styles for the Admin GradingRubric editor modal.
+ * Uses ARS design tokens from src/styles/ars-tokens.css.
+ * Structure inherits overlay/modal/header/footer from AdminDialog.module.css.
+ */
+
+/* ── Wide modal override ───────────────────────────────────── */
+.wideModal {
+  width: min(820px, 100%);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Mode Toggle ────────────────────────────────────────────── */
+.modeToggle {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--ars-paper-rule);
+  background: var(--ars-paper-alt);
+}
+
+.modeBtn {
+  flex: 1;
+  padding: var(--space-3) var(--space-4);
+  border: none;
+  background: transparent;
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  font-family: var(--font-family-ui);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+  text-align: left;
+}
+
+.modeBtn:hover:not(.modeBtnActive) {
+  color: var(--ars-ink);
+}
+
+.modeBtn:focus-visible {
+  outline: 2px solid var(--ars-admin-mid);
+  outline-offset: 2px;
+}
+
+.modeBtnActive {
+  color: var(--ars-admin);
+  border-bottom-color: var(--ars-admin);
+  font-weight: var(--font-weight-semibold);
+  background: var(--ars-paper);
+}
+
+/* ── Body ───────────────────────────────────────────────────── */
+.body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* ── Total score bar ────────────────────────────────────────── */
+.totalBar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: var(--space-2) var(--space-3);
+  background: var(--ars-admin-light, rgba(76, 29, 149, 0.08));
+  border: 1px solid var(--ars-admin);
+  border-radius: var(--radius-md);
+  color: var(--ars-admin);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* ── Read-only preview ──────────────────────────────────────── */
+.readonlyWrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.readonlyEmpty {
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-sm);
+  font-style: italic;
+  margin: 0;
+}
+
+.readonlyRow {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--ars-paper-rule);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper-alt);
+}
+
+.readonlyOrder {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ars-paper-inset);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink-muted);
+  font-family: var(--font-family-mono);
+}
+
+.readonlyContent {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.readonlyHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.codeTag {
+  background: var(--ars-paper-inset);
+  color: var(--ars-admin);
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  border: 1px solid var(--ars-admin-light, rgba(76, 29, 149, 0.2));
+}
+
+.readonlyTitle {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
+}
+
+.scoreTag {
+  margin-left: auto;
+  background: var(--ars-info-bg);
+  color: var(--ars-info);
+  border: 1px solid var(--ars-info);
+  border-radius: 999px;
+  padding: 1px var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  white-space: nowrap;
+}
+
+.readonlyDesc {
+  margin: 0;
+  color: var(--ars-ink-soft);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+}
+
+/* ── Edit list ──────────────────────────────────────────────── */
+.editList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* ── Criterion card ─────────────────────────────────────────── */
+.criterionCard {
+  border: 1px solid var(--ars-paper-rule);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: var(--ars-paper-alt);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  position: relative;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.orderBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--ars-admin-light, rgba(76, 29, 149, 0.1));
+  color: var(--ars-admin);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  font-family: var(--font-family-mono);
+}
+
+.deleteBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--ars-error);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ars-error);
+  cursor: pointer;
+  font-family: var(--font-family-ui);
+  transition: background var(--transition-fast);
+}
+
+.deleteBtn:hover {
+  background: var(--ars-error-bg);
+}
+
+.deleteBtn:focus-visible {
+  outline: 2px solid var(--ars-error);
+  outline-offset: 2px;
+}
+
+/* ── Form fields inside criterion card ──────────────────────── */
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.fieldLabel {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink-muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-family: var(--font-family-mono);
+}
+
+.required {
+  color: var(--ars-error);
+  margin-left: 2px;
+}
+
+.input {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--ars-node);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper);
+  color: var(--ars-ink);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  width: 100%;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.inputSm {
+  composes: input;
+  width: 100px;
+}
+
+.input:focus,
+.inputSm:focus {
+  outline: none;
+  border-color: var(--ars-admin);
+  box-shadow: 0 0 0 3px rgba(76, 29, 149, 0.12);
+}
+
+.inputError {
+  border-color: var(--ars-error) !important;
+}
+
+.fieldError {
+  color: var(--ars-error);
+  font-size: var(--font-size-xs);
+}
+
+/* ── Code change warning ────────────────────────────────────── */
+.warnBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--ars-warning-bg);
+  color: var(--ars-warning);
+  font-size: var(--font-size-xs);
+  border: 1px solid var(--ars-warning);
+}
+
+/* ── Standard reference pills ───────────────────────────────── */
+.refPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.refPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--ars-paper-inset);
+  color: var(--ars-ink-soft);
+  border: 1px solid var(--ars-node);
+  border-radius: 999px;
+  padding: 2px var(--space-2);
+  font-size: var(--font-size-xs);
+}
+
+.refPillEditable {
+  gap: var(--space-1);
+}
+
+.refRemoveBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--ars-ink-muted);
+  padding: 0;
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  transition: color var(--transition-fast);
+}
+
+.refRemoveBtn:hover {
+  color: var(--ars-error);
+}
+
+/* ── Add criterion button ───────────────────────────────────── */
+.addBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border: 1px dashed var(--ars-node);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  font-family: var(--font-family-ui);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
+  align-self: flex-start;
+}
+
+.addBtn:hover {
+  border-color: var(--ars-admin);
+  color: var(--ars-admin);
+  background: var(--ars-admin-light, rgba(76, 29, 149, 0.06));
+}
+
+.addBtn:focus-visible {
+  outline: 2px solid var(--ars-admin-mid);
+  outline-offset: 2px;
+}
+
+/* ── Empty template actions ─────────────────────────────────── */
+.emptyTemplateWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-4);
+  background: var(--ars-paper-alt);
+  border: 1px dashed var(--ars-paper-rule);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
+.initTemplateBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--ars-admin);
+  color: #fff;
+  border: 1px solid var(--ars-admin);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: background var(--transition-fast), opacity var(--transition-fast);
+}
+
+.initTemplateBtn:hover {
+  opacity: 0.9;
+}
+
+.initTemplateBtn:focus-visible {
+  outline: 2px solid var(--ars-admin-mid);
+  outline-offset: 2px;
+}
+
+/* ── Edit actions bar ───────────────────────────────────────── */
+.editActionsBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.templateBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--ars-admin);
+  border-radius: var(--radius-md);
+  background: var(--ars-admin-light, rgba(76, 29, 149, 0.08));
+  color: var(--ars-admin);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  font-family: var(--font-family-ui);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.templateBtn:hover {
+  background: var(--ars-admin-light, rgba(76, 29, 149, 0.16));
+}
+
+.templateBtn:focus-visible {
+  outline: 2px solid var(--ars-admin-mid);
+  outline-offset: 2px;
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .wideModal {
+    width: 100%;
+    max-height: 100dvh;
+    border-radius: 0;
+  }
+
+  .modeToggle {
+    flex-direction: column;
+  }
+}
