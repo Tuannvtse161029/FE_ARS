@@ -283,7 +283,6 @@ export const AdminPaperSubmissionDetail = () => {
     return (
       <section className={`${shared.page} ${adminStyles.page}`}>
         <PageHeader
-          eyebrow="ADMIN · PAPER REVIEW RECORD"
           title="Paper review record not found"
           description="The admin submission record you requested is unavailable."
           accent={ROLE_ACCENT}
@@ -305,7 +304,6 @@ export const AdminPaperSubmissionDetail = () => {
     return (
       <section className={`${shared.page} ${adminStyles.page}`}>
         <PageHeader
-          eyebrow="ADMIN · PAPER REVIEW RECORD"
           title="Loading paper review record…"
           description="Fetching the selected paper from the backend."
           accent={ROLE_ACCENT}
@@ -321,7 +319,6 @@ export const AdminPaperSubmissionDetail = () => {
     return (
       <section className={`${shared.page} ${adminStyles.page}`}>
         <PageHeader
-          eyebrow="ADMIN · PAPER REVIEW RECORD"
           title="Paper review record"
           accent={ROLE_ACCENT}
         />
@@ -349,7 +346,6 @@ export const AdminPaperSubmissionDetail = () => {
   return (
     <section className={`${shared.page} ${adminStyles.page}`}>
       <PageHeader
-        eyebrow="ADMIN · PAPER REVIEW RECORD"
         title={paper.title}
         description="Admin paper review record. Private review material is only rendered here."
         accent={ROLE_ACCENT}

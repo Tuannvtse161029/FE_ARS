@@ -245,7 +245,6 @@ export const ResearcherSubmissions = () => {
   return (
     <section className={styles.page}>
       <PageHeader
-        eyebrow={t('researcher.submissions.eyebrow')}
         title={t('researcher.submissions.title')}
         description={t('researcher.submissions.description')}
         accent={RESEARCHER_ACCENT}

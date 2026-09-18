@@ -20,7 +20,6 @@ export const TransactionsManagement = () => {
   return (
     <div className={styles.page}>
       <PageHeader
-        eyebrow={t('admin.transactions.eyebrow')}
         title={t('admin.transactions.title')}
         description={t('admin.transactions.description')}
         accent={ROLE_ACCENT}

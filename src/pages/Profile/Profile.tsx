@@ -823,7 +823,6 @@ export const Profile = () => {
     return (
       <div className={styles.page} style={accentStyle}>
         <PageHeader
-          eyebrow={t('profile.authRequired.eyebrow', 'Authentication required')}
           title={t('profile.authRequired.title', 'Sign in to view your profile')}
           description={t('profile.authRequired.description', 'Your academic profile is private and only available once you have signed in. Please return to the sign-in page and authenticate to continue.')}
           breadcrumbs={
@@ -846,7 +845,6 @@ export const Profile = () => {
     return (
       <div className={styles.page} style={accentStyle}>
         <PageHeader
-          eyebrow={t('profile.eyebrow', 'Profile')}
           title={isOwner ? t('profile.view.yourProfile', 'Your profile') : `${roleLabel}`}
           description={t('profile.loadingDescription', 'Fetching the latest profile information from the ARS platform.')}
           breadcrumbs={
@@ -865,7 +863,6 @@ export const Profile = () => {
     return (
       <div className={styles.page} style={accentStyle}>
         <PageHeader
-          eyebrow={t('profile.eyebrow', 'Profile')}
           title={isOwner ? t('profile.view.yourProfile', 'Your profile') : `${roleLabel}`}
           breadcrumbs={
             <>
@@ -908,7 +905,6 @@ export const Profile = () => {
   return (
     <div className={styles.page} style={accentStyle}>
       <PageHeader
-        eyebrow={isOwner ? roleEyebrow : t('profile.eyebrow.publicShowcase', 'Professional Showcase')}
         title={isOwner ? roleEyebrow : displayName}
         description={
           isOwner

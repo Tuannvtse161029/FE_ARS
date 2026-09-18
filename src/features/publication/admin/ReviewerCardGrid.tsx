@@ -580,9 +580,6 @@ export const ReviewerCardGrid = ({
       </div>
 
       <nav className={styles.pagination} aria-label="Reviewer pages">
-        <span className={styles.paginationInfo}>
-          Page {safePage} of {totalPages} · Showing {pageItems.length} of {sorted.length}
-        </span>
         <div className={styles.paginationControls}>
           <button
             type="button"

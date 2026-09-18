@@ -314,7 +314,6 @@ export const ResearcherSubmissionForm = () => {
   return (
     <section className={styles.page}>
       <PageHeader
-        eyebrow={t('researcher.submissions.eyebrow')}
         title={t('researcher.form.title')}
         description={t('researcher.form.description')}
         accent="var(--ars-researcher)"

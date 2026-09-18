@@ -8,6 +8,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Inbox, Eye, Pause, Play } from 'lucide-react';
+import { toast } from 'sonner';
 import { useI18n } from '../../i18n/I18nContext';
 import { useLocale } from '../../i18n/I18nContext';
 import { useAdminGuard } from '../../hooks/useAdminGuard';
@@ -143,6 +144,21 @@ export const AccountsManagement = () => {
         prev.map((a) => (a.id === updated.id ? updated : a)),
       );
       setConfirm(null);
+      // Surface a success confirmation so the Admin has clear feedback that
+      // the suspend / unsuspend action actually applied. Without this the
+      // modal just closes silently and the Admin can't tell whether the
+      // BE roundtrip succeeded — particularly important for the unsuspend
+      // path which is the only way to bring a banned user back.
+      const actionLabel = confirm.next === 'SUSPENDED'
+        ? t('admin.accounts.action.suspend')
+        : t('admin.accounts.action.unsuspend');
+      const statusMessage = t(
+        'admin.accounts.toast.statusChanged',
+        'Account "{name}" has been {action}.',
+      )
+        .replace('{name}', updated.name?.trim() || updated.email?.trim() || `#${id}`)
+        .replace('{action}', actionLabel.toLowerCase());
+      toast.success(statusMessage, { duration: 4000 });
       // Defensive FE notification — fire a `[Account] status changed`
       // notification to the affected account. Best-effort: failures
       // never block the suspend/unsuspend itself.
@@ -259,7 +275,6 @@ export const AccountsManagement = () => {
   return (
     <div className={styles.page}>
       <PageHeader
-        eyebrow={t('admin.accounts.eyebrow')}
         title={t('admin.accounts.title')}
         description={t('admin.accounts.description')}
         accent={ROLE_ACCENT}

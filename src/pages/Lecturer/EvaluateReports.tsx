@@ -211,7 +211,6 @@ export const EvaluateReports = () => {
   return (
     <div className={styles.evaluateReports}>
       <PageHeader
-        eyebrow={t('common.lecturerWorkspace')}
         title={t('lecturer.evaluateReports.title', 'Phased Report Review Console')}
         description={t('lecturer.evaluateReports.description', 'Review submissions from your research groups, approve or reject with feedback, and track waiting reports.')}
         actions={

@@ -315,6 +315,16 @@
   border-color: color-mix(in srgb, var(--status-warning-text) 35%, transparent);
 }
 
+/* Unavailable status — used by the Subscription card for roles that
+   don't require an annual fee (Reviewer / Graduate Student / Admin /
+   Guest). Visually neutral so it reads as "not applicable" rather
+   than as a problem state. */
+.statusUnavailable {
+  background: var(--status-neutral-surface);
+  color: var(--ink-secondary);
+  border-color: var(--border-subtle);
+}
+
 .statusApproved {
   background: var(--status-success-surface);
   color: var(--status-success-text);
@@ -325,6 +335,18 @@
   background: var(--status-danger-surface);
   color: var(--status-danger-text);
   border-color: color-mix(in srgb, var(--status-danger-text) 35%, transparent);
+}
+
+.subscriptionGrid {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-3);
+}
+
+.muted {
+  color: var(--ink-tertiary);
+  font-style: italic;
 }
 
 .roleBadge {

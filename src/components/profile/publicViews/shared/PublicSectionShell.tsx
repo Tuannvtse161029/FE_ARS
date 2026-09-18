@@ -15,8 +15,12 @@ import type { UserMedal } from '../../../../services/medal.service';
 import styles from './PublicSectionShell.module.css';
 
 export interface PublicSectionShellProps {
-  /** Mono-tracked uppercase eyebrow, e.g. "REVIEWER CONTRIBUTION". */
-  eyebrow: string;
+  /**
+   * Mono-tracked uppercase eyebrow, e.g. "REVIEWER CONTRIBUTION".
+   * Optional so callers can omit it when the heading already carries
+   * the context — the inner `<p>` simply renders nothing when empty.
+   */
+  eyebrow?: string;
   /** Optional section heading rendered in serif. */
   title?: string;
   /** Profile avatar displayed beside the public identity heading. */
@@ -65,7 +69,7 @@ export const PublicSectionShell = ({
             </div>
           ) : null}
           <div className={styles.titleBlock}>
-            <p className={styles.eyebrow}>{eyebrow}</p>
+            {eyebrow ? <p className={styles.eyebrow}>{eyebrow}</p> : null}
             {title ? (
               <h2 className={styles.title} id={testId ? `${testId}-title` : undefined}>
                 {title}

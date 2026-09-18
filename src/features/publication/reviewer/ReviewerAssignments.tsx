@@ -328,7 +328,6 @@ export const ReviewerAssignments = () => {
   return (
     <section className={reviewer.page}>
       <PageHeader
-        eyebrow={t('reviewer.assignments.eyebrow')}
         title={t('reviewer.assignments.title')}
         description={t('reviewer.assignments.description')}
         accent={REVIEWER_ACCENT}

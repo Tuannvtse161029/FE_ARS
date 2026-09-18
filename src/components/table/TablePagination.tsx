@@ -6,14 +6,25 @@ import { useI18n } from '../../i18n/I18nContext';
 export interface TablePaginationProps {
   page: number;
   totalPages: number;
-  startIndex: number;
-  endIndex: number;
   totalItems: number;
   isRefreshing?: boolean;
   onPrev: () => void;
   onNext: () => void;
   onPage: (page: number) => void;
-  // Optional explicit label override (used by Researcher grid)
+  /**
+   * @deprecated Kept so existing callers (Researcher grid, etc.) compile
+   * unchanged — the page-info text on the left of the bar was removed
+   * from the design so these are no longer surfaced in the UI.
+   */
+  startIndex?: number;
+  /**
+   * @deprecated Same as {@link startIndex} — ignored by the component.
+   */
+  endIndex?: number;
+  /**
+   * @deprecated Same as {@link startIndex} — ignored by the component.
+   * Was used to override the noun ("items" / "papers" / "lectures").
+   */
   itemLabel?: string;
 }
 
@@ -36,14 +47,11 @@ function buildPageList(page: number, totalPages: number): Array<number | '…'> 
 export const TablePagination = ({
   page,
   totalPages,
-  startIndex,
-  endIndex,
   totalItems,
   isRefreshing = false,
   onPrev,
   onNext,
   onPage,
-  itemLabel = 'items',
 }: TablePaginationProps) => {
   const { t } = useI18n();
   if (totalItems === 0) {
@@ -58,10 +66,6 @@ export const TablePagination = ({
       role="navigation"
       aria-label="Pagination"
     >
-      <span className={styles.paginationInfo}>
-        {t('common.showing', 'Showing')} <strong>{startIndex}</strong>–<strong>{endIndex}</strong> {t('common.of', 'of')}{' '}
-        <strong>{totalItems}</strong> {itemLabel}
-      </span>
       <div className={styles.paginationControls}>
         <button
           type="button"

@@ -26,12 +26,12 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { X, Star } from 'lucide-react';
+import { X, Info } from 'lucide-react';
 import { useWelcomeSignal } from '../../store/welcomeSignal';
 import { useAuthStore } from '../../store';
 import styles from './WelcomeBackBanner.module.css';
 
-const AUTO_DISMISS_MS = 5000;
+const AUTO_DISMISS_MS = 3000;
 
 /**
  * Choose the user-facing greeting.
@@ -102,7 +102,7 @@ export const WelcomeBackBanner = () => {
       data-testid="welcome-back-banner"
     >
       <span className={styles.bannerIcon} aria-hidden="true">
-        <Star size={18} />
+        <Info size={18} />
       </span>
       <span className={styles.bannerText} data-testid="welcome-back-banner-text">
         {greeting}

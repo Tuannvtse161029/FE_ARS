@@ -79,7 +79,6 @@ export const SeminarParticipationsPage= () => {
   return (
     <div className={styles.page} data-testid="seminar-participations-page">
       <PageHeader
-        eyebrow={copy('Workspace', 'Không gian làm việc')}
         title={copy('Seminar Participations', 'Lượt tham gia hội thảo')}
         description={copy(
           'Accept invitations, join live sessions, and submit feedback for the seminars you have been invited to.',

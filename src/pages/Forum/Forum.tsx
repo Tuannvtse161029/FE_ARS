@@ -226,7 +226,6 @@ export const Forum = () => {
   return (
     <div className={styles.forumPage}>
       <PageHeader
-        eyebrow={t('forum.community', 'Community')}
         title={t('forum.title', 'Forum')}
         description={
           isVerified

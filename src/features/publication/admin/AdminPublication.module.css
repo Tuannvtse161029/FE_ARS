@@ -374,10 +374,14 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  /* Background uses the same warm surface as the brand accent, but the
+     text is intentionally a deep amber so it stays legible — the
+     previous `--ars-admin` brand-yellow-on-pale-yellow combo was
+     unreadable on the Paper Submissions table. */
   background: var(--ars-admin-light);
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  color: var(--ars-admin);
+  color: #92400e;
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
   letter-spacing: 0.02em;
@@ -536,7 +540,10 @@
   background: var(--ars-admin-light);
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  color: var(--ars-admin);
+  /* Deep amber text on the warm-yellow chip surface so the button
+     label reads clearly. Hover inverts to a solid dark-amber chip
+     with a light-on-dark label. */
+  color: #92400e;
   padding: 4px 10px;
   font: inherit;
   font-size: var(--font-size-xs);
@@ -550,8 +557,8 @@
 }
 
 .previewButton:hover {
-  background: var(--ars-admin);
-  color: var(--ars-paper);
+  background: #92400e;
+  color: #fff7e0;
 }
 
 .previewButton:focus-visible {
@@ -910,6 +917,50 @@
   background: var(--status-success-text);
   color: var(--ink-on-dark);
   transform: translateY(-1px);
+}
+
+/* Used by the Deactivate action on already-published papers. Visually
+   matches the rejectActionButton palette (red surface, red text) so the
+   Admin can immediately tell that clicking it removes the paper from the
+   public list. */
+.deactivateButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--status-danger-surface);
+  border: 1px solid var(--status-danger-text);
+  border-radius: var(--radius-sm);
+  color: var(--status-danger-text);
+  padding: 5px 12px;
+  font: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font-family-ui);
+  text-decoration: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: background-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+}
+
+.deactivateButton:hover:not(:disabled) {
+  background: var(--status-danger-text);
+  color: var(--ink-on-dark);
+  transform: translateY(-1px);
+}
+
+.deactivateButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--ars-paper-inset);
+  border-color: var(--ars-network);
+  color: var(--ars-ink-muted);
+}
+
+.deactivateButton:disabled:hover {
+  transform: none;
+  background: var(--ars-paper-inset);
+  border-color: var(--ars-network);
+  color: var(--ars-ink-muted);
 }
 
 .publishButton:disabled {

@@ -144,13 +144,15 @@
 .pageIndicator {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
   font-size: 13px;
   color: var(--ink-secondary);
 }
 
 .pageInput {
-  width: 40px;
+  min-width: 44px;
+  width: auto;
   height: 28px;
   text-align: center;
   border: 1px solid var(--border-strong);
@@ -159,6 +161,11 @@
   color: var(--ink-primary);
   background: var(--surface-raised);
   font-family: var(--font-family-ui);
+  padding: 0 6px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .pageInput:focus-visible {

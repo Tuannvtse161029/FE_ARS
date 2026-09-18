@@ -387,7 +387,6 @@ const Policies = () => {
   return (
     <div className={styles.page} data-testid="admin-policies-page">
       <PageHeader
-        eyebrow={t('admin.policies.eyebrow')}
         title={t('admin.policies.title')}
         description={t('admin.policies.description')}
         accent={ROLE_ACCENT}

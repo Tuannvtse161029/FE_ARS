@@ -274,7 +274,6 @@ export const Subscription = () => {
   return (
     <div className={styles.page} data-component="SubscriptionPage">
       <PageHeader
-        eyebrow="ARS subscription"
         title={`${roleLabel} access`}
         description={
           hasActiveSubscription

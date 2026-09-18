@@ -272,7 +272,6 @@ export const RoleRequests = () => {
   return (
     <div className={styles.page}>
       <PageHeader
-        eyebrow={t('admin.roleRequests.eyebrow')}
         title={t('admin.roleRequests.title')}
         description={t('admin.roleRequests.description')}
         accent={ROLE_ACCENT}

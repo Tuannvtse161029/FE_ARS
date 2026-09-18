@@ -597,7 +597,6 @@ export const NotificationsPage = ({
   return (
     <div className={styles.page} data-testid="notifications-page">
       <PageHeader
-        eyebrow={t('notif.eyebrow', 'Notification inbox')}
         title={t('notif.title', 'Notifications')}
         description={
           unreadCount > 0

@@ -398,7 +398,6 @@ const AnnualFees = (): JSX.Element => {
   return (
     <div className={styles.page}>
       <PageHeader
-        eyebrow={t('admin.annualFees.eyebrow')}
         title={t('admin.annualFees.title')}
         description={t('admin.annualFees.description')}
         accent={ROLE_ACCENT}
@@ -557,7 +556,15 @@ const AnnualFees = (): JSX.Element => {
               >
                 <header className={styles.cardHeader}>
                   <div className={styles.cardHeaderLeft}>
-                    <span className={styles.rolePill}>{fee.userRole}</span>
+                    <span
+                      className={`${styles.rolePill} ${
+                        fee.userRole === 'Lecturer'
+                          ? styles.rolePillLecturer
+                          : styles.rolePillResearcher
+                      }`}
+                    >
+                      {fee.userRole}
+                    </span>
                     <span
                       className={`${styles.statusPill} ${
                         fee.status ? styles.statusActive : styles.statusInactive

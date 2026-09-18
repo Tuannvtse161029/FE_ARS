@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
-import { Eye, FileText, Pencil, Plus, RefreshCw, Trash2, X } from 'lucide-react';
+import { Eye, FileText, Pencil, RefreshCw, Trash2, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/Button/Button';
 import { BackendGapBanner } from '../../components/BackendGapBanner';
 import { ConfirmModal } from '../../components/lecturer/ConfirmModal';
@@ -80,7 +79,6 @@ export const LecturerSharedMaterialsPage = (): JSX.Element => {
   };
 
   return <section className={styles.page}>
-    <PageHeader eyebrow="LECTURER WORKSPACE" title="Shared Materials" description="Share research papers with colleagues and keep your study references close at hand." actions={<Button onClick={startCreate}><Plus size={16} /> Share paper</Button>} />
     <BackendGapBanner field="SharedMaterial.title, description, materialType, url, topicId" feature="PDF, Drive, website, and reference catalog metadata" />
     {error && <div className={styles.error} role="alert">{error}</div>}
     <div className={styles.toolbar}><span>{loading ? 'Loading…' : `${sortedItems.length} shared ${sortedItems.length === 1 ? 'paper' : 'papers'}`}</span><Button variant="ghost" onClick={() => void load()} disabled={loading}><RefreshCw size={16} /> Refresh</Button></div>

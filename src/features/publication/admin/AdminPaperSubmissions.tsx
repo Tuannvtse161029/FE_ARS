@@ -364,7 +364,6 @@ export const AdminPaperSubmissions = () => {
   return (
     <section className={`${shared.page} ${adminStyles.page}`}>
       <PageHeader
-        eyebrow={t('admin.paperIntake.eyebrow', 'ADMIN · PAPER REVIEW')}
         title={t('admin.paperIntake.title', 'Paper Submissions')}
         description={t(
           'admin.paperIntake.description',

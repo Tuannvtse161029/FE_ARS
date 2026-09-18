@@ -249,7 +249,6 @@ export default function AuditLogs(): JSX.Element {
   return (
     <div className={styles.page}>
       <PageHeader
-        eyebrow={t('admin.auditLogs.eyebrow')}
         title={t('admin.auditLogs.title')}
         description={t('admin.auditLogs.description')}
         accent={ROLE_ACCENT}

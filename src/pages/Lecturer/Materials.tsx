@@ -1230,7 +1230,6 @@ const usageByUrl = useMemo(() => {
       data-testid="lecturer-materials"
     >
       <PageHeader
-        eyebrow={t('common.lecturerWorkspace')}
         title={t('lecturer.materials.title', 'Materials')}
         description={t('lecturer.materials.subtitle', 'Manage your learning materials and shared research papers in one place.')}
         accent="var(--ars-lecturer)"

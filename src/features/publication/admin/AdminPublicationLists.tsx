@@ -352,7 +352,6 @@ const AdminList = ({
   return (
     <section className={`${shared.page} ${adminStyles.page}`}>
       <PageHeader
-        eyebrow={localizedConfig.eyebrow}
         title={localizedConfig.title}
         description={localizedConfig.subtitle}
         accent="var(--ars-admin)"
@@ -596,7 +595,16 @@ const AdminList = ({
                             adminPublicationHelpers.ts.
                           */}
                           {paper.status === 'PUBLISHED' || paper.status === 'INACTIVE' ? (
-                            <button type="button" className={adminStyles.publishButton} onClick={() => setVisibilityPaper(paper)} disabled={busy}>
+                            <button
+                              type="button"
+                              className={
+                                paper.status === 'INACTIVE'
+                                  ? adminStyles.publishButton
+                                  : adminStyles.deactivateButton
+                              }
+                              onClick={() => setVisibilityPaper(paper)}
+                              disabled={busy}
+                            >
                               <FileText size={13} aria-hidden="true" /> {paper.status === 'INACTIVE' ? 'Reactivate' : 'Deactivate'}
                             </button>
                           ) : paper.status === 'REVIEWER_RECOMMENDED_ACCEPT' ||

@@ -59,8 +59,11 @@ export default function ContentReports(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
 
   const [search, setSearch] = useState('');
-  // Tab filter for status
-  const [statusTab, setStatusTab] = useState<StatusTab>('PENDING');
+  // Tab filter for status. Defaults to ALL so the admin lands on the
+  // full inbox on first navigation; switching to a specific status like
+  // PENDING when there happen to be no pending reports would render an
+  // empty state and look like the data fetch is broken.
+  const [statusTab, setStatusTab] = useState<StatusTab>('ALL');
 
   const [activeReport, setActiveReport] = useState<ViolationReport | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -178,7 +181,6 @@ export default function ContentReports(): JSX.Element {
   return (
     <div className={styles.page}>
       <PageHeader
-        eyebrow={t('admin.contentReports.eyebrow')}
         title={t('admin.contentReports.title')}
         description={t('admin.contentReports.description').replace('{count}', pendingCount > 0 ? t('admin.contentReports.pendingCount').replace('{count}', String(pendingCount)) : '')}
         accent={ROLE_ACCENT}

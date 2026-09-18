@@ -309,7 +309,6 @@ export const PhaseReports = () => {
     <div className={styles.page}>
       {/* ── Page header ──────────────────────────────────────── */}
       <PageHeader
-        eyebrow="LECTURER WORKSPACE"
         title={t('lecturer.phaseReports.title', 'Phase Reports')}
         description={t(
           'lecturer.phaseReports.description',

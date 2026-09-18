@@ -115,12 +115,6 @@ const AdminPolicies = lazy(() => import('./pages/Admin/Policies').then((m) => ({
 // `src/pages/Admin/AdminMedals.tsx` was deleted because it was a 110 KB
 // monolithic duplicate of this module.
 const AdminMedals = lazy(() => import('./features/admin/AdminMedals').then((m) => ({ default: m.AdminMedals })));
-// UserRewards — Admin CRUD over reward configs (e.g. researcher-published-paper).
-// Lives under src/features/admin/; the App-level lazy import resolves
-// via the thin re-export at src/pages/Admin/UserRewardsRoute.tsx.
-const UserRewards = lazy(() =>
-  import('./pages/Admin/UserRewardsRoute').then((m) => ({ default: m.default })),
-);
 // Researcher / Lecturer subscription page. Renders the current status,
 // plans, and `Proceed to Pay` button. Lives behind the existing role
 // guards so only Researcher / Lecturer reach it.
@@ -355,7 +349,6 @@ const App = () => {
                   <Route path={ROUTES.ADMIN_AUDIT_LOGS} element={<AuditLogs />} />
                   <Route path={ROUTES.ADMIN_POLICIES} element={<AdminPolicies />} />
                   <Route path={ROUTES.ADMIN_ANNUAL_FEES} element={<AnnualFees />} />
-                  <Route path={ROUTES.ADMIN_USER_REWARDS} element={<UserRewards />} />
                   <Route path={ROUTES.ADMIN_GRADING_RUBRIC} element={<AdminGradingRubric />} />
                 </Route>
               </Route>
