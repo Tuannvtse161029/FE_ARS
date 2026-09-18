@@ -90,6 +90,9 @@ export const ROUTES = {
   // researcher-published-paper reward). Page wired to
   // GET/POST/PUT/PATCH/DELETE /api/UserReward per the BE Swagger.
   ADMIN_USER_REWARDS: '/admin/user-rewards',
+  // GradingRubric — Admin management of per-SubField scoring criteria.
+  // Wired to GET /api/SubField (list) and PATCH /api/SubField/{id}/rubric.
+  ADMIN_GRADING_RUBRIC: '/admin/grading-rubric',
   // Agent 52 — first-time Google-user onboarding. Created by the GIS button
   // when the BE's google-login response carries `isNewUser === true` or
   // `requiresOnboarding === true` (see src/services/googleAuth.service.ts).

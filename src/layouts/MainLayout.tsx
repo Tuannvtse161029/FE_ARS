@@ -55,6 +55,7 @@ import {
   Library,
   Medal as MedalIcon,
   Gift as UserRewardsIcon,
+  BookOpen as RubricIcon,
 } from 'lucide-react';
 import {
   ChevronLeftIcon,
@@ -575,6 +576,7 @@ export const MainLayout = () => {
           { to: ROUTES.ADMIN_REVIEWER_ASSIGNMENTS, label: copy('Reviewer Assignments', 'Phân công phản biện'), icon: <AssignmentsIcon size={20} /> },
           { to: ROUTES.ADMIN_PUBLISHED_PAPERS, label: copy('Published Papers', 'Bài báo đã xuất bản'), icon: <PublicationIcon size={20} /> },
           { to: ROUTES.ADMIN_MEDALS, label: copy('Medal Management', 'Quản lý huy hiệu'), icon: <MedalIcon size={20} /> },
+          { to: ROUTES.ADMIN_GRADING_RUBRIC, label: copy('Grading Rubrics', 'Tiêu chí chấm điểm'), icon: <RubricIcon size={20} /> },
 
           // ── People section ───────────────────────────────
           { to: '#', label: copy('People', 'Người dùng'), icon: <AccountsIcon size={20} />, isSectionHeader: true, sectionLabelKey: SECTION_LABELS.people },
