@@ -183,6 +183,20 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
+      // Suppress Rollup's "cannot interpret /*#__PURE__*/ comment" warnings from
+      // @microsoft/signalr. The comment is syntactically valid but placed in a
+      // position Rollup's tree-shaking analysis rejects. The code still bundles
+      // correctly — this only cleans up the warning noise.
+      onLog(level, log) {
+        if (
+          level === 'warn' &&
+          typeof log === 'object' &&
+          (log as { message?: string }).message?.includes('cannot interpret')
+        ) {
+          return
+        }
+        console.warn(log)
+      },
       output: {
         // Split node_modules into separate chunks. IMPORTANT: `react-router`
         // (the core) must share a chunk with `react-router-dom`, otherwise
