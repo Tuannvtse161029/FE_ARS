@@ -8,30 +8,76 @@ import {
 import { API_BASE_URL, API_ENDPOINTS } from '../utils/constants';
 import { storage } from '../utils/storage';
 
-export type NotificationListener = (data: unknown) => void;
-export type PaperStatusListener = (data: unknown) => void;
+export interface NotificationPayload {
+  notificationId?: number;
+  id?: number;
+  userId?: number;
+  message?: string;
+  isRead?: boolean;
+  createdAt?: string;
+}
+
+export interface PaperStatusUpdatedPayload {
+  paperId: number | string;
+  status: string;
+  authorshipVerificationStatus?: string;
+}
+
+export interface ReviewRequestAssignedPayload {
+  reviewRequestId: number;
+  paperId: number;
+  paperTitle: string;
+  deadline?: string;
+}
+
+export interface GroupJoinRequestUpdatedPayload {
+  groupId: number;
+  requestId: number;
+  status: string;
+  applicantUserId?: number;
+  applicantName?: string;
+}
+
+export interface ForumCommentAddedPayload {
+  forumPostId: number;
+  forumCommentId: number;
+  userId: number;
+  authorName: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface MedalAwardedPayload {
+  medalId?: number;
+  medalName: string;
+  iconUrl?: string;
+  medalTier?: string;
+  description?: string;
+  unlockedAt?: string;
+}
+
+export type EventListener<T = unknown> = (data: T) => void;
 
 /**
  * SignalR Service for real-time communication across ARS Frontend.
  *
- * Requirements:
- * 1. Endpoint: `${API_BASE_URL}/hubs/notifications`
- * 2. Token factory: retrieves current JWT from `storage.getToken()`
- * 3. Automatic reconnect: [0, 2000, 5000, 10000, 30000]
- * 4. Fallback transports: WebSockets | LongPolling
- * 5. Lifecycle:
- *    - Only connects when user is authenticated (valid token exists)
- *    - Guards against duplicate connections and concurrent start invocations
- *    - Disconnects cleanly on logout / unmount
- * 6. Events:
- *    - `ReceiveNotification`
- *    - `PaperStatusUpdated`
+ * Supported Contract Events (Hub: /hubs/notifications):
+ * 1. ReceiveNotification: { notificationId, userId, message, isRead, createdAt }
+ * 2. UpdateUnreadCount: number
+ * 3. PaperStatusUpdated: { paperId, status, authorshipVerificationStatus }
+ * 4. ReviewRequestAssigned: { reviewRequestId, paperId, paperTitle, deadline }
+ * 5. GroupJoinRequestUpdated: { groupId, requestId, status, applicantUserId, applicantName }
+ * 6. ForumCommentAdded: { forumPostId, forumCommentId, userId, authorName, content, createdAt }
+ * 7. MedalAwarded: { medalId, medalName, iconUrl, unlockedAt }
+ *
+ * Supported Group Management Methods:
+ * - joinPaperGroup(paperId) / leavePaperGroup(paperId)
+ * - joinPostGroup(postId) / leavePostGroup(postId)
  */
 class SignalRService {
   private connection: HubConnection | null = null;
   private startPromise: Promise<void> | null = null;
-  private notificationListeners = new Set<NotificationListener>();
-  private paperStatusListeners = new Set<PaperStatusListener>();
+  private listeners = new Map<string, Set<EventListener<any>>>();
 
   /**
    * Resolve canonical Hub URL based on API_BASE_URL and constants.
@@ -63,13 +109,33 @@ class SignalRService {
 
     const conn = builder.build();
 
-    // Register incoming event handlers
+    // Register all contract events from the Hub
     conn.on('ReceiveNotification', (data: unknown) => {
-      this.handleReceiveNotification(data);
+      this.emit('ReceiveNotification', data, 'ars:receive-notification');
+    });
+
+    conn.on('UpdateUnreadCount', (data: unknown) => {
+      this.emit('UpdateUnreadCount', data, 'ars:update-unread-count');
     });
 
     conn.on('PaperStatusUpdated', (data: unknown) => {
-      this.handlePaperStatusUpdated(data);
+      this.emit('PaperStatusUpdated', data, 'ars:paper-status-updated');
+    });
+
+    conn.on('ReviewRequestAssigned', (data: unknown) => {
+      this.emit('ReviewRequestAssigned', data, 'ars:review-request-assigned');
+    });
+
+    conn.on('GroupJoinRequestUpdated', (data: unknown) => {
+      this.emit('GroupJoinRequestUpdated', data, 'ars:group-join-request-updated');
+    });
+
+    conn.on('ForumCommentAdded', (data: unknown) => {
+      this.emit('ForumCommentAdded', data, 'ars:forum-comment-added');
+    });
+
+    conn.on('MedalAwarded', (data: unknown) => {
+      this.emit('MedalAwarded', data, 'ars:medal-awarded');
     });
 
     conn.onreconnecting((error) => {
@@ -95,47 +161,41 @@ class SignalRService {
   }
 
   /**
-   * Internal dispatcher for ReceiveNotification.
+   * Internal dispatcher for incoming events.
    * Invokes all registered JS listeners and dispatches DOM CustomEvent.
    */
-  private handleReceiveNotification(data: unknown): void {
-    // Notify registered subscribers
-    this.notificationListeners.forEach((listener) => {
-      try {
-        listener(data);
-      } catch (err) {
-        console.error('[SignalR] Error in notification listener:', err);
-      }
-    });
+  public emit(eventName: string, data: unknown, domEventName?: string): void {
+    const eventListeners = this.listeners.get(eventName);
+    if (eventListeners) {
+      eventListeners.forEach((listener) => {
+        try {
+          listener(data);
+        } catch (err) {
+          console.error(`[SignalR] Error in listener for "${eventName}":`, err);
+        }
+      });
+    }
 
-    // Dispatch DOM CustomEvent for decoupled components
     if (typeof window !== 'undefined') {
+      const customEventName = domEventName || `ars:${eventName.replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^-/, '')}`;
       window.dispatchEvent(
-        new CustomEvent('ars:receive-notification', { detail: data }),
+        new CustomEvent(customEventName, { detail: data }),
       );
     }
   }
 
   /**
-   * Internal dispatcher for PaperStatusUpdated.
-   * Invokes all registered JS listeners and dispatches DOM CustomEvent.
+   * For backwards compatibility and testing: simulate receiving a notification.
    */
-  private handlePaperStatusUpdated(data: unknown): void {
-    // Notify registered subscribers
-    this.paperStatusListeners.forEach((listener) => {
-      try {
-        listener(data);
-      } catch (err) {
-        console.error('[SignalR] Error in paper status listener:', err);
-      }
-    });
+  public handleReceiveNotification(data: unknown): void {
+    this.emit('ReceiveNotification', data, 'ars:notification-received');
+  }
 
-    // Dispatch DOM CustomEvent for decoupled components
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(
-        new CustomEvent('ars:paper-status-updated', { detail: data }),
-      );
-    }
+  /**
+   * For backwards compatibility and testing: simulate receiving a paper status update.
+   */
+  public handlePaperStatusUpdated(data: unknown): void {
+    this.emit('PaperStatusUpdated', data, 'ars:paper-status-updated');
   }
 
   /**
@@ -155,7 +215,6 @@ class SignalRService {
         this.connection.state === HubConnectionState.Connecting ||
         this.connection.state === HubConnectionState.Reconnecting)
     ) {
-      // Already connected or currently establishing connection
       return this.startPromise ?? Promise.resolve();
     }
 
@@ -163,7 +222,6 @@ class SignalRService {
       this.connection = this.createConnection();
     }
 
-    // Guard against concurrent start invocations
     this.startPromise = this.connection
       .start()
       .then(() => {
@@ -175,7 +233,6 @@ class SignalRService {
         if (import.meta.env.DEV) {
           console.warn('[SignalR] Connection start failed:', err);
         }
-        // Reset connection reference so future attempts can re-try cleanly
         this.connection = null;
         throw err;
       })
@@ -231,25 +288,122 @@ class SignalRService {
   }
 
   /**
-   * Subscribe to ReceiveNotification events.
+   * Generic subscription to any event name.
    * Returns an unsubscribe callback.
    */
-  public onReceiveNotification(listener: NotificationListener): () => void {
-    this.notificationListeners.add(listener);
+  public on<T = unknown>(eventName: string, listener: EventListener<T>): () => void {
+    let set = this.listeners.get(eventName);
+    if (!set) {
+      set = new Set();
+      this.listeners.set(eventName, set);
+    }
+    set.add(listener as EventListener<any>);
+
     return () => {
-      this.notificationListeners.delete(listener);
+      this.off(eventName, listener as EventListener<any>);
     };
   }
 
   /**
-   * Subscribe to PaperStatusUpdated events.
-   * Returns an unsubscribe callback.
+   * Remove listener for an event name.
    */
-  public onPaperStatusUpdated(listener: PaperStatusListener): () => void {
-    this.paperStatusListeners.add(listener);
-    return () => {
-      this.paperStatusListeners.delete(listener);
-    };
+  public off(eventName: string, listener?: EventListener<any>): void {
+    if (!listener) {
+      this.listeners.delete(eventName);
+      return;
+    }
+    const set = this.listeners.get(eventName);
+    if (set) {
+      set.delete(listener);
+      if (set.size === 0) {
+        this.listeners.delete(eventName);
+      }
+    }
+  }
+
+  /**
+   * Helper subscription for ReceiveNotification.
+   */
+  public onReceiveNotification(listener: EventListener<NotificationPayload | unknown>): () => void {
+    return this.on('ReceiveNotification', listener);
+  }
+
+  /**
+   * Helper subscription for PaperStatusUpdated.
+   */
+  public onPaperStatusUpdated(listener: EventListener<PaperStatusUpdatedPayload | unknown>): () => void {
+    return this.on('PaperStatusUpdated', listener);
+  }
+
+  /**
+   * Helper subscription for MedalAwarded.
+   */
+  public onMedalAwarded(listener: EventListener<MedalAwardedPayload>): () => void {
+    return this.on('MedalAwarded', listener);
+  }
+
+  /**
+   * Join a paper-scoped group on the Hub.
+   */
+  public async joinPaperGroup(paperId: number | string): Promise<void> {
+    if (!this.connection || this.connection.state !== HubConnectionState.Connected) {
+      return;
+    }
+    try {
+      await this.connection.invoke('JoinPaperGroup', String(paperId));
+    } catch (err) {
+      if (import.meta.env.DEV) {
+        console.warn(`[SignalR] Failed to join paper group "${paperId}":`, err);
+      }
+    }
+  }
+
+  /**
+   * Leave a paper-scoped group on the Hub.
+   */
+  public async leavePaperGroup(paperId: number | string): Promise<void> {
+    if (!this.connection || this.connection.state !== HubConnectionState.Connected) {
+      return;
+    }
+    try {
+      await this.connection.invoke('LeavePaperGroup', String(paperId));
+    } catch (err) {
+      if (import.meta.env.DEV) {
+        console.warn(`[SignalR] Failed to leave paper group "${paperId}":`, err);
+      }
+    }
+  }
+
+  /**
+   * Join a forum-post-scoped group on the Hub.
+   */
+  public async joinPostGroup(postId: number | string): Promise<void> {
+    if (!this.connection || this.connection.state !== HubConnectionState.Connected) {
+      return;
+    }
+    try {
+      await this.connection.invoke('JoinPostGroup', String(postId));
+    } catch (err) {
+      if (import.meta.env.DEV) {
+        console.warn(`[SignalR] Failed to join post group "${postId}":`, err);
+      }
+    }
+  }
+
+  /**
+   * Leave a forum-post-scoped group on the Hub.
+   */
+  public async leavePostGroup(postId: number | string): Promise<void> {
+    if (!this.connection || this.connection.state !== HubConnectionState.Connected) {
+      return;
+    }
+    try {
+      await this.connection.invoke('LeavePostGroup', String(postId));
+    } catch (err) {
+      if (import.meta.env.DEV) {
+        console.warn(`[SignalR] Failed to leave post group "${postId}":`, err);
+      }
+    }
   }
 }
 

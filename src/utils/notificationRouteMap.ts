@@ -26,6 +26,7 @@
 
 import { ROUTES } from '../routes/paths';
 import type { UserRole } from '../types/auth';
+import type { Locale } from '../i18n/translations';
 
 export type NotificationKind =
   // Researcher
@@ -38,6 +39,10 @@ export type NotificationKind =
   | 'paper-needs-revision'
   | 'membership-result'
   | 'forum-reply'
+  | 'forum-post-liked'
+  | 'forum-comment-upvoted'
+  | 'forum-post-commented'
+  | 'forum-comment-replied'
   // Reviewer
   | 'new-review-request'
   | 'review-request-cancelled'
@@ -508,7 +513,35 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     ] },
   },
 
-  // ── Forum / reply (all roles) ─────────────────────────────────────────────
+  // ── Forum interactions (all roles) ─────────────────────────────────────────
+  {
+    kind: 'forum-post-liked',
+    prefix: '[Forum] like',
+    spec: { path: ROUTES.FORUM, roles: [
+      'Researcher', 'Reviewer', 'Lecturer', 'Graduate Student', 'Admin',
+    ] },
+  },
+  {
+    kind: 'forum-comment-upvoted',
+    prefix: '[Forum] upvote',
+    spec: { path: ROUTES.FORUM, roles: [
+      'Researcher', 'Reviewer', 'Lecturer', 'Graduate Student', 'Admin',
+    ] },
+  },
+  {
+    kind: 'forum-post-commented',
+    prefix: '[Forum] comment',
+    spec: { path: ROUTES.FORUM, roles: [
+      'Researcher', 'Reviewer', 'Lecturer', 'Graduate Student', 'Admin',
+    ] },
+  },
+  {
+    kind: 'forum-comment-replied',
+    prefix: '[Forum] reply to comment',
+    spec: { path: ROUTES.FORUM, roles: [
+      'Researcher', 'Reviewer', 'Lecturer', 'Graduate Student', 'Admin',
+    ] },
+  },
   {
     kind: 'forum-reply',
     prefix: '[Forum] reply',
@@ -527,6 +560,25 @@ export function inferNotificationKind(message: string): NotificationKind {
   }
 
   // Fallback keyword inspection for natural language BE notifications
+  if (normalized.includes('thích bài viết') || normalized.includes('liked your post')) {
+    return 'forum-post-liked';
+  }
+  if (normalized.includes('ủng hộ bình luận') || normalized.includes('upvoted your comment')) {
+    return 'forum-comment-upvoted';
+  }
+  if (
+    normalized.includes('trả lời bình luận') ||
+    normalized.includes('replied to your comment') ||
+    normalized.includes('trả lời phản hồi')
+  ) {
+    return 'forum-comment-replied';
+  }
+  if (
+    normalized.includes('bình luận vào bài viết') ||
+    normalized.includes('commented on your post')
+  ) {
+    return 'forum-post-commented';
+  }
   if (normalized.includes('theo dõi') || normalized.includes('follow')) {
     return 'follower-new';
   }
@@ -691,3 +743,63 @@ export function extractNotificationDynamicSuffix(stripped: string): string | nul
 
   return null;
 }
+
+/**
+ * Parses and formats a forum notification string into localized prose.
+ * Returns null if the message is not a recognized natural-language forum notification.
+ */
+export function formatForumNotification(raw: string, locale: Locale): string | null {
+  const text = (raw ?? '').trim();
+  if (!text) return null;
+
+  // 1. Post liked: "[Forum] {Actor} đã thích bài viết của bạn: \"{Title}\""
+  const likeMatch = text.match(
+    /^(?:\[(?:Forum|Diễn đàn)\]\s*)?([\s\S]+?)\s+đã thích bài viết của bạn:\s*["“”«»]([\s\S]*?)["“”«»]\.?$/u,
+  );
+  if (likeMatch) {
+    const actor = likeMatch[1].trim();
+    const title = likeMatch[2].trim();
+    return locale === 'vi'
+      ? `${actor} đã thích bài viết của bạn: "${title}"`
+      : `${actor} liked your post: "${title}"`;
+  }
+
+  // 2. Comment upvoted: "[Forum] {Actor} đã ủng hộ bình luận của bạn: \"{Snippet}\""
+  const upvoteMatch = text.match(
+    /^(?:\[(?:Forum|Diễn đàn)\]\s*)?([\s\S]+?)\s+đã ủng hộ bình luận của bạn:\s*["“”«»]([\s\S]*?)["“”«»]\.?$/u,
+  );
+  if (upvoteMatch) {
+    const actor = upvoteMatch[1].trim();
+    const snippet = upvoteMatch[2].trim();
+    return locale === 'vi'
+      ? `${actor} đã ủng hộ bình luận của bạn: "${snippet}"`
+      : `${actor} upvoted your comment: "${snippet}"`;
+  }
+
+  // 3. Comment posted: "[Diễn đàn] {Actor} đã bình luận vào bài viết \"{Title}\" của bạn."
+  const commentMatch = text.match(
+    /^(?:\[(?:Forum|Diễn đàn)\]\s*)?([\s\S]+?)\s+đã bình luận vào bài viết\s*["“”«»]([\s\S]*?)["“”«»]\s*của bạn\.?$/u,
+  );
+  if (commentMatch) {
+    const actor = commentMatch[1].trim();
+    const title = commentMatch[2].trim();
+    return locale === 'vi'
+      ? `${actor} đã bình luận vào bài viết "${title}" của bạn.`
+      : `${actor} commented on your post "${title}".`;
+  }
+
+  // 4. Comment replied: "[Diễn đàn] {Actor} đã trả lời bình luận của bạn: \"{Snippet}\""
+  const replyMatch = text.match(
+    /^(?:\[(?:Forum|Diễn đàn)\]\s*)?([\s\S]+?)\s+đã trả lời bình luận của bạn:\s*["“”«»]([\s\S]*?)["“”«»]\.?$/u,
+  );
+  if (replyMatch) {
+    const actor = replyMatch[1].trim();
+    const snippet = replyMatch[2].trim();
+    return locale === 'vi'
+      ? `${actor} đã trả lời bình luận của bạn: "${snippet}"`
+      : `${actor} replied to your comment: "${snippet}"`;
+  }
+
+  return null;
+}
+

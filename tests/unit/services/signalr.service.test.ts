@@ -15,18 +15,16 @@ describe('SignalRService', () => {
     expect(signalrService.getState()).toBe(HubConnectionState.Disconnected);
   });
 
-  it('registers and triggers ReceiveNotification listeners and custom events', () => {
+  it('registers and triggers generic .on<T>() listeners and custom events', () => {
     const listener = vi.fn();
-    const unsubscribe = signalrService.onReceiveNotification(listener);
+    const unsubscribe = signalrService.on('ReceiveNotification', listener);
 
     const windowSpy = vi.fn();
     window.addEventListener('ars:receive-notification', windowSpy);
 
     const testPayload = { id: 101, message: '[Paper] status changed to Accepted' };
 
-    // Simulate internal handleReceiveNotification
-    (signalrService as unknown as { handleReceiveNotification: (data: unknown) => void })
-      .handleReceiveNotification(testPayload);
+    signalrService.emit('ReceiveNotification', testPayload, 'ars:receive-notification');
 
     expect(listener).toHaveBeenCalledWith(testPayload);
     expect(windowSpy).toHaveBeenCalled();
@@ -34,29 +32,58 @@ describe('SignalRService', () => {
     unsubscribe();
     window.removeEventListener('ars:receive-notification', windowSpy);
 
-    // After unsubscribe
-    (signalrService as unknown as { handleReceiveNotification: (data: unknown) => void })
-      .handleReceiveNotification(testPayload);
+    signalrService.emit('ReceiveNotification', testPayload, 'ars:receive-notification');
     expect(listener).toHaveBeenCalledTimes(1);
   });
 
-  it('registers and triggers PaperStatusUpdated listeners and custom events', () => {
-    const listener = vi.fn();
-    const unsubscribe = signalrService.onPaperStatusUpdated(listener);
+  it('registers and triggers contract events: UpdateUnreadCount, ReviewRequestAssigned, ForumCommentAdded, MedalAwarded', () => {
+    const countListener = vi.fn();
+    const reviewListener = vi.fn();
+    const commentListener = vi.fn();
+    const medalListener = vi.fn();
 
-    const windowSpy = vi.fn();
-    window.addEventListener('ars:paper-status-updated', windowSpy);
+    signalrService.on('UpdateUnreadCount', countListener);
+    signalrService.on('ReviewRequestAssigned', reviewListener);
+    signalrService.on('ForumCommentAdded', commentListener);
+    signalrService.on('MedalAwarded', medalListener);
 
-    const testPayload = { paperId: 42, status: 'PUBLISHED' };
+    signalrService.emit('UpdateUnreadCount', 5);
+    signalrService.emit('ReviewRequestAssigned', { reviewRequestId: 12, paperId: 99, paperTitle: 'AI Paper' });
+    signalrService.emit('ForumCommentAdded', { forumPostId: 1, forumCommentId: 10, content: 'Great post!' });
+    signalrService.emit('MedalAwarded', { medalId: 4, medalName: 'Top Reviewer' });
 
-    (signalrService as unknown as { handlePaperStatusUpdated: (data: unknown) => void })
-      .handlePaperStatusUpdated(testPayload);
+    expect(countListener).toHaveBeenCalledWith(5);
+    expect(reviewListener).toHaveBeenCalledWith(expect.objectContaining({ paperTitle: 'AI Paper' }));
+    expect(commentListener).toHaveBeenCalledWith(expect.objectContaining({ content: 'Great post!' }));
+    expect(medalListener).toHaveBeenCalledWith(expect.objectContaining({ medalName: 'Top Reviewer' }));
+  });
 
-    expect(listener).toHaveBeenCalledWith(testPayload);
-    expect(windowSpy).toHaveBeenCalled();
+  it('invokes group join and leave methods on Hub', async () => {
+    const mockConn = {
+      state: HubConnectionState.Connected,
+      invoke: vi.fn().mockResolvedValue(undefined),
+      start: vi.fn().mockResolvedValue(undefined),
+      stop: vi.fn().mockResolvedValue(undefined),
+      on: vi.fn(),
+      off: vi.fn(),
+      onreconnecting: vi.fn(),
+      onreconnected: vi.fn(),
+      onclose: vi.fn(),
+    };
 
-    unsubscribe();
-    window.removeEventListener('ars:paper-status-updated', windowSpy);
+    signalrService.setConnectionForTesting(mockConn as any);
+
+    await signalrService.joinPaperGroup(123);
+    expect(mockConn.invoke).toHaveBeenCalledWith('JoinPaperGroup', '123');
+
+    await signalrService.leavePaperGroup(123);
+    expect(mockConn.invoke).toHaveBeenCalledWith('LeavePaperGroup', '123');
+
+    await signalrService.joinPostGroup(456);
+    expect(mockConn.invoke).toHaveBeenCalledWith('JoinPostGroup', '456');
+
+    await signalrService.leavePostGroup(456);
+    expect(mockConn.invoke).toHaveBeenCalledWith('LeavePostGroup', '456');
   });
 
   it('prevents duplicate start() connections when already connected or connecting', async () => {

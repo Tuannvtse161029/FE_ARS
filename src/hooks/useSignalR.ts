@@ -3,8 +3,8 @@ import { toast } from 'sonner';
 import { signalrService } from '../services/signalr.service';
 import { storage } from '../utils/storage';
 import { useAuth } from '../context/AuthContext';
-import { useI18n } from '../i18n/I18nContext';
-import { inferNotificationKind } from '../utils/notificationRouteMap';
+import { useI18n, useLocale } from '../i18n/I18nContext';
+import { inferNotificationKind, formatForumNotification } from '../utils/notificationRouteMap';
 
 export interface UseSignalROptions {
   /** Optional custom handler for incoming ReceiveNotification events */
@@ -32,6 +32,7 @@ export function useSignalR(options: UseSignalROptions = {}): {
 } {
   const { isAuthenticated, user } = useAuth();
   const { t } = useI18n();
+  const locale = useLocale();
   const { onNotification, onPaperStatusUpdated, autoConnect = true } = options;
 
   const onNotificationRef = useRef(onNotification);
@@ -70,10 +71,11 @@ export function useSignalR(options: UseSignalROptions = {}): {
 
         const kind = inferNotificationKind(message);
         const title = resolveNotificationTitle(kind, t);
+        const formattedDescription = formatForumNotification(message, locale) || message;
 
         // Display floating toast notification at corner
         toast.info(title, {
-          description: message || t('notif.newMessage', 'You have a new notification.'),
+          description: formattedDescription || t('notif.newMessage', 'You have a new notification.'),
           duration: 5000,
         });
       } catch (err) {
@@ -187,6 +189,16 @@ function resolveNotificationTitle(
       return t('notif.groupMemberAccepted', 'Group member accepted');
     case 'topic-completed':
       return t('notif.topicCompleted', 'Topic completed');
+    case 'forum-post-liked':
+      return t('notif.forumPostLiked', 'Post liked');
+    case 'forum-comment-upvoted':
+      return t('notif.forumCommentUpvoted', 'Comment upvoted');
+    case 'forum-post-commented':
+      return t('notif.forumPostCommented', 'New comment');
+    case 'forum-comment-replied':
+      return t('notif.forumCommentReplied', 'Comment reply');
+    case 'forum-reply':
+      return t('notif.forumReply', 'Forum reply');
     default:
       return t('notif.title', 'Notification');
   }

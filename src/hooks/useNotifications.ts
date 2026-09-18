@@ -47,6 +47,7 @@ export function useNotifications(
   userId?: number | null,
 ): UseNotificationsResult {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [overrideUnreadCount, setOverrideUnreadCount] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -134,11 +135,11 @@ export function useNotifications(
     };
   }, [fetchNotifications, userId]);
 
-  // Real-time notification listener via SignalR
+  // Real-time notification and unread count listener via SignalR
   useEffect(() => {
     if (typeof userId !== 'number' || userId <= 0) return;
 
-    const unsubscribe = signalrService.onReceiveNotification((raw) => {
+    const unsubNotif = signalrService.onReceiveNotification((raw) => {
       try {
         const item = normalizeNotification(raw);
         // If notification has a specific userId that doesn't match, drop it
@@ -157,13 +158,23 @@ export function useNotifications(
           // Prepend new unread notification to top of list
           return [item, ...prev];
         });
+
+        setOverrideUnreadCount((prev) => (prev !== null ? prev + 1 : null));
       } catch (err) {
         console.error('[useNotifications] Failed to process real-time notification:', err);
       }
     });
 
+    const unsubCount = signalrService.on<number>('UpdateUnreadCount', (count) => {
+      const parsed = typeof count === 'number' ? count : Number(count);
+      if (!Number.isNaN(parsed) && parsed >= 0) {
+        setOverrideUnreadCount(parsed);
+      }
+    });
+
     return () => {
-      unsubscribe();
+      unsubNotif();
+      unsubCount();
     };
   }, [userId]);
 
@@ -187,6 +198,7 @@ export function useNotifications(
         setNotifications((prev) =>
           prev.map((n) => (n.id === id ? updated : n)),
         );
+        setOverrideUnreadCount((prev) => (prev !== null && prev > 0 ? prev - 1 : null));
         return true;
       } catch (err) {
         // Roll back to the captured snapshot — the BE is the source of
@@ -218,6 +230,7 @@ export function useNotifications(
       const updateMap = new Map(updated.map((n) => [n.id, n]));
       return prev.map((n) => (updateMap.has(n.id) ? (updateMap.get(n.id) as NotificationItem) : n));
     });
+    setOverrideUnreadCount(0);
     return failures;
   }, []);
 
@@ -227,14 +240,17 @@ export function useNotifications(
     snapshotRef.current = [];
     notificationsRef.current = [];
     setNotifications([]);
+    setOverrideUnreadCount(null);
     setError(null);
     setIsLoading(false);
   }, []);
 
-  const unreadCount = useMemo(
-    () => notifications.filter((n) => !n.isRead).length,
-    [notifications],
-  );
+  const unreadCount = useMemo(() => {
+    if (overrideUnreadCount !== null) {
+      return overrideUnreadCount;
+    }
+    return notifications.filter((n) => !n.isRead).length;
+  }, [notifications, overrideUnreadCount]);
 
   return {
     notifications,

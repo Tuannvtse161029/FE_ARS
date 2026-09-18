@@ -20,6 +20,7 @@ import { useShortcuts } from '../hooks/useShortcuts';
 import { useThemeToggle } from '../hooks/useThemeToggle';
 import { useI18n, useLocale } from '../i18n/I18nContext';
 import { useSignalR } from '../hooks/useSignalR';
+import { MedalCelebrationModal } from '../components/medals/MedalCelebrationModal';
 import styles from './MainLayout.module.css';
 import arsLogo from '../assets/images/ARS_Logo.png';
 
@@ -1105,6 +1106,9 @@ export const MainLayout = () => {
             success / error feedback for cross-page mutations (submit,
             assign, review, publish) survives navigation. */}
         <PublicationToastViewport />
+
+        {/* Global Medal Celebration Modal — triggered by SignalR MedalAwarded real-time event */}
+        <MedalCelebrationModal />
       </div>
     </div>
   );

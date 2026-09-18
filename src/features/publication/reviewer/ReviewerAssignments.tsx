@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Inbox } from 'lucide-react';
+import { toast } from 'sonner';
 import { publicationAdapter } from '../api/publication.adapter';
+import { signalrService } from '../../../services/signalr.service';
 import { StatusBadge } from '../../../components/common/StatusBadge';
 import reviewer from './reviewer.module.css';
 import {
@@ -129,25 +131,61 @@ export const ReviewerAssignments = () => {
   const [statusFilter, setStatusFilter] = useState<ReviewerStatusFilter>('ALL');
   const tabListRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    let cancelled = false;
+  const fetchAssignments = useCallback(() => {
     setError(null);
     publicationAdapter
       .getReviewerAssignments()
       .then((items) => {
-        if (cancelled) return;
         setPapers(items.filter(isVisibleReviewerAssignment));
       })
       .catch(() => {
-        if (!cancelled) setError(t('reviewer.assignments.loadError.title'));
+        setError(t('reviewer.assignments.loadError.title'));
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        setLoading(false);
       });
-    return () => {
-      cancelled = true;
-    };
   }, [t]);
+
+  useEffect(() => {
+    fetchAssignments();
+  }, [fetchAssignments]);
+
+  // Real-time listener for newly assigned review requests and paper status updates
+  useEffect(() => {
+    const unsubAssigned = signalrService.on(
+      'ReviewRequestAssigned',
+      (data: { reviewRequestId?: number; paperId?: number; paperTitle?: string; deadline?: string }) => {
+        const title = data.paperTitle || t('notif.newReviewRequest', 'New review request');
+        toast.info(t('reviewer.assignments.newAssigned', 'New review assignment'), {
+          description: title,
+        });
+        fetchAssignments();
+      },
+    );
+
+    const unsubStatus = signalrService.on(
+      'PaperStatusUpdated',
+      (data: { paperId?: unknown; id?: unknown; status?: unknown }) => {
+        const targetId = data.paperId ?? data.id;
+        if (targetId !== undefined && typeof data.status === 'string') {
+          setPapers((prev) =>
+            prev.map((p) => {
+              if (String(p.id) === String(targetId)) {
+                return { ...p, status: data.status as PublicationStatus };
+              }
+              return p;
+            }),
+          );
+        }
+        fetchAssignments();
+      },
+    );
+
+    return () => {
+      unsubAssigned();
+      unsubStatus();
+    };
+  }, [fetchAssignments, t]);
 
   const visiblePapers = useMemo(() => {
     const term = search.trim().toLowerCase();

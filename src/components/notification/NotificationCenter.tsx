@@ -10,6 +10,7 @@ import {
   resolveNotificationRoute,
   stripNotificationTagPrefix,
   extractNotificationDynamicSuffix,
+  formatForumNotification,
   type NotificationKind,
 } from '../../utils/notificationRouteMap';
 import { ROUTES } from '../../routes/paths';
@@ -380,7 +381,15 @@ function titleForKind(kind: ReturnType<typeof inferNotificationKind>, t: (key: s
     case 'system-update':
       return t('notif.systemUpdate', 'System update');
 
-    // Cross-role
+    // Cross-role / Forum interactions
+    case 'forum-post-liked':
+      return t('notif.forumPostLiked', 'Post liked');
+    case 'forum-comment-upvoted':
+      return t('notif.forumCommentUpvoted', 'Comment upvoted');
+    case 'forum-post-commented':
+      return t('notif.forumPostCommented', 'New comment');
+    case 'forum-comment-replied':
+      return t('notif.forumCommentReplied', 'Comment reply');
     case 'forum-reply':
       return t('notif.forumReply', 'Forum reply');
 
@@ -497,6 +506,11 @@ function renderNotificationMessage(
 ): string {
   const raw = (notification.message ?? '').trim();
   if (!raw) return '';
+
+  // Specialized natural-language forum interactions (Post liked, comment upvoted, comment posted, comment replied)
+  const forumFormatted = formatForumNotification(raw, locale);
+  if (forumFormatted) return forumFormatted;
+
   if (locale === 'vi') return raw;
 
   // Translate only known application-authored legacy templates. Captured
