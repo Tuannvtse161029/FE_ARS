@@ -8,7 +8,9 @@ import {
   statusLabel,
   paperTypeLabel,
   type PublicationPaper,
+  type PublicationStatus,
 } from '../types/publication';
+import { signalrService } from '../../../services/signalr.service';
 import { CitationActions } from '../components/CitationActions';
 import { PageHeader } from '../../../components/PageHeader';
 import { EmptyState } from '../../../components/EmptyState';
@@ -80,6 +82,46 @@ export const ResearcherSubmissionDetail = () => {
       cancelled = true;
     };
   }, [id, t]);
+
+  // Real-time paper status updates via SignalR
+  useEffect(() => {
+    if (!id) return;
+    void signalrService.joinPaperGroup(id);
+
+    const unsub = signalrService.on(
+      'PaperStatusUpdated',
+      (data: {
+        paperId?: unknown;
+        id?: unknown;
+        status?: unknown;
+        authorshipVerificationStatus?: unknown;
+      }) => {
+        const targetId = data.paperId ?? data.id;
+        if (String(targetId) === String(id)) {
+          setPaper((prev) => {
+            if (!prev) return null;
+            return {
+              ...prev,
+              ...(typeof data.status === 'string'
+                ? { status: data.status as PublicationStatus }
+                : {}),
+              ...(typeof data.authorshipVerificationStatus === 'string'
+                ? {
+                    researcherVerificationStatus:
+                      data.authorshipVerificationStatus as PublicationPaper['researcherVerificationStatus'],
+                  }
+                : {}),
+            };
+          });
+        }
+      },
+    );
+
+    return () => {
+      unsub();
+      void signalrService.leavePaperGroup(id);
+    };
+  }, [id]);
 
   if (loading) {
     return (

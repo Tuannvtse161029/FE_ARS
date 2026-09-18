@@ -283,18 +283,34 @@ describe('useNotifications', () => {
 
       // Trigger incoming real-time notification
       act(() => {
-        (signalrService as unknown as { handleReceiveNotification: (data: unknown) => void })
-          .handleReceiveNotification({
-            id: 2,
-            userId: 7,
-            message: '[Paper] status changed',
-            isRead: false,
-          });
+        signalrService.emit('ReceiveNotification', {
+          id: 2,
+          userId: 7,
+          message: '[Paper] status changed',
+          isRead: false,
+        });
       });
 
       expect(result.current.notifications).toHaveLength(2);
       expect(result.current.notifications[0].id).toBe(2);
       expect(result.current.unreadCount).toBe(2);
+    });
+
+    it('updates unreadCount directly when UpdateUnreadCount event is received', async () => {
+      mocked.getAll.mockResolvedValueOnce([
+        { id: 1, userId: 7, message: 'Existing message', isRead: false },
+      ]);
+
+      const { result } = renderHook(() => useNotifications(7));
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+      expect(result.current.unreadCount).toBe(1);
+
+      act(() => {
+        signalrService.emit('UpdateUnreadCount', 5);
+      });
+
+      expect(result.current.unreadCount).toBe(5);
     });
   });
 });

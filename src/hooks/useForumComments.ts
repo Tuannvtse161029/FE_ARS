@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { forumCommentService } from '../services/forumComment.service';
+import { signalrService, type ForumCommentAddedPayload } from '../services/signalr.service';
 import type {
   ForumComment,
   ForumCommentCreateRequest,
@@ -67,6 +68,38 @@ export function useForumComments(postId: number): UseForumCommentsResult {
   useEffect(() => {
     void refetch();
   }, [refetch]);
+
+  // Real-time forum comments via SignalR
+  useEffect(() => {
+    if (!postId) return;
+    void signalrService.joinPostGroup(postId);
+
+    const unsub = signalrService.on<ForumCommentAddedPayload>('ForumCommentAdded', (data) => {
+      if (data && Number(data.forumPostId) === Number(postId)) {
+        setComments((prev) => {
+          if (prev.some((c) => c.id === data.forumCommentId)) return prev;
+          const newComment: ForumComment = {
+            id: data.forumCommentId,
+            forumCommentId: data.forumCommentId,
+            forumPostId: data.forumPostId,
+            userId: data.userId,
+            author: data.authorName || 'Anonymous',
+            fullName: data.authorName || 'Anonymous',
+            content: data.content,
+            createdAt: data.createdAt || new Date().toISOString(),
+            upvoteCount: 0,
+            isUpvoted: false,
+          };
+          return [...prev, newComment];
+        });
+      }
+    });
+
+    return () => {
+      unsub();
+      void signalrService.leavePostGroup(postId);
+    };
+  }, [postId]);
 
   return { comments, isLoading, error, refetch };
 }
