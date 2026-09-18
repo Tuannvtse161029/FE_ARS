@@ -20,6 +20,7 @@ import styles from './GradingRubricModal.module.css';
 
 const CODE_REGEX = /^[A-Z0-9_]+$/;
 const MAX_SCORE_MIN = 1;
+const MAX_SCORE_MAX = 10;
 
 interface RubricRow extends GradingRubricCriterion {
   _id: number;            // stable UI key; not sent to BE
@@ -146,8 +147,8 @@ const GradingRubricModal = ({
         rowErrs.title = t('admin.rubric.error.required', 'This field is required.');
       }
       const ms = Number(r.maxScore);
-      if (!Number.isInteger(ms) || ms < MAX_SCORE_MIN) {
-        rowErrs.maxScore = t('admin.rubric.error.maxScore', 'Max score must be a positive integer.');
+      if (!Number.isInteger(ms) || ms < MAX_SCORE_MIN || ms > MAX_SCORE_MAX) {
+        rowErrs.maxScore = t('admin.rubric.error.maxScore', 'Max score must be an integer between 1 and 10.');
       }
       if (Object.keys(rowErrs).length > 0) errs.rows[r._id] = rowErrs;
     });
@@ -264,11 +265,29 @@ const GradingRubricModal = ({
       toast.success(t('admin.rubric.toast.success', 'GradingRubric updated successfully.'));
       onSaved(payload);
     } catch (err: unknown) {
-      const status = (err as { response?: { status?: number } })?.response?.status;
+      const axiosErr = err as {
+        response?: {
+          status?: number;
+          data?: {
+            message?: string;
+            errors?: Record<string, string[]>;
+            title?: string;
+          };
+        };
+      };
+      const status = axiosErr.response?.status;
+      const beMsg =
+        axiosErr.response?.data?.message ||
+        (axiosErr.response?.data?.errors
+          ? Object.values(axiosErr.response.data.errors).flat().join(' ')
+          : axiosErr.response?.data?.title);
+
       if (status === 403) {
         toast.error(t('admin.rubric.toast.403', 'You do not have permission to perform this action.'));
       } else if (status === 404) {
         toast.error(t('admin.rubric.toast.404', 'SubField not found.'));
+      } else if (beMsg) {
+        toast.error(beMsg);
       } else {
         toast.error(t('admin.rubric.toast.error', 'Failed to save GradingRubric. Please try again.'));
       }
@@ -479,6 +498,7 @@ const GradingRubricModal = ({
                           className={`${styles.inputSm} ${rowErr?.maxScore ? styles.inputError : ''}`}
                           type="number"
                           min={1}
+                          max={10}
                           step={1}
                           value={r.maxScore}
                           onChange={(e) =>

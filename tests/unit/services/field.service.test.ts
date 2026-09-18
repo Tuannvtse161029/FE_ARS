@@ -2,9 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const getMock = vi.hoisted(() => vi.fn());
 const patchMock = vi.hoisted(() => vi.fn());
+const putMock = vi.hoisted(() => vi.fn());
+const deleteMock = vi.hoisted(() => vi.fn());
 
 vi.mock('../../../src/services/axios', () => ({
-  default: { get: getMock, patch: patchMock },
+  default: { get: getMock, patch: patchMock, put: putMock, delete: deleteMock },
 }));
 
 import { fieldService } from '../../../src/services/field.service';
@@ -13,6 +15,8 @@ describe('fieldService', () => {
   beforeEach(() => {
     getMock.mockReset();
     patchMock.mockReset();
+    putMock.mockReset();
+    deleteMock.mockReset();
   });
 
   it('normalizes the API majorFieldId into the frontend id contract', async () => {
@@ -89,6 +93,7 @@ describe('fieldService', () => {
         data: [
           {
             subFieldId: 10,
+            majorFieldId: 1,
             name: 'Machine Learning',
             majorFieldName: 'Computer Science',
             description: 'ML research',
@@ -97,7 +102,7 @@ describe('fieldService', () => {
                 code: 'NOVELTY',
                 title: 'Novelty & Originality',
                 description: 'Assesses novelty of contribution',
-                maxScore: 25,
+                maxScore: 10,
                 order: 1,
                 standardReferences: ['IEEE Standard 101'],
               },
@@ -109,7 +114,9 @@ describe('fieldService', () => {
       const result = await fieldService.listSubFieldsWithRubric();
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual({
+        id: 10,
         subFieldId: 10,
+        majorFieldId: 1,
         name: 'Machine Learning',
         majorFieldName: 'Computer Science',
         description: 'ML research',
@@ -118,7 +125,7 @@ describe('fieldService', () => {
             code: 'NOVELTY',
             title: 'Novelty & Originality',
             description: 'Assesses novelty of contribution',
-            maxScore: 25,
+            maxScore: 10,
             order: 1,
             standardReferences: ['IEEE Standard 101'],
           },
@@ -170,6 +177,35 @@ describe('fieldService', () => {
       expect(patchMock).toHaveBeenCalledWith('/api/SubField/15/rubric', {
         gradingRubric: rubric,
       });
+    });
+  });
+
+  describe('updateSub', () => {
+    it('calls PUT /api/SubField/{id} with updated data', async () => {
+      const updateData = {
+        majorFieldId: 5,
+        name: 'Quantum Machine Learning',
+        description: 'Updated description',
+      };
+      putMock.mockResolvedValue({
+        data: {
+          id: 10,
+          ...updateData,
+        },
+      });
+
+      const result = await fieldService.updateSub(10, updateData);
+      expect(putMock).toHaveBeenCalledWith('/api/SubField/10', updateData);
+      expect(result.name).toBe('Quantum Machine Learning');
+    });
+  });
+
+  describe('deleteSub', () => {
+    it('calls DELETE /api/SubField/{id}', async () => {
+      deleteMock.mockResolvedValue({ data: {} });
+
+      await fieldService.deleteSub(10);
+      expect(deleteMock).toHaveBeenCalledWith('/api/SubField/10');
     });
   });
 });
