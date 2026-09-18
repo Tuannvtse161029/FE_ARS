@@ -54,6 +54,7 @@ import {
   Search,
   Library,
   Medal as MedalIcon,
+  Gift as UserRewardsIcon,
 } from 'lucide-react';
 import {
   ChevronLeftIcon,
@@ -264,6 +265,7 @@ const SECTION_LABELS: Record<string, string> = {
   review: 'admin.nav.section.review',
   people: 'admin.nav.section.people',
   payment: 'admin.nav.section.payment',
+  rewards: 'admin.nav.section.rewards',
   platform: 'admin.nav.section.platform',
   // Cross-role section labels (used by Reviewer / Lecturer /
   // Graduate Student / Researcher / Admin). Sharing the same key
@@ -583,6 +585,13 @@ export const MainLayout = () => {
           { to: '#', label: copy('Payment', 'Thanh toán'), icon: <PaymentIcon size={20} />, isSectionHeader: true, sectionLabelKey: SECTION_LABELS.payment },
           { to: ROUTES.ADMIN_TRANSACTIONS, label: copy('Transactions', 'Giao dịch'), icon: <TransactionsIcon size={20} /> },
           { to: ROUTES.ADMIN_ANNUAL_FEES, label: copy('Annual Fees', 'Phí thường niên'), icon: <AnnualFeesIcon size={20} /> },
+
+          // ── Rewards section ───────────────────────────
+          // Admin-managed reward configs (e.g. researcher-published-paper).
+          // The Publish flow calls /api/UserReward/match to look up the
+          // matching Active reward and notifies the author.
+          { to: '#', label: copy('Rewards', 'Phần thưởng'), icon: <UserRewardsIcon size={20} />, isSectionHeader: true, sectionLabelKey: SECTION_LABELS.rewards },
+          { to: ROUTES.ADMIN_USER_REWARDS, label: copy('User Rewards', 'Phần thưởng người dùng'), icon: <UserRewardsIcon size={20} /> },
 
           // ── Platform section ──────────────────────────
           { to: '#', label: copy('Platform', 'Nền tảng'), icon: <TransactionsIcon size={20} />, isSectionHeader: true, sectionLabelKey: SECTION_LABELS.platform },

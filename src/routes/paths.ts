@@ -86,6 +86,10 @@ export const ROUTES = {
   // Annual Fees — Admin CRUD over Researcher / Lecturer subscription plans.
   // Page wired to `GET/POST/PUT/PATCH/DELETE /api/AnnualFees` per BE-ANNUAL-FEE-01.
   ADMIN_ANNUAL_FEES: '/admin/annual-fees',
+  // UserRewards — Admin CRUD over reward configurations (e.g. the
+  // researcher-published-paper reward). Page wired to
+  // GET/POST/PUT/PATCH/DELETE /api/UserReward per the BE Swagger.
+  ADMIN_USER_REWARDS: '/admin/user-rewards',
   // Agent 52 — first-time Google-user onboarding. Created by the GIS button
   // when the BE's google-login response carries `isNewUser === true` or
   // `requiresOnboarding === true` (see src/services/googleAuth.service.ts).

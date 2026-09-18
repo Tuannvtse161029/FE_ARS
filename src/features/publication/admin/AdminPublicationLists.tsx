@@ -190,9 +190,38 @@ const AdminList = ({
       const updated = await publicationAdapter.publishPaper(paper.id);
       setPapers((items) => items.map((item) => item.id === updated.id ? updated : item));
       await load(true);
+
+      // Best-effort reward notification. We surface the secondary
+      // toast only when the BE actually delivered one, so admins are
+      // not told a reward fired when it didn't.
+      let rewardToast: string | null = null;
+      try {
+        const reward = await publicationAdapter.notifyAuthorOfPublishedPaperReward(
+          paper.id,
+          t,
+        );
+        if (reward.delivered) {
+          rewardToast = t(
+            'admin.publicationLists.publishWithRewardToast',
+            'The researcher has been notified of the reward.',
+          );
+        }
+      } catch (rewardErr) {
+        // Swallow — the publish already succeeded; never block on the
+        // reward side-effect.
+        console.warn('Reward notification flow failed:', rewardErr);
+      }
+
+      const baseMessage = t(
+        'admin.publicationLists.successPublished',
+        `The paper "${paper.title}" was published successfully and its author was notified.`,
+        { title: paper.title },
+      );
       setActionFeedback({
         type: 'success',
-        message: `The paper "${paper.title}" was published successfully.`,
+        message: rewardToast
+          ? `${baseMessage} ${rewardToast}`
+          : baseMessage,
       });
     } catch (e) {
       setActionFeedback({
