@@ -1,6 +1,14 @@
 import api from './axios';
 import { API_ENDPOINTS } from '../utils/constants';
-import type { MajorField, SubField, MajorFieldCreateRequest, SubFieldCreateRequest } from '../types/domain';
+import type {
+  MajorField,
+  SubField,
+  MajorFieldCreateRequest,
+  SubFieldCreateRequest,
+  GradingRubricCriterion,
+  SubFieldWithRubric,
+  PatchRubricRequest,
+} from '../types/domain';
 import { isValidEntityId } from '../utils/entityId';
 
 /**
@@ -115,4 +123,48 @@ export const fieldService = {
     const response = await api.get(API_ENDPOINTS.SUB_FIELD.GET_BY_ID(id));
     return response.data;
   },
+
+  /**
+   * Fetches all SubFields including their gradingRubric array.
+   * Used by the Admin GradingRubric management page.
+   */
+  listSubFieldsWithRubric: async (): Promise<SubFieldWithRubric[]> => {
+    const response = await api.get<unknown[]>(API_ENDPOINTS.SUB_FIELD.GET_ALL);
+    if (!Array.isArray(response.data)) return [];
+    return response.data.map((raw): SubFieldWithRubric => {
+      const r = raw as Record<string, unknown>;
+      const id = (r['subFieldId'] ?? r['id'] ?? 0) as number;
+      const rubricRaw = Array.isArray(r['gradingRubric']) ? r['gradingRubric'] : [];
+      const rubric: GradingRubricCriterion[] = rubricRaw.map((item) => {
+        const c = item as Record<string, unknown>;
+        return {
+          code: String(c['code'] ?? ''),
+          title: String(c['title'] ?? ''),
+          description: String(c['description'] ?? ''),
+          maxScore: typeof c['maxScore'] === 'number' ? c['maxScore'] : Number(c['maxScore'] ?? 0),
+          order: typeof c['order'] === 'number' ? c['order'] : Number(c['order'] ?? 0),
+          standardReferences: Array.isArray(c['standardReferences'])
+            ? (c['standardReferences'] as unknown[]).map(String)
+            : [],
+        };
+      });
+      return {
+        subFieldId: typeof id === 'number' ? id : Number(id),
+        name: String(r['name'] ?? ''),
+        majorFieldName: String(r['majorFieldName'] ?? ''),
+        description: typeof r['description'] === 'string' ? r['description'] : null,
+        gradingRubric: rubric,
+      };
+    });
+  },
+
+  /**
+   * Replaces the GradingRubric for a given SubField.
+   * Uses PATCH /api/SubField/{id}/rubric — does NOT touch name, majorFieldId, or description.
+   */
+  patchRubric: async (id: number, rubric: GradingRubricCriterion[]): Promise<void> => {
+    const body: PatchRubricRequest = { gradingRubric: rubric };
+    await api.patch(API_ENDPOINTS.SUB_FIELD.PATCH_RUBRIC(id), body);
+  },
 };
+

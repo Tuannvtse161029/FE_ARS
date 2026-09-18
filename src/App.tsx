@@ -100,6 +100,11 @@ const AuditLogs = lazy(() => import('./pages/Admin/AuditLogs').then((m) => ({ de
 const AnnualFees = lazy(() =>
   import('./pages/Admin/AnnualFees').then((m) => ({ default: m.default })),
 );
+// GradingRubric — Admin management of per-SubField scoring criteria.
+// Wired to GET /api/SubField (list) and PATCH /api/SubField/{id}/rubric.
+const AdminGradingRubric = lazy(() =>
+  import('./pages/Admin/AdminGradingRubric').then((m) => ({ default: m.AdminGradingRubric })),
+);
 // Agent admin-policies — Admin tab for managing the four platform
 // policy documents. Loads Firestore directly through `policyService`;
 // there is no BE endpoint.
@@ -351,6 +356,7 @@ const App = () => {
                   <Route path={ROUTES.ADMIN_POLICIES} element={<AdminPolicies />} />
                   <Route path={ROUTES.ADMIN_ANNUAL_FEES} element={<AnnualFees />} />
                   <Route path={ROUTES.ADMIN_USER_REWARDS} element={<UserRewards />} />
+                  <Route path={ROUTES.ADMIN_GRADING_RUBRIC} element={<AdminGradingRubric />} />
                 </Route>
               </Route>
             </Route>

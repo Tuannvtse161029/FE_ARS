@@ -229,6 +229,7 @@ export const API_ENDPOINTS = {
     GET_BY_ID: (id: number) => `/api/SubField/${id}`,
     UPDATE: (id: number) => `/api/SubField/${id}`,
     DELETE: (id: number) => `/api/SubField/${id}`,
+    PATCH_RUBRIC: (id: number) => `/api/SubField/${id}/rubric`,
   },
   COMMENT_VOTE: {
     BASE: '/api/CommentVote',
