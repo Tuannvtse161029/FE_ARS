@@ -192,7 +192,6 @@ export const GraduateStudentDashboard = (): JSX.Element => {
     return (
       <div className={styles.page}>
         <PageHeader
-          eyebrow="RESEARCH JOURNEY"
           title="Graduate Student Workspace"
           description="Please sign in to view your workspace."
           accent={ROLE_ACCENT}
@@ -205,7 +204,6 @@ export const GraduateStudentDashboard = (): JSX.Element => {
     return (
       <div className={styles.page}>
         <PageHeader
-          eyebrow="RESEARCH JOURNEY"
           title="Graduate Student Workspace"
           description={`Welcome back, ${user.username}. Loading your research journey…`}
           accent={ROLE_ACCENT}
@@ -261,7 +259,6 @@ export const GraduateStudentDashboard = (): JSX.Element => {
     <div className={styles.page}>
       {/* ── Page Header ─────────────────────────────────── */}
       <PageHeader
-        eyebrow={t('student.dashboard.eyebrow', 'RESEARCH JOURNEY')}
         title={`${user.username}'s ${t('student.dashboard.journey', 'Research Journey')}`}
         description={t('student.dashboard.description', 'Track your research group, milestones, and lecturer feedback.')}
         accent={ROLE_ACCENT}

@@ -524,12 +524,6 @@ export const ParticipationTable = ({ embedded }: ParticipationTableProps) => {
               </button>
             );
           })}
-          <span className={styles.toolbarMeta}>
-            {copy(
-              `Showing ${filtered.length} of ${rows.length} seminars`,
-              `Hiển thị ${filtered.length} / ${rows.length} hội thảo`,
-            )}
-          </span>
         </div>
       </div>
 

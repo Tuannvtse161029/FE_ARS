@@ -251,7 +251,6 @@ export const StudentResearchGroups = (): JSX.Element => {
   return (
     <div className={styles.page}>
       <PageHeader
-        eyebrow={copy('RESEARCH GROUPS', 'NHÓM NGHIÊN CỨU')}
         title={copy('My Research Groups', 'Nhóm nghiên cứu của tôi')}
         description={
           joinedGroups.length > 0

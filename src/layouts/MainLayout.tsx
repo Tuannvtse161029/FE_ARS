@@ -54,7 +54,6 @@ import {
   Search,
   Library,
   Medal as MedalIcon,
-  Gift as UserRewardsIcon,
   BookOpen as RubricIcon,
 } from 'lucide-react';
 import {
@@ -266,7 +265,6 @@ const SECTION_LABELS: Record<string, string> = {
   review: 'admin.nav.section.review',
   people: 'admin.nav.section.people',
   payment: 'admin.nav.section.payment',
-  rewards: 'admin.nav.section.rewards',
   platform: 'admin.nav.section.platform',
   // Cross-role section labels (used by Reviewer / Lecturer /
   // Graduate Student / Researcher / Admin). Sharing the same key
@@ -588,13 +586,6 @@ export const MainLayout = () => {
           { to: ROUTES.ADMIN_TRANSACTIONS, label: copy('Transactions', 'Giao dịch'), icon: <TransactionsIcon size={20} /> },
           { to: ROUTES.ADMIN_ANNUAL_FEES, label: copy('Annual Fees', 'Phí thường niên'), icon: <AnnualFeesIcon size={20} /> },
 
-          // ── Rewards section ───────────────────────────
-          // Admin-managed reward configs (e.g. researcher-published-paper).
-          // The Publish flow calls /api/UserReward/match to look up the
-          // matching Active reward and notifies the author.
-          { to: '#', label: copy('Rewards', 'Phần thưởng'), icon: <UserRewardsIcon size={20} />, isSectionHeader: true, sectionLabelKey: SECTION_LABELS.rewards },
-          { to: ROUTES.ADMIN_USER_REWARDS, label: copy('User Rewards', 'Phần thưởng người dùng'), icon: <UserRewardsIcon size={20} /> },
-
           // ── Platform section ──────────────────────────
           { to: '#', label: copy('Platform', 'Nền tảng'), icon: <TransactionsIcon size={20} />, isSectionHeader: true, sectionLabelKey: SECTION_LABELS.platform },
           { to: ROUTES.ADMIN_REPORTS, label: copy('Reports', 'Báo cáo vi phạm'), icon: <ReportsIcon size={20} /> },
@@ -759,23 +750,24 @@ export const MainLayout = () => {
           </button>
         </div>
 
-        {/* Role context — single-line pill rendered as
-            "Workspace type · Role" (e.g. "Research Workspace · Researcher",
-            "Admin Console · Admin"). Inlining the two pieces keeps the
-            sidebar header compact and matches the customer-facing
-            reference design. The role-appropriate workspace label is
+        {/* Role context — single-line pill. The Admin role used to render
+            "Admin Console · Admin" inside the sidebar header; per the
+            product update we hide the entire role-context pill for Admins
+            (they identify themselves through the avatar + dropdown menu)
+            while keeping "Research Workspace · Researcher" for every other
+            authenticated role. The role-appropriate workspace label is
             chosen by `activeRole` so admins don't see "Research" in
             their admin console and researchers don't see "Admin" in
             their research workspace. */}
-        <div className={styles.roleContext}>
-          <span className={styles.roleContextWorkspace}>
-            {activeRole === 'Admin'
-              ? copy('Admin Console', 'Bảng quản trị')
-              : copy('Research Workspace', 'Không gian nghiên cứu')}
-          </span>
-          <span className={styles.roleContextSeparator} aria-hidden>·</span>
-          <strong className={styles.roleContextRole}>{formatRole(displayedRole)}</strong>
-        </div>
+        {activeRole !== 'Admin' ? (
+          <div className={styles.roleContext}>
+            <span className={styles.roleContextWorkspace}>
+              {copy('Research Workspace', 'Không gian nghiên cứu')}
+            </span>
+            <span className={styles.roleContextSeparator} aria-hidden>·</span>
+            <strong className={styles.roleContextRole}>{formatRole(displayedRole)}</strong>
+          </div>
+        ) : null}
 
         <nav
           className={styles.sidebarNav}

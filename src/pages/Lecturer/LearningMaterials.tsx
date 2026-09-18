@@ -301,7 +301,6 @@ export const LecturerLearningMaterialsPage = () => {
       data-testid="lecturer-learning-materials"
     >
       <PageHeader
-        eyebrow="LECTURER WORKSPACE"
         title="Learning Materials"
         description="Reference PDFs and resources linked to your research topics. Attach a Firebase Storage URL for each material."
         actions={

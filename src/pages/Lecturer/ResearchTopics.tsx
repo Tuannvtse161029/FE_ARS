@@ -544,7 +544,6 @@ export const ResearchTopicsPage = () => {
   return (
     <div className={styles.researchGroupPage} data-testid="lecturer-research-topics">
       <PageHeader
-        eyebrow={t('lecturer.topics.pageEyebrow')}
         title={t('lecturer.topics.pageTitle')}
         description={t('lecturer.topics.pageDesc')}
         actions={

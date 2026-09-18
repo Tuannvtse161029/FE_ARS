@@ -114,19 +114,26 @@
   --ars-gradstudent-light: #dbeafe;
   --ars-gradstudent-mid: #c78e12;
 
-  /* Admin — yellow (project brand) */
-  --ars-admin: var(--accent-primary);
+  /* Admin — brand yellow surface but dark-amber text so chips
+     ("DOI:", "Preview", etc.) stay legible. Was `var(--accent-primary)`
+     which is a saturated gold and disappeared into the
+     `--surface-selected` warm-yellow background. */
+  --ars-admin: #9b6418;
   --ars-admin-light: var(--surface-selected);
   --ars-admin-mid: var(--accent-hover);
 
   /* ── Status Colors ──────────────────────────────────────── */
   --ars-success: #047857;
   --ars-success-bg: #d1fae5;
-  --ars-warning: #92400e;
+  /* Black text on warm-yellow surface so the warning pill reads as
+     "attention" without falling into the yellow-on-yellow readability
+     trap that the previous amber-on-cream combo had on certain
+     surfaces. */
+  --ars-warning: #000000;
   --ars-warning-bg: #fef3c7;
   --ars-error: #991b1b;
   --ars-error-bg: #fee2e2;
-  --ars-info: #70490e;
+  --ars-info: #000000;
   --ars-info-bg: #dbeafe;
 
   /* ── Typography ─────────────────────────────────────────── */
@@ -297,6 +304,10 @@
   --ink-on-dark: #fffdf8;
   --border-subtle: rgba(29, 28, 25, 0.12);
   --border-strong: rgba(29, 28, 25, 0.24);
+  /* Brand accent. Was a saturated gold (`#e2ad2f`) that vanished when
+     it landed on the warm `--surface-selected` chip background; the
+     older ochre kept the brand identity intact but stayed legible on
+     every surface that ships with the design system. */
   --accent-primary: #e2ad2f;
   --accent-hover: #c78e12;
   --accent-ochre: #9b6418;
@@ -378,7 +389,10 @@
 
   --status-success-text: #28563d;
   --status-success-surface: #e3f1e7;
-  --status-warning-text: #70490e;
+  /* Warning: black text on pale-yellow surface so the pill reads as
+     "attention" without falling into the yellow-on-yellow readability
+     trap that the darker amber colour previously had. */
+  --status-warning-text: #000000;
   --status-warning-surface: #fff0bf;
   --status-danger-text: #7b3428;
   --status-danger-surface: #f9e3dd;
@@ -597,14 +611,17 @@ html[lang='vi'],
   --status-success-text: #34d399;
   --status-success-surface: rgba(16, 185, 129, 0.18);
   --status-positive: #34d399;
-  --status-warning-text: #fbbf24;
-  --status-warning-surface: rgba(245, 158, 11, 0.18);
-  --status-attention: #fbbf24;
+  /* Warning: black text on translucent-yellow surface so the badge is
+     readable in dark mode (where the previous amber-on-yellow combo
+     disappeared into the background). */
+  --status-warning-text: #000000;
+  --status-warning-surface: rgba(250, 204, 21, 0.28);
+  --status-attention: #000000;
   --status-danger-text: #f87171;
   --status-danger-surface: rgba(239, 68, 68, 0.18);
   --status-critical: #f87171;
-  --status-info-text: #fbbf24;
-  --status-info-surface: rgba(250, 204, 21, 0.18);
+  --status-info-text: #000000;
+  --status-info-surface: rgba(250, 204, 21, 0.28);
   --status-neutral-text: var(--ink-secondary);
   --status-neutral-surface: var(--surface-sunken);
   --status-draft-text: #a8b4d4;
@@ -654,18 +671,21 @@ html[lang='vi'],
   --ars-gradstudent-light: rgba(96, 165, 250, 0.18);
   --ars-gradstudent-mid: #facc15;
 
-  --ars-admin: #818cf8;
+  --ars-admin: #a5b4fc;
   --ars-admin-light: rgba(129, 140, 248, 0.18);
-  --ars-admin-mid: #6366f1;
+  --ars-admin-mid: #818cf8;
 
   --ars-success: #34d399;
   --ars-success-bg: rgba(16, 185, 129, 0.18);
-  --ars-warning: #fbbf24;
-  --ars-warning-bg: rgba(245, 158, 11, 0.18);
+  /* Black text on translucent-yellow surface so the badge is
+     readable in dark mode (where the previous bright-yellow
+     text-on-yellow combo disappeared into the background). */
+  --ars-warning: #000000;
+  --ars-warning-bg: rgba(250, 204, 21, 0.28);
   --ars-error: #f87171;
   --ars-error-bg: rgba(239, 68, 68, 0.18);
-  --ars-info: #eab308;
-  --ars-info-bg: rgba(59, 130, 246, 0.18);
+  --ars-info: #000000;
+  --ars-info-bg: rgba(59, 130, 246, 0.28);
 
   /* ── Overlay & Dialog (dark mode) ───────────────────────── */
   --overlay-scrim: rgba(0, 0, 0, 0.65);

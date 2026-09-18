@@ -511,7 +511,6 @@ export const WorkspaceView = ({
       <PageHeader
 
 
-        eyebrow={copy('GROUP WORKSPACE', 'KHÔNG GIAN NHÓM')}
 
 
         title={group.name}

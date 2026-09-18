@@ -752,7 +752,6 @@ export const AdminMedals= () => {
 
       <PageHeader
 
-        eyebrow={t('admin.medals.eyebrow', 'QUẢN TRỊ · VINH DANH')}
 
         title={t('admin.medals.title', 'Huy hiệu & Danh hiệu Học thuật')}
 

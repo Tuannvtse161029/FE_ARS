@@ -118,7 +118,6 @@ export const SubscriptionReturn = () => {
   return (
     <div className={styles.page} data-component="SubscriptionReturnPage">
       <PageHeader
-        eyebrow="ARS subscription"
         title={featureDisabled ? 'Subscription' : 'Verifying your payment'}
         description={`Reference: ${orderCode ?? '—'}${
           payosCode ? ` · PayOS code: ${payosCode}` : ''

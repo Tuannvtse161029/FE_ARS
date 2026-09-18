@@ -523,7 +523,6 @@ export const LecturerMaterialsPage = () => {
   return (
     <div className={styles.materialsPage} data-testid="lecturer-materials">
       <PageHeader
-        eyebrow="LECTURER WORKSPACE"
         title="Materials"
         description="Manage your learning materials and shared research papers in one place."
         accent="var(--ars-lecturer)"

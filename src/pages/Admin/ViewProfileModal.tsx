@@ -42,15 +42,17 @@ import {
   PlayCircle,
   Wallet,
   CalendarClock,
-  Star,
+  CircleCheck,
   AlertTriangle,
+  Clock,
 } from 'lucide-react';
 import { profileService } from '../../services/profile.service';
 import { adminUserService } from '../../services/adminUser.service';
+import { getUserCurrentSubscription } from '../../services/annualFee.service';
+import type { CurrentAnnualFeeSubscription } from '../../types/annualFee';
 import type { Profile } from '../../types/profile';
 import type { User } from '../../types/auth';
 import { useI18n } from '../../i18n/I18nContext';
-import { displayAccountTier } from '../../services/user.service';
 import type { AccountItem } from '../../types/admin';
 import { safeHref } from '../../utils/validationRules';
 import styles from './ViewProfileModal.module.css';
@@ -139,6 +141,216 @@ const VERIFICATION_PILL_CLASS: Record<string, string> = {
   Accepted: styles.statusApproved,
   Rejected: styles.statusRejected,
 };
+
+/**
+ * Roles whose annual subscription the ARS platform actually gates paid
+ * features on. The plan (PREMIUM/FREE) field carried on `AccountItem`
+ * is only meaningful for these two roles — every other account type
+ * returns "Unavailable" so the admin never confuses "Free" with a
+ * missing subscription.
+ *
+ * NOTE: We normalize on the UPPER_SNAKE_CASE form because the BE may
+ * surface roles as either `'RESEARCHER'` or `'Researcher'` depending on
+ * which DTO the admin view is consuming. Storing the comparison value
+ * in the same case the BE returns lets the lookup stay a single hash
+ * lookup without per-key normalization.
+ */
+const SUBSCRIPTION_ELIGIBLE_ROLES = new Set(['RESEARCHER', 'LECTURER']);
+
+/**
+ * Render the Subscription card inside the View Profile modal.
+ *
+ * Source of truth today:
+ *   - Researcher / Lecturer → derive status from `account.plan`
+ *     (PREMIUM = Active, anything else = Expired / None). The
+ *     expiry date is fetched live from the BE via the same
+ *     `/api/AnnualFees/my-subscription` endpoint that powers the
+ *     Researcher's own Subscription page; the BE is queried with
+ *     `?userId={id}` so admins can inspect any user's expiry. When
+ *     the BE returns a subscription record, we display the live
+ *     `expiresAt`. When the BE hasn't shipped the admin override
+ *     yet, the row shows "—" with a one-line caption explaining
+ *     the fallback.
+ *   - Reviewer / Graduate Student / Admin / Guest → render a single
+ *     "Unavailable" status pill — these roles never pay the
+ *     annual fee and never have a subscription record to query.
+ */
+function SubscriptionSummary({
+  account,
+  localeTag,
+}: {
+  account: AccountItem;
+  localeTag: 'en' | 'vi';
+}) {
+  const { t } = useI18n();
+  const eligible =
+    Array.isArray(account.roles) &&
+    account.roles.some(
+      (role) => SUBSCRIPTION_ELIGIBLE_ROLES.has(String(role).toUpperCase()),
+    );
+
+  // Live subscription lookup for eligible roles. We attempt the BE
+  // call once per modal open — the parent's effect already memoises
+  // `account`, so this fetch only fires when the user changes.
+  const [subscription, setSubscription] = useState<CurrentAnnualFeeSubscription | null>(null);
+  const [subscriptionLoaded, setSubscriptionLoaded] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!eligible || typeof account.id !== 'number') {
+      setSubscription(null);
+      setSubscriptionLoaded(true);
+      return undefined;
+    }
+    setSubscriptionLoaded(false);
+    void getUserCurrentSubscription(account.id)
+      .then((next) => {
+        if (cancelled) return;
+        setSubscription(next);
+        setSubscriptionLoaded(true);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setSubscription(null);
+        setSubscriptionLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [eligible, account.id]);
+
+  // Non-eligible roles: surface the "Unavailable" pill with the
+  // canonical role-agnostic caption.
+  if (!eligible) {
+    return (
+      <div className={styles.subscriptionGrid}>
+        <div className={styles.field}>
+          <dt>
+            <span>
+              {t(
+                'admin.accounts.modal.viewProfile.subscriptionStatus',
+                'Subscription status',
+              )}
+            </span>
+          </dt>
+          <dd>
+            <span className={`${styles.statusPill} ${styles.statusUnavailable}`}>
+              {t('admin.accounts.modal.viewProfile.subscriptionUnavailable', 'Unavailable')}
+            </span>
+          </dd>
+        </div>
+        <div className={styles.field}>
+          <dt>
+            <span>
+              {t(
+                'admin.accounts.modal.viewProfile.subscriptionExpiry',
+                'Expiry date',
+              )}
+            </span>
+          </dt>
+          <dd>
+            <span className={styles.muted}>—</span>
+            <small className={styles.fieldHint}>
+              {t(
+                'admin.accounts.modal.viewProfile.subscriptionNACaption',
+                localeTag === 'vi'
+                  ? 'Gói này không áp dụng cho vai trò này.'
+                  : 'Subscriptions are not required for this role.',
+              )}
+            </small>
+          </dd>
+        </div>
+      </div>
+    );
+  }
+
+  // Status: trust the BE's `isExpired` flag when we got a live record
+  // back. When the BE hasn't shipped the admin lookup yet, the service
+  // returns null — we deliberately render "Pending" rather than
+  // guessing Expired based on the plan field, because the plan field
+  // doesn't reflect subscription state (it's null for users that DO
+  // have an active subscription in the BE today).
+  const liveIsExpired = subscription?.isExpired;
+  const hasLiveSubscription = subscription !== null;
+  const isExpired = hasLiveSubscription ? Boolean(liveIsExpired) : false;
+  const isPending = !hasLiveSubscription && subscriptionLoaded;
+  const statusPillClass = isExpired
+    ? styles.statusExpired
+    : isPending
+    ? styles.statusPending ?? styles.statusInactive
+    : styles.statusActive;
+  const statusLabel = isExpired
+    ? t('admin.accounts.modal.viewProfile.subscriptionExpired', 'Expired')
+    : isPending
+    ? t('admin.accounts.modal.viewProfile.subscriptionPending', 'Pending')
+    : t('admin.accounts.modal.viewProfile.subscriptionActive', 'Active');
+  const StatusIcon = isExpired ? AlertTriangle : isPending ? Clock : CircleCheck;
+
+  // Expiry date — render the live `expiresAt` if the BE returned one,
+  // otherwise show a muted dash with a one-line hint that the admin
+  // endpoint is not yet available.
+  const expiresAtRaw = subscription?.expiresAt ?? null;
+  const expiresAtLabel = expiresAtRaw
+    ? new Date(expiresAtRaw).toLocaleDateString(
+        localeTag === 'vi' ? 'vi-VN' : 'en-US',
+        { year: 'numeric', month: 'short', day: 'numeric' },
+      )
+    : null;
+
+  return (
+    <div className={styles.subscriptionGrid}>
+      <div className={styles.field}>
+        <dt>
+          <StatusIcon size={13} aria-hidden="true" />
+          <span>
+            {t(
+              'admin.accounts.modal.viewProfile.subscriptionStatus',
+              'Subscription status',
+            )}
+          </span>
+        </dt>
+        <dd>
+          <span className={`${styles.statusPill} ${statusPillClass}`}>
+            {statusLabel}
+          </span>
+        </dd>
+      </div>
+      <div className={styles.field}>
+        <dt>
+          <CalendarClock size={13} aria-hidden="true" />
+          <span>
+            {t(
+              'admin.accounts.modal.viewProfile.subscriptionExpiry',
+              'Expiry date',
+            )}
+          </span>
+        </dt>
+        <dd>
+          {expiresAtRaw && expiresAtLabel ? (
+            <span className={styles.muted}>{expiresAtLabel}</span>
+          ) : (
+            <>
+              <span className={styles.muted}>—</span>
+              <small className={styles.fieldHint}>
+                {subscriptionLoaded
+                  ? t(
+                      'admin.accounts.modal.viewProfile.subscriptionExpiryHint',
+                      localeTag === 'vi'
+                        ? 'BE chưa cung cấp admin endpoint cho ngày hết hạn — sẽ hiển thị khi endpoint sẵn sàng.'
+                        : 'The admin endpoint that returns the expiry date is not yet available — value will populate when the BE ships it.',
+                    )
+                  : t(
+                      'admin.accounts.modal.viewProfile.subscriptionExpiryLoading',
+                      'Loading expiry date…',
+                    )}
+              </small>
+            </>
+          )}
+        </dd>
+      </div>
+    </div>
+  );
+}
 
 export const ViewProfileModal = ({
   account,
@@ -285,9 +497,6 @@ export const ViewProfileModal = ({
     typeof entry === 'string' && entry.toUpperCase() === 'REVIEWER',
   );
 
-  const accountTier =
-    user?.accountTier ??
-    (account.plan === 'PREMIUM' ? 'Premium' : 'Free');
   const joinedDate = user?.createdAt ?? account.joinedDate;
   const updatedAt = user?.updatedAt ?? null;
   const suspendedUntil = user?.suspendedUntil ?? account.suspendedUntil ?? null;
@@ -326,7 +535,7 @@ export const ViewProfileModal = ({
             <span className={styles.subjectName}>{account.name}</span>
           </div>
           <div className={styles.headerActions}>
-            {accountStatus ? (
+              {accountStatus ? (
               <span
                 className={`${styles.statusPill} ${ACCOUNT_STATUS_PILL_CLASS[accountStatus] ?? styles.statusSuspended}`}
                 aria-label={`Account status: ${accountStatus}`}
@@ -334,7 +543,7 @@ export const ViewProfileModal = ({
                 {accountStatus === 'SUSPENDED' ? (
                   <PauseCircle size={12} aria-hidden="true" />
                 ) : accountStatus === 'TRIAL' ? (
-                  <Star size={12} aria-hidden="true" />
+                  <BadgeCheck size={12} aria-hidden="true" />
                 ) : accountStatus === 'EXPIRED' ? (
                   <AlertTriangle size={12} aria-hidden="true" />
                 ) : (
@@ -473,17 +682,6 @@ export const ViewProfileModal = ({
                   {t('admin.accounts.modal.viewProfile.accountSection', 'Account & status')}
                 </h3>
                 <dl className={styles.fieldGrid}>
-                  <div className={styles.field}>
-                    <dt>
-                      <Hash size={13} aria-hidden="true" />
-                      <span>
-                        {t('admin.accounts.modal.viewProfile.userId', 'User ID')}
-                      </span>
-                    </dt>
-                    <dd>
-                      <code className={styles.codeChip}>#{account.id}</code>
-                    </dd>
-                  </div>
                   {username ? (
                     <div className={styles.field}>
                       <dt>
@@ -508,33 +706,6 @@ export const ViewProfileModal = ({
                       </dd>
                     </div>
                   ) : null}
-                  <div className={styles.field}>
-                    <dt>
-                      <Wallet size={13} aria-hidden="true" />
-                      <span>
-                        {t(
-                          'admin.accounts.modal.viewProfile.plan',
-                          localeTag === 'vi' ? 'Gói dịch vụ' : 'Plan',
-                        )}
-                      </span>
-                    </dt>
-                    <dd>
-                      <span
-                        className={`${styles.statusPill} ${
-                          accountTier === 'Premium'
-                            ? styles.statusApproved
-                            : styles.statusPending
-                        }`}
-                      >
-                        {displayAccountTier(accountTier)}
-                      </span>
-                      {account.plan === 'PREMIUM' && accountTier !== 'Premium' ? (
-                        <small className={styles.fieldHint}>
-                          ({t('admin.accounts.modal.viewProfile.planLive', 'Live plan')})
-                        </small>
-                      ) : null}
-                    </dd>
-                  </div>
                   <div className={styles.field}>
                     <dt>
                       <Calendar size={13} aria-hidden="true" />
@@ -603,12 +774,24 @@ export const ViewProfileModal = ({
                         }`}
                       >
                         {isSuspended
-                          ? t('admin.accounts.modal.viewProfile.disabled', 'Disabled')
+                          ? t('admin.accounts.modal.viewProfile.suspended', 'Suspended')
                           : t('admin.accounts.modal.viewProfile.enabled', 'Active')}
                       </span>
                     </dd>
                   </div>
                 </dl>
+              </section>
+
+              {/* ── Subscription (Researcher / Lecturer) ───── */}
+              <section className={styles.section} aria-labelledby="vp-subscription-title">
+                <h3 id="vp-subscription-title" className={styles.sectionTitle}>
+                  <Wallet size={14} aria-hidden="true" />
+                  {t('admin.accounts.modal.viewProfile.subscriptionSection', 'Subscription')}
+                </h3>
+                <SubscriptionSummary
+                  account={account}
+                  localeTag={localeTag}
+                />
               </section>
 
               {/* ── Contact ───────────────────────────────── */}

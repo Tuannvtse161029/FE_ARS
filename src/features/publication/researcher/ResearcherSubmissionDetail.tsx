@@ -127,7 +127,6 @@ export const ResearcherSubmissionDetail = () => {
     return (
       <section className={styles.page}>
         <PageHeader
-          eyebrow={t('researcher.submissions.eyebrow')}
           title={t('researcher.detail.titleFallback')}
           accent={RESEARCHER_ACCENT}
           actions={
@@ -150,7 +149,6 @@ export const ResearcherSubmissionDetail = () => {
     return (
       <section className={styles.page}>
         <PageHeader
-          eyebrow={t('researcher.submissions.eyebrow')}
           title={t('researcher.detail.titleFallback')}
           accent={RESEARCHER_ACCENT}
           actions={
@@ -177,7 +175,6 @@ export const ResearcherSubmissionDetail = () => {
     return (
       <section className={styles.page}>
         <PageHeader
-          eyebrow={t('researcher.submissions.eyebrow')}
           title={t('researcher.detail.titleFallback')}
           accent={RESEARCHER_ACCENT}
           actions={
@@ -359,7 +356,6 @@ export const ResearcherSubmissionDetail = () => {
   return (
     <section className={styles.page}>
       <PageHeader
-        eyebrow={t('researcher.submissions.eyebrow')}
         title={paper.title}
         description={t('researcher.detail.description')}
         accent={RESEARCHER_ACCENT}

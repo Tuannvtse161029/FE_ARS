@@ -280,6 +280,20 @@
   border: 1px solid color-mix(in srgb, var(--accent-primary) 25%, transparent);
 }
 
+/* Lecturer role pill — warm indigo to distinguish from the Researcher teal */
+.rolePillLecturer {
+  background: color-mix(in srgb, #6f5cff 14%, transparent);
+  color: #4f3fd8;
+  border-color: color-mix(in srgb, #6f5cff 28%, transparent);
+}
+
+/* Researcher role pill — teal */
+.rolePillResearcher {
+  background: color-mix(in srgb, #14b8a6 14%, transparent);
+  color: #0f766e;
+  border-color: color-mix(in srgb, #14b8a6 30%, transparent);
+}
+
 .statusPill {
   display: inline-block;
   padding: 2px 8px;

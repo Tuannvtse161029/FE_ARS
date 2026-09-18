@@ -147,7 +147,6 @@ export const AdminGradingRubric = () => {
   return (
     <div className={styles.page}>
       <PageHeader
-        eyebrow={t('admin.rubric.eyebrow', 'ADMIN — SUBFIELDS')}
         title={t('admin.rubric.title', 'GradingRubric Management')}
         description={t(
           'admin.rubric.description',

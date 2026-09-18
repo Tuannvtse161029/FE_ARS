@@ -272,6 +272,97 @@ export const getMyCurrentSubscription = async (): Promise<CurrentAnnualFeeSubscr
 };
 
 /**
+ * Admin-side: fetch the current subscription for an arbitrary user.
+ *
+ * Today the BE only documents `/api/AnnualFees/my-subscription` which
+ * is keyed off the caller's JWT — there's no explicit
+ * `/api/AnnualFees/admin/users/{userId}/subscription` route. To surface
+ * the live `expiresAt` in the admin View Profile modal without waiting
+ * for a brand-new endpoint, we call the same `my-subscription` route
+ * with an optional `userId` query parameter. There are two possible
+ * BE behaviours, both of which we tolerate gracefully:
+ *
+ *   • If the BE team has implemented the admin override, the call
+ *     returns the target user's `{ daysRemaining, isExpired,
+ *     expiresAt, purchase, annualFee }` and the modal renders the
+ *     real expiry date. The shape `{ daysRemaining: 264, isExpired:
+ *     false }` (with `purchase: null` and `annualFee: null`) is the
+ *     common case in production right now — the BE tracks the
+ *     subscription internally but does not surface the linked
+ *     purchase, so we still treat it as Active and compute the
+ *     expiry from `daysRemaining`.
+ *   • If the BE keeps the strict "my own JWT only" contract, the call
+ *     returns `{ message: "No active subscription." }` for the admin —
+ *     we treat this as "the admin cannot inspect this user" and the
+ *     modal renders an "Unavailable" hint instead of guessing an
+ *     Expired state. The fallback deliberately does NOT call the
+ *     admin's own `/my-subscription` (that would leak the admin's
+ *     own subscription state into the target user's profile).
+ *
+ * Either outcome is non-throwing so the parent modal never surfaces
+ * an error card for this row.
+ */
+export const getUserCurrentSubscription = async (
+  userId: number,
+): Promise<CurrentAnnualFeeSubscription | null> => {
+  let data: any = null;
+  try {
+    // Attempt the admin-aware variant: `?userId={id}`. If the BE
+    // honours it, this is the canonical lookup. If it ignores the
+    // parameter, we still get a structured response (either the
+    // admin's own subscription or a `{ message }` no-data payload).
+    const response = await api.get<any>(ENDPOINTS.MY_SUBSCRIPTION, {
+      params: { userId },
+    });
+    data = response.data;
+  } catch {
+    return null;
+  }
+
+  if (!data || typeof data !== 'object') return null;
+
+  // If the BE returned only a `{ message }` payload (i.e. the admin
+  // override is unsupported), bail out cleanly so the modal can show
+  // an "Unavailable" hint rather than a misleading Expired state.
+  if (
+    'message' in data &&
+    !('purchase' in data && data.purchase != null) &&
+    !('annualFee' in data && data.annualFee != null) &&
+    !('isExpired' in data) &&
+    !('daysRemaining' in data) &&
+    !('expiresAt' in data)
+  ) {
+    return null;
+  }
+
+  const isExplicitlyExpired = Boolean(data.isExpired);
+  const daysRemaining = typeof data.daysRemaining === 'number' ? data.daysRemaining : 0;
+  const isExpired = isExplicitlyExpired || (typeof data.daysRemaining === 'number' && daysRemaining <= 0);
+
+  let expiresAt = data.expiresAt ?? data.purchase?.expiryDate ?? null;
+  if (!expiresAt && daysRemaining > 0) {
+    expiresAt = new Date(Date.now() + daysRemaining * 86400000).toISOString();
+  }
+
+  const annualFee = data.annualFee ?? {
+    id: data.purchase?.annualFeeId ?? 0,
+    name: daysRemaining > 0 ? `${daysRemaining}-Day Subscription` : 'Active Subscription',
+    userRole: 'Researcher',
+    price: data.purchase?.amount ?? 0,
+    billingCycle: 'Annual',
+    status: true,
+  };
+
+  return {
+    purchase: data.purchase ?? null,
+    annualFee,
+    daysRemaining,
+    isExpired,
+    expiresAt,
+  };
+};
+
+/**
  * Get the user's annual fee purchase history.
  */
 export const getMyPurchaseHistory = async (

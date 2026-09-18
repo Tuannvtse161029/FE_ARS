@@ -349,7 +349,6 @@ const CardListView = ({
     return (
       <div className={styles.configureMilestones}>
         <PageHeader
-          eyebrow="LECTURER WORKSPACE"
           title="Configure reporting phases"
           description="Loading your research topics…"
           accent="var(--ars-lecturer)"
@@ -366,7 +365,6 @@ const CardListView = ({
     return (
       <div className={styles.configureMilestones}>
         <PageHeader
-          eyebrow="LECTURER WORKSPACE"
           title="Configure reporting phases"
           description="Select a topic to manage its phase plan."
           accent="var(--ars-lecturer)"
@@ -385,7 +383,6 @@ const CardListView = ({
   return (
     <div className={styles.configureMilestones}>
       <PageHeader
-        eyebrow="LECTURER WORKSPACE"
         title="Configure reporting phases"
         description="Pick a research group below to manage the milestones for its topic. Each chip shows how many phases are already defined."
         accent="var(--ars-lecturer)"
@@ -567,7 +564,6 @@ const TopicPageView = ({
     return (
       <div className={styles.configureMilestones}>
         <PageHeader
-          eyebrow="LECTURER WORKSPACE"
           title="Topic not found"
           description={`The topic with ID ${state.topicId} could not be loaded.`}
           actions={

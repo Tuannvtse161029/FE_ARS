@@ -11,7 +11,12 @@ import type { ReactNode } from 'react';
 import styles from './PageHeader.module.css';
 
 export interface PageHeaderProps {
-  /** Optional eyebrow label, e.g. "RESEARCHER WORKSPACE" */
+  /**
+   * @deprecated Eyebrow labels were removed from every authenticated page.
+   * The prop is kept so callers that still pass `eyebrow=` continue to
+   * compile, but the value is intentionally ignored. Remove the prop at
+   * the call site on your next pass.
+   */
   eyebrow?: string;
   /** Main page title — Inter, never serif */
   title: string;
@@ -35,7 +40,8 @@ export interface PageHeaderProps {
 }
 
 export const PageHeader = ({
-  eyebrow,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  eyebrow: _eyebrow,
   title,
   titleAccessory,
   description,
@@ -55,7 +61,6 @@ export const PageHeader = ({
     >
       <div className={styles.left}>
         {breadcrumbs && <div className={styles.breadcrumbs}>{breadcrumbs}</div>}
-        {eyebrow && <span className={styles.eyebrow}>{eyebrow}</span>}
         {/* === GSI LOCALE + STATUS BADGE RELOCATE (this worker) ===
             Title cluster wraps the title + optional `titleAccessory` in a
             single flex container so the accessory visually belongs with

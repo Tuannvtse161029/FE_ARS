@@ -993,7 +993,6 @@ export const SeminarWorkspace = () => {
       data-testid="seminar-workspace"
     >
       <PageHeader
-        eyebrow={currentRole ? `${currentRole.toUpperCase()} WORKSPACE` : 'WORKSPACE'}
         title="Seminar & Workshop Management"
         description={
           canModify
@@ -1156,11 +1155,6 @@ export const SeminarWorkspace = () => {
             </button>
           ))}
         </div>
-        <span className={styles.toolbarMeta}>
-          Showing {paginatedSeminars.length > 0
-            ? `${(safeSeminarPage - 1) * SEMINARS_PER_PAGE + 1}–${Math.min(safeSeminarPage * SEMINARS_PER_PAGE, filteredSeminars.length)}`
-            : '0'} of {filteredSeminars.length} seminars
-        </span>
       </div>
 
       {/* List */}

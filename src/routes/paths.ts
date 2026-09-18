@@ -86,10 +86,6 @@ export const ROUTES = {
   // Annual Fees — Admin CRUD over Researcher / Lecturer subscription plans.
   // Page wired to `GET/POST/PUT/PATCH/DELETE /api/AnnualFees` per BE-ANNUAL-FEE-01.
   ADMIN_ANNUAL_FEES: '/admin/annual-fees',
-  // UserRewards — Admin CRUD over reward configurations (e.g. the
-  // researcher-published-paper reward). Page wired to
-  // GET/POST/PUT/PATCH/DELETE /api/UserReward per the BE Swagger.
-  ADMIN_USER_REWARDS: '/admin/user-rewards',
   // GradingRubric — Admin management of per-SubField scoring criteria.
   // Wired to GET /api/SubField (list) and PATCH /api/SubField/{id}/rubric.
   ADMIN_GRADING_RUBRIC: '/admin/grading-rubric',
