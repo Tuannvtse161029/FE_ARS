@@ -58,6 +58,10 @@ export const dictionary: Dictionary = {
     'notif.accountUpdate': 'Account update',
     'notif.systemUpdate': 'System update',
     'notif.forumReply': 'Forum reply',
+    'notif.forumPostLiked': 'Post liked',
+    'notif.forumCommentUpvoted': 'Comment upvoted',
+    'notif.forumPostCommented': 'New comment',
+    'notif.forumCommentReplied': 'Comment reply',
     'notif.notification': 'Notification',
     // English equivalents of the per-kind message templates. The `{suffix}`
     // placeholder receives the dynamic portion of the BE message after the

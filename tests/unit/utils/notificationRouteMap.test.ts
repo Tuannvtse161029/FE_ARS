@@ -22,6 +22,7 @@ import {
   resolveNotificationRoute,
   getSafeFallbackRoute,
   KNOWN_NOTIFICATION_KINDS,
+  formatForumNotification,
 } from '../../../src/utils/notificationRouteMap';
 
 describe('notificationRouteMap', () => {
@@ -109,10 +110,10 @@ describe('notificationRouteMap', () => {
       }
     });
 
-    it('routes reviewer "new review request" to /review-tasks', () => {
+    it('routes reviewer "new review request" to /reviewer/assignments', () => {
       expect(
         resolveNotificationRoute('[Review] new request: paper #42', 'Reviewer'),
-      ).toBe('/review-tasks');
+      ).toBe('/reviewer/assignments');
     });
 
     it('routes graduate student "seminar invitation" to /seminar-workspace', () => {
@@ -188,6 +189,56 @@ describe('notificationRouteMap', () => {
       );
       expect(resolveNotificationRoute('[Paper] status changed', '')).toBe(
         getSafeFallbackRoute(),
+      );
+    });
+  });
+
+  describe('forum interactions and formatForumNotification', () => {
+    const postLikedSample = '[Forum] Nguyen Van Trieu Tuan đã thích bài viết của bạn: "ádf"';
+    const commentUpvotedSample = '[Forum] Nguyen Van Trieu Tuan đã ủng hộ bình luận của bạn: "hi"';
+    const commentPostedSample = '[Diễn đàn] Admin đã bình luận vào bài viết "ádf" của bạn.';
+    const commentRepliedSample = '[Diễn đàn] Nguyen Van Trieu Tuan đã trả lời bình luận của bạn: "hello"';
+
+    it('infers distinct forum notification kinds accurately', () => {
+      expect(inferNotificationKind(postLikedSample)).toBe('forum-post-liked');
+      expect(inferNotificationKind(commentUpvotedSample)).toBe('forum-comment-upvoted');
+      expect(inferNotificationKind(commentPostedSample)).toBe('forum-post-commented');
+      expect(inferNotificationKind(commentRepliedSample)).toBe('forum-comment-replied');
+    });
+
+    it('formats post-liked notification correctly in both locales with actor name preserved', () => {
+      expect(formatForumNotification(postLikedSample, 'vi')).toBe(
+        'Nguyen Van Trieu Tuan đã thích bài viết của bạn: "ádf"',
+      );
+      expect(formatForumNotification(postLikedSample, 'en')).toBe(
+        'Nguyen Van Trieu Tuan liked your post: "ádf"',
+      );
+    });
+
+    it('formats comment-upvoted notification correctly in both locales with actor name preserved', () => {
+      expect(formatForumNotification(commentUpvotedSample, 'vi')).toBe(
+        'Nguyen Van Trieu Tuan đã ủng hộ bình luận của bạn: "hi"',
+      );
+      expect(formatForumNotification(commentUpvotedSample, 'en')).toBe(
+        'Nguyen Van Trieu Tuan upvoted your comment: "hi"',
+      );
+    });
+
+    it('formats comment-posted notification correctly in both locales with actor name preserved', () => {
+      expect(formatForumNotification(commentPostedSample, 'vi')).toBe(
+        'Admin đã bình luận vào bài viết "ádf" của bạn.',
+      );
+      expect(formatForumNotification(commentPostedSample, 'en')).toBe(
+        'Admin commented on your post "ádf".',
+      );
+    });
+
+    it('formats comment-replied notification correctly in both locales with actor name preserved', () => {
+      expect(formatForumNotification(commentRepliedSample, 'vi')).toBe(
+        'Nguyen Van Trieu Tuan đã trả lời bình luận của bạn: "hello"',
+      );
+      expect(formatForumNotification(commentRepliedSample, 'en')).toBe(
+        'Nguyen Van Trieu Tuan replied to your comment: "hello"',
       );
     });
   });

@@ -58,6 +58,10 @@ export const dictionary: Dictionary = {
     'notif.accountUpdate': 'Cập nhật tài khoản',
     'notif.systemUpdate': 'Cập nhật hệ thống',
     'notif.forumReply': 'Phản hồi trên diễn đàn',
+    'notif.forumPostLiked': 'Thích bài viết',
+    'notif.forumCommentUpvoted': 'Ủng hộ bình luận',
+    'notif.forumPostCommented': 'Bình luận bài viết',
+    'notif.forumCommentReplied': 'Trả lời bình luận',
     'notif.notification': 'Thông báo',
     // Per-kind message templates. The BE only ships Vietnamese payloads
     // today (with a `[Tag]` prefix), so when the UI is in `vi` we render the
