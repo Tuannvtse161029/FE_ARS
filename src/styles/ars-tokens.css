@@ -503,6 +503,10 @@ html[lang='vi'],
   --text-muted: #94a3b8;
   --text-metadata: #94a3b8;
   --ink-on-paper: #ffffff;
+  /* Yellow primary button background is too saturated for dark text in
+     Archive Dusk — flip to white so the manuscript/submit CTAs stay
+     legible on the yellow pill in dark mode (both idle and hover). */
+  --button-primary-ink: #ffffff;
   --ink-on-dark: #ffffff;
   --text-inverse: #090d16;
 

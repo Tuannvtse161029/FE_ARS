@@ -58,6 +58,8 @@ import { formatRelativeTime } from '../../utils/formatDate';
 import {
   inferNotificationKind,
   resolveNotificationRoute,
+  stripNotificationTagPrefix,
+  extractNotificationDynamicSuffix,
   type NotificationKind,
 } from '../../utils/notificationRouteMap';
 import type { NotificationItem } from '../../types/domain';
@@ -325,18 +327,6 @@ const KIND_BODY_KEY: Partial<Record<NotificationKind, string>> = {
   'topic-learning-material-removed': 'notif.body.topicLearningMaterialRemoved',
 };
 
-const stripTagPrefix = (raw: string): string =>
-  (raw ?? '').trim().replace(/^\[[^\]]+\]\s*/, '').replace(/^\([^\)]+\)\s*/, '');
-
-const extractDynamicSuffix = (stripped: string): string => {
-  const colonIdx = stripped.indexOf(':');
-  if (colonIdx >= 0) {
-    const after = stripped.slice(colonIdx + 1).trim();
-    if (after) return after;
-  }
-  return stripped;
-};
-
 function renderNotificationMessage(
   notification: NotificationItem,
   locale: Locale,
@@ -363,10 +353,17 @@ function renderNotificationMessage(
   if (!key) return raw;
 
   const template = t(key, raw);
-  const stripped = stripTagPrefix(raw);
-  const dynamicSuffix = extractDynamicSuffix(stripped);
+  // Use the shared suffix extractor (notificationRouteMap) so the
+  // dropdown and the inbox page can never drift apart again. The
+  // extractor returns null when the BE message is a natural-language
+  // sentence with no clean quoted entity name; in that case we render
+  // the template without the `{suffix}` portion so an English
+  // notification never carries a half-Vietnamese sentence.
+  const stripped = stripNotificationTagPrefix(raw);
+  const dynamicSuffix = extractNotificationDynamicSuffix(stripped);
   if (!template.includes('{suffix}')) return template;
-  return template.replace(/\{suffix\}/g, dynamicSuffix);
+  if (dynamicSuffix) return template.replace(/\{suffix\}/g, dynamicSuffix);
+  return template.replace(/\s*:\s*\{suffix\}\s*$/u, '').trim();
 }
 
 // Group notifications by calendar day so the inbox reads like a journal:

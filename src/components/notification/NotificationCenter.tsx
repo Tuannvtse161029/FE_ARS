@@ -8,6 +8,8 @@ import type { Locale } from '../../i18n/translations';
 import {
   inferNotificationKind,
   resolveNotificationRoute,
+  stripNotificationTagPrefix,
+  extractNotificationDynamicSuffix,
   type NotificationKind,
 } from '../../utils/notificationRouteMap';
 import { ROUTES } from '../../routes/paths';
@@ -469,39 +471,6 @@ const KIND_BODY_KEY: Readonly<Partial<Record<NotificationKind, string>>> = {
   'topic-learning-material-removed': 'notif.body.topicLearningMaterialRemoved',
 };
 
-// Strip the BE-side `[Tag]` prefix from a notification message so we can
-// use the dynamic suffix (e.g., "Report #123 by Student A") as a
-// variable inside our i18n template. Returns the original string (trimmed)
-// when no `[Tag]` prefix is present — natural-language BE messages and
-// unknown kinds are still surfaced to the user unchanged.
-const stripTagPrefix = (raw: string): string =>
-  (raw ?? '').trim().replace(/^\[[^\]]+\]\s*/, '').replace(/^\([^\)]+\)\s*/, '');
-
-// Extract the dynamic part of a BE notification message — the paper title,
-// entity name, or other user-specific value that should be substituted into
-// the English template.  The BE sends full natural-language sentences in the
-// user's preferred language, e.g.
-//
-//   "[REVIEWER_PAPER_ASSIGNED] Bạn có một bài báo mới được phân công
-//    phản biện: Deep Learning for Climate Prediction"
-//
-// After stripTagPrefix the remainder is a full Vietnamese sentence.  We only
-// want the "Deep Learning…" part so the English template renders as:
-//   "New review request: Deep Learning for Climate Prediction"
-// not:
-//   "New review request: Bạn có một bài báo mới được phân công phản biện:
-//    Deep Learning for Climate Prediction"
-//
-// The dynamic value always comes after the FIRST colon, so we split on it.
-const extractDynamicSuffix = (stripped: string): string => {
-  const colonIdx = stripped.indexOf(':');
-  if (colonIdx >= 0) {
-    const after = stripped.slice(colonIdx + 1).trim();
-    if (after) return after;
-  }
-  return stripped;
-};
-
 // Render a notification message in the active locale.
 //
 // Rules:
@@ -511,13 +480,16 @@ const extractDynamicSuffix = (stripped: string): string => {
 //     exactly as authored.
 //   * When the locale is `en` we look up the kind-specific template, strip
 //     the `[Tag]` prefix, extract only the dynamic suffix (paper title, entity
-//     name, etc. — the text after the first colon), and substitute that into
-//     the English template.  This prevents the English UI from displaying a
-//     full Vietnamese sentence inside an English header.
-//   * If the BE sent a natural-language message with no prefix or the kind is
-//     `unknown`, we keep the original message body — translating arbitrary
-//     machine-generated prose is unsafe and the user would still see the
-//     same information.
+//     name, etc.), and substitute that into the English template.  This
+//     prevents the English UI from displaying a full Vietnamese sentence
+//     inside an English header.
+//   * If the BE sent a natural-language message we could not extract a
+//     clean suffix from, we drop the `{suffix}` placeholder so the English
+//     template renders as a clean short heading instead of "Seminar
+//     invitation: Bạn đã được mời tham dự hội thảo …".
+//   * If the BE sent a message with no prefix and the kind is `unknown`,
+//     we keep the original body — translating arbitrary machine-generated
+//     prose is unsafe and the user would still see the same information.
 function renderNotificationMessage(
   notification: NotificationItem,
   locale: Locale,
@@ -546,15 +518,13 @@ function renderNotificationMessage(
 
   const template = t(key, raw);
 
-  // Strip any BE-side [Tag] prefix, then extract only the dynamic value
-  // (paper title, entity name, etc.) so the English template gets a clean
-  // suffix rather than a full Vietnamese sentence.
-  const stripped = stripTagPrefix(raw);
-  const suffix = extractDynamicSuffix(stripped);
-  // Without a delimiter the entire sentence is not an entity-name suffix.
-  if (!stripped.includes(':') && /^\[[^\]]+\]/.test(raw)) {
-    return template.replace(/\s*:\s*\{suffix\}\s*$/u, '').replace('{suffix}', '').trim();
-  }
-  if (!suffix) return template.replace(/\s*:\s*\{suffix\}\s*$/u, '').trim();
-  return template.replace('{suffix}', suffix);
+  // Strip any BE-side [Tag] prefix, then extract just the dynamic value
+  // (quoted entity name in modern BE messages, text after first colon in
+  // legacy machine-authored templates). If we can't find a clean suffix
+  // we render the template WITHOUT the `{suffix}` portion so the English
+  // notification never carries a half-Vietnamese sentence.
+  const stripped = stripNotificationTagPrefix(raw);
+  const suffix = extractNotificationDynamicSuffix(stripped);
+  if (suffix) return template.replace('{suffix}', suffix);
+  return template.replace(/\s*:\s*\{suffix\}\s*$/u, '').trim();
 }

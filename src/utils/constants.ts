@@ -303,6 +303,21 @@ export const API_ENDPOINTS = {
       GET_ALL: '/api/AuditLog',
       EXPORT: '/api/AuditLog/export',
     },
+    // UserReward — Admin CRUD over reward configurations (e.g. the
+    // Researcher-published-paper reward). Paged list uses PascalCase
+    // query keys, matching the AnnualFees convention. The BE also
+    // exposes an internal POST /match helper that resolves an active
+    // reward by canonical name (used by the publish flow).
+    USER_REWARD: {
+      GET_ALL: '/api/UserReward',
+      GET_PAGED: '/api/UserReward/paged',
+      GET_BY_ID: (id: number) => `/api/UserReward/${id}`,
+      CREATE: '/api/UserReward',
+      UPDATE: (id: number) => `/api/UserReward/${id}`,
+      DELETE: (id: number) => `/api/UserReward/${id}`,
+      PATCH_STATUS: (id: number) => `/api/UserReward/${id}/status`,
+      MATCH: '/api/UserReward/match',
+    },
   },
   ANALYTICS: {
     SUMMARY: '/api/Analytics/summary',

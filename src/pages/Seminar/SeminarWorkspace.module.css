@@ -537,11 +537,25 @@
 .actionBtnSuccess {
   background-color: var(--ars-success) !important;
   border-color: var(--ars-success) !important;
+  /* Force white text on the green background regardless of theme:
+     the button inherits `color: var(--button-primary-ink)` from
+     `.button--primary` (which is `#1d1c19` in light mode), but the
+     success-green background is too dark for that near-black ink
+     in light mode. In dark mode the bg brightens to `#34d399` and
+     the dark ink still reads, but white text wins in both themes
+     for a cleaner "Launch Google Meet" CTA. */
+  color: #ffffff !important;
 }
 
 .actionBtnSuccess:hover:not(:disabled) {
   background-color: var(--ars-success) !important;
+  color: #ffffff !important;
   filter: brightness(0.92);
+}
+
+.actionBtnSuccess:disabled {
+  color: #ffffff !important;
+  opacity: 0.6;
 }
 
 .actionBtnInfo {
