@@ -5,6 +5,7 @@ import type {
   SubField,
   MajorFieldCreateRequest,
   SubFieldCreateRequest,
+  SubFieldUpdateRequest,
   GradingRubricCriterion,
   SubFieldWithRubric,
   PatchRubricRequest,
@@ -134,6 +135,7 @@ export const fieldService = {
     return response.data.map((raw): SubFieldWithRubric => {
       const r = raw as Record<string, unknown>;
       const id = (r['subFieldId'] ?? r['id'] ?? 0) as number;
+      const majorFieldId = (r['majorFieldId'] ?? 0) as number;
       const rubricRaw = Array.isArray(r['gradingRubric']) ? r['gradingRubric'] : [];
       const rubric: GradingRubricCriterion[] = rubricRaw.map((item) => {
         const c = item as Record<string, unknown>;
@@ -149,13 +151,32 @@ export const fieldService = {
         };
       });
       return {
+        id: typeof id === 'number' ? id : Number(id),
         subFieldId: typeof id === 'number' ? id : Number(id),
+        majorFieldId: typeof majorFieldId === 'number' && majorFieldId > 0 ? majorFieldId : null,
         name: String(r['name'] ?? ''),
         majorFieldName: String(r['majorFieldName'] ?? ''),
         description: typeof r['description'] === 'string' ? r['description'] : null,
         gradingRubric: rubric,
       };
     });
+  },
+
+  /**
+   * Updates an existing SubField (Admin only).
+   * PUT /api/SubField/{id}
+   */
+  updateSub: async (id: number, data: SubFieldUpdateRequest): Promise<SubField> => {
+    const response = await api.put<SubField>(API_ENDPOINTS.SUB_FIELD.UPDATE(id), data);
+    return response.data;
+  },
+
+  /**
+   * Deletes a SubField (Admin only).
+   * DELETE /api/SubField/{id}
+   */
+  deleteSub: async (id: number): Promise<void> => {
+    await api.delete(API_ENDPOINTS.SUB_FIELD.DELETE(id));
   },
 
   /**

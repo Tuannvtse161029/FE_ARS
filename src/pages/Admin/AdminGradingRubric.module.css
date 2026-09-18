@@ -1,4 +1,4 @@
-﻿/**
+/**
  * AdminGradingRubric — ARS Research Constellation
  * Admin GradingRubric management page.
  * Uses ARS design tokens from src/styles/ars-tokens.css
@@ -170,3 +170,28 @@
   border-color: var(--ars-admin);
   color: var(--ars-admin);
 }
+
+.editButton {
+  background: var(--ars-paper-alt);
+  border-color: var(--ars-node);
+  color: var(--ars-ink-soft);
+}
+
+.editButton:hover {
+  background: var(--ars-paper-inset);
+  color: var(--ars-ink);
+  border-color: var(--ars-ink-muted);
+}
+
+.deleteButton {
+  background: var(--ars-paper-alt);
+  border-color: var(--ars-node);
+  color: var(--ars-error);
+}
+
+.deleteButton:hover {
+  background: var(--ars-error-bg);
+  border-color: var(--ars-error);
+  color: var(--ars-error);
+}
+

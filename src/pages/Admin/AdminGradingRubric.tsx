@@ -9,7 +9,8 @@
  * PATCH /api/SubField/{id}/rubric on save.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { BookOpen, Plus } from 'lucide-react';
+import { BookOpen, Pencil, Plus, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useI18n } from '../../i18n/I18nContext';
 import { useAdminGuard } from '../../hooks/useAdminGuard';
 import { usePagination } from '../../hooks/usePagination';
@@ -24,9 +25,11 @@ import { EmptyState } from '../../components/EmptyState';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import { SkeletonRow } from '../../components/SkeletonRow';
 import { Button } from '../../components/Button/Button';
+import { ConfirmModal } from '../../components/lecturer/ConfirmModal';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 import GradingRubricModal from './GradingRubricModal';
 import CreateSubFieldModal from './CreateSubFieldModal';
+import EditSubFieldModal from './EditSubFieldModal';
 import styles from './AdminGradingRubric.module.css';
 
 type SortColumn = 'name' | 'majorFieldName' | 'criteriaCount';
@@ -41,8 +44,32 @@ export const AdminGradingRubric = () => {
   const [search, setSearch] = useState('');
   const [modalTarget, setModalTarget] = useState<SubFieldWithRubric | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<SubFieldWithRubric | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<SubFieldWithRubric | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const sort = useTableSort<SubFieldWithRubric, SortColumn>('name', 'asc');
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      await fieldService.deleteSub(deleteTarget.subFieldId);
+      toast.success(
+        t('admin.rubric.toast.deleteSuccess', 'Sub-field deleted successfully.'),
+      );
+      setDeleteTarget(null);
+      await load();
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      const msg =
+        axiosErr.response?.data?.message ||
+        t('admin.rubric.toast.deleteError', 'Failed to delete sub-field.');
+      toast.error(msg);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -253,6 +280,24 @@ export const AdminGradingRubric = () => {
                           <BookOpen size={14} />
                           {t('admin.rubric.action.manage', 'Manage Rubric')}
                         </button>
+                        <button
+                          type="button"
+                          className={`${styles.actionButton} ${styles.editButton}`}
+                          onClick={() => setEditTarget(row)}
+                          title={t('admin.rubric.action.editSubField', 'Edit Sub-field')}
+                        >
+                          <Pencil size={13} />
+                          {t('common.edit', 'Edit')}
+                        </button>
+                        <button
+                          type="button"
+                          className={`${styles.actionButton} ${styles.deleteButton}`}
+                          onClick={() => setDeleteTarget(row)}
+                          title={t('admin.rubric.action.deleteSubField', 'Delete Sub-field')}
+                        >
+                          <Trash2 size={13} />
+                          {t('common.delete', 'Delete')}
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -291,6 +336,32 @@ export const AdminGradingRubric = () => {
         onClose={() => setCreateOpen(false)}
         onSuccess={() => void load()}
       />
+
+      <EditSubFieldModal
+        subField={editTarget}
+        open={!!editTarget}
+        onClose={() => setEditTarget(null)}
+        onSuccess={() => void load()}
+      />
+
+      {deleteTarget && (
+        <ConfirmModal
+          open={!!deleteTarget}
+          title={t('admin.rubric.deleteModal.title', 'Delete Sub-field')}
+          description={t(
+            'admin.rubric.deleteModal.desc',
+            'Are you sure you want to delete sub-field "{name}"? This action cannot be undone.',
+            { name: deleteTarget.name },
+          )}
+          variant="destructive"
+          confirmLabel={t('common.delete', 'Delete')}
+          cancelLabel={t('common.cancel', 'Cancel')}
+          onConfirm={handleConfirmDelete}
+          onClose={() => {
+            if (!isDeleting) setDeleteTarget(null);
+          }}
+        />
+      )}
     </div>
   );
 };
