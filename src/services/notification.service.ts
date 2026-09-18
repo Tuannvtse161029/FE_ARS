@@ -126,7 +126,7 @@ export const notificationService = {
 // The BE occasionally echoes `null` for optional fields or omits `createdAt`
 // entirely; this normalizer keeps the consumer side strict without
 // scattering null checks across components.
-function normalizeNotification(raw: unknown): NotificationItem {
+export function normalizeNotification(raw: unknown): NotificationItem {
   const record = (raw ?? {}) as Partial<NotificationItem> & {
     notificationId?: unknown;
     isRead?: unknown;

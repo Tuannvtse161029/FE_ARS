@@ -350,13 +350,13 @@ describe('<NotificationCenter />', () => {
     expect(within(list).getAllByText('Seminar invitation').length).toBeGreaterThan(0);
   });
 
-  it('navigates via "View all notifications" to /forum (the only safe destination without a dedicated page)', () => {
+  it('navigates via "View all notifications" to /notifications (dedicated inbox page)', () => {
     const onNavigate = vi.fn();
     setupHook({ unreadCount: 0 });
     renderCenter(onNavigate);
     fireEvent.click(screen.getByTestId('notification-bell'));
     fireEvent.click(screen.getByText(/View all notifications/i));
-    expect(onNavigate).toHaveBeenCalledWith('/forum');
+    expect(onNavigate).toHaveBeenCalledWith('/notifications');
   });
 
   it('supports keyboard activation of a notification item via Enter', async () => {

@@ -1,6 +1,7 @@
 import api from './axios';
 import { API_ENDPOINTS } from '../utils/constants';
 import { storage } from '../utils/storage';
+import { signalrService } from './signalr.service';
 import type {
   LoginRequest,
   RegisterRequest,
@@ -159,6 +160,13 @@ export function clearAuthSession(): void {
 
     // Defensive GIS auto-select disable (no-op when GIS is absent).
     disableGoogleAutoSelectIfAvailable();
+
+    // Stop any active SignalR real-time connections
+    try {
+      void signalrService.stop();
+    } catch {
+      /* defensive */
+    }
   } catch {
     /* swallow — the synchronous cleanup is best-effort */
   }

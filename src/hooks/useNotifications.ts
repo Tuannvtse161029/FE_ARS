@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { notificationService } from '../services/notification.service';
+import { notificationService, normalizeNotification } from '../services/notification.service';
+import { signalrService } from '../services/signalr.service';
 import type { NotificationItem } from '../types/domain';
 
 export interface UseNotificationsResult {
@@ -132,6 +133,39 @@ export function useNotifications(
       clearInterval(intervalId);
     };
   }, [fetchNotifications, userId]);
+
+  // Real-time notification listener via SignalR
+  useEffect(() => {
+    if (typeof userId !== 'number' || userId <= 0) return;
+
+    const unsubscribe = signalrService.onReceiveNotification((raw) => {
+      try {
+        const item = normalizeNotification(raw);
+        // If notification has a specific userId that doesn't match, drop it
+        if (typeof item.userId === 'number' && item.userId > 0 && item.userId !== userId) return;
+
+        // If createdAt is missing, stamp current time
+        if (!item.createdAt) {
+          item.createdAt = new Date().toISOString();
+        }
+
+        setNotifications((prev) => {
+          // If item with same id exists, avoid duplicate
+          if (item.id > 0 && prev.some((n) => n.id === item.id)) {
+            return prev;
+          }
+          // Prepend new unread notification to top of list
+          return [item, ...prev];
+        });
+      } catch (err) {
+        console.error('[useNotifications] Failed to process real-time notification:', err);
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [userId]);
 
   // Snapshot ref used to roll back optimistic updates on failure. Kept in
   // a ref so React 18 strict-mode double-invocation of state updaters

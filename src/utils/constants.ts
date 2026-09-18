@@ -411,6 +411,9 @@ export const API_ENDPOINTS = {
       COLLEAGUES: '/api/SharedMaterial/colleagues',
     },
   },
+  HUBS: {
+    NOTIFICATIONS: '/hubs/notifications',
+  },
 } as const;
 
 export const STORAGE_KEYS = {
