@@ -1,4 +1,4 @@
-﻿/**
+/**
  * GradingRubricModal — ARS Research Constellation
  * Styles for the Admin GradingRubric editor modal.
  * Uses ARS design tokens from src/styles/ars-tokens.css.
@@ -362,6 +362,77 @@
 }
 
 .addBtn:focus-visible {
+  outline: 2px solid var(--ars-admin-mid);
+  outline-offset: 2px;
+}
+
+/* ── Empty template actions ─────────────────────────────────── */
+.emptyTemplateWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-4);
+  background: var(--ars-paper-alt);
+  border: 1px dashed var(--ars-paper-rule);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
+.initTemplateBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--ars-admin);
+  color: #fff;
+  border: 1px solid var(--ars-admin);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: background var(--transition-fast), opacity var(--transition-fast);
+}
+
+.initTemplateBtn:hover {
+  opacity: 0.9;
+}
+
+.initTemplateBtn:focus-visible {
+  outline: 2px solid var(--ars-admin-mid);
+  outline-offset: 2px;
+}
+
+/* ── Edit actions bar ───────────────────────────────────────── */
+.editActionsBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.templateBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--ars-admin);
+  border-radius: var(--radius-md);
+  background: var(--ars-admin-light, rgba(76, 29, 149, 0.08));
+  color: var(--ars-admin);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  font-family: var(--font-family-ui);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.templateBtn:hover {
+  background: var(--ars-admin-light, rgba(76, 29, 149, 0.16));
+}
+
+.templateBtn:focus-visible {
   outline: 2px solid var(--ars-admin-mid);
   outline-offset: 2px;
 }

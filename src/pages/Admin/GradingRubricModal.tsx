@@ -1,4 +1,4 @@
-﻿/**
+/**
  * GradingRubricModal — ARS Research Constellation
  *
  * Modal for Admin to view or edit the GradingRubric (scoring criteria)
@@ -9,11 +9,12 @@
  * On save, calls PATCH /api/SubField/{id}/rubric via fieldService.patchRubric().
  */
 import { useEffect, useRef, useState } from 'react';
-import { AlertTriangle, Plus, Trash2, X } from 'lucide-react';
+import { AlertTriangle, Plus, Sparkles, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { useI18n } from '../../i18n/I18nContext';
+import { useI18n, useLocale } from '../../i18n/I18nContext';
 import { fieldService } from '../../services/field.service';
 import type { GradingRubricCriterion } from '../../types/domain';
+import { getSystemDefaultRubric } from './defaultRubricTemplate';
 import dialogStyles from './AdminDialog.module.css';
 import styles from './GradingRubricModal.module.css';
 
@@ -73,6 +74,7 @@ const GradingRubricModal = ({
   onSaved,
 }: Props) => {
   const { t } = useI18n();
+  const locale = useLocale();
   const overlayRef = useRef<HTMLDivElement>(null);
 
   const [mode, setMode] = useState<'system' | 'custom'>('system');
@@ -80,6 +82,25 @@ const GradingRubricModal = ({
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<ValidationErrors>({ rows: {}, dupCodes: [] });
   const [refInputs, setRefInputs] = useState<Record<number, string>>({});
+
+  const handleApplySystemTemplate = () => {
+    if (rows.length > 0) {
+      const confirmed = window.confirm(
+        t(
+          'admin.rubric.confirmApplyTemplate',
+          'This will replace all criteria with the system standard template (5 criteria, 100 pts total). Continue?',
+        ),
+      );
+      if (!confirmed) return;
+    }
+    const defaultCriteria = getSystemDefaultRubric(locale);
+    const mapped = defaultCriteria.map((c) =>
+      makeRow(c, ''),
+    ) as (RubricRow & { _originalCode: string })[];
+    setRows(mapped);
+    setMode('custom');
+    setErrors({ rows: {}, dupCodes: [] });
+  };
 
   // Initialise rows whenever the modal opens or initialRubric changes
   useEffect(() => {
@@ -316,9 +337,25 @@ const GradingRubricModal = ({
           {mode === 'system' && (
             <div className={styles.readonlyWrap}>
               {rows.length === 0 ? (
-                <p className={styles.readonlyEmpty}>
-                  {t('admin.rubric.readonly.empty', 'No rubric criteria have been defined for this sub-field yet.')}
-                </p>
+                <div className={styles.emptyTemplateWrap}>
+                  <p className={styles.readonlyEmpty}>
+                    {t(
+                      'admin.rubric.readonly.empty',
+                      'No rubric criteria have been defined for this sub-field yet.',
+                    )}
+                  </p>
+                  <button
+                    type="button"
+                    className={styles.initTemplateBtn}
+                    onClick={handleApplySystemTemplate}
+                  >
+                    <Sparkles size={15} />
+                    {t(
+                      'admin.rubric.initFromTemplate',
+                      'Initialize Rubric from System Template',
+                    )}
+                  </button>
+                </div>
               ) : (
                 rows.map((r, i) => (
                   <div key={r._id} className={styles.readonlyRow}>
@@ -488,14 +525,28 @@ const GradingRubricModal = ({
                   );
                 })}
 
-                <button
-                  type="button"
-                  className={styles.addBtn}
-                  onClick={handleAddRow}
-                >
-                  <Plus size={14} />
-                  {t('admin.rubric.addCriterion', 'Add criterion')}
-                </button>
+                <div className={styles.editActionsBar}>
+                  <button
+                    type="button"
+                    className={styles.addBtn}
+                    onClick={handleAddRow}
+                  >
+                    <Plus size={14} />
+                    {t('admin.rubric.addCriterion', 'Add criterion')}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.templateBtn}
+                    onClick={handleApplySystemTemplate}
+                    title={t(
+                      'admin.rubric.applyTemplate',
+                      'Load System Template',
+                    )}
+                  >
+                    <Sparkles size={14} />
+                    {t('admin.rubric.applyTemplate', 'Load System Template')}
+                  </button>
+                </div>
               </div>
             </>
           )}
