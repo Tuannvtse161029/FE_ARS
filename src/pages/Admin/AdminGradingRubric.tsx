@@ -1,4 +1,4 @@
-﻿/**
+/**
  * AdminGradingRubric — ARS Research Constellation
  * Admin surface for managing GradingRubric (scoring criteria) per SubField.
  *
@@ -9,7 +9,7 @@
  * PATCH /api/SubField/{id}/rubric on save.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, Plus } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nContext';
 import { useAdminGuard } from '../../hooks/useAdminGuard';
 import { usePagination } from '../../hooks/usePagination';
@@ -26,6 +26,7 @@ import { SkeletonRow } from '../../components/SkeletonRow';
 import { Button } from '../../components/Button/Button';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 import GradingRubricModal from './GradingRubricModal';
+import CreateSubFieldModal from './CreateSubFieldModal';
 import styles from './AdminGradingRubric.module.css';
 
 type SortColumn = 'name' | 'majorFieldName' | 'criteriaCount';
@@ -39,6 +40,7 @@ export const AdminGradingRubric = () => {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [modalTarget, setModalTarget] = useState<SubFieldWithRubric | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const sort = useTableSort<SubFieldWithRubric, SortColumn>('name', 'asc');
 
@@ -124,6 +126,16 @@ export const AdminGradingRubric = () => {
           'admin.rubric.description',
           'Update scoring criteria used by reviewers for each sub-field.',
         )}
+        actions={
+          <Button
+            variant="primary"
+            size="sm"
+            leftIcon={<Plus size={14} />}
+            onClick={() => setCreateOpen(true)}
+          >
+            {t('admin.rubric.action.createSubField', 'Create Sub-field')}
+          </Button>
+        }
       />
 
       <TableToolbar
@@ -273,6 +285,12 @@ export const AdminGradingRubric = () => {
           onSaved={handleModalSaved}
         />
       )}
+
+      <CreateSubFieldModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onSuccess={() => void load()}
+      />
     </div>
   );
 };
