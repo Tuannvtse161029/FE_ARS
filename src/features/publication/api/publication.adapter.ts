@@ -19,6 +19,7 @@ import {
   type SubmissionInput,
 } from '../types/publication';
 import { notificationService } from '../../../services/notification.service';
+import { userRewardService } from '../../../services/userReward.service';
 import type { FormattedRubricReference, SpecializedCriteriaBundle } from '../reviewer/evaluationCriteriaResolver';
 import { enrichPublicationMetadata } from './publicationMetadata';
 import type { SpecializedEvaluationItem } from '../../../services/detailedEvaluation.service';
@@ -52,7 +53,11 @@ export class PublicationBackendContractError extends Error {
   }
 }
 
-export interface PublicationAdapter {
+interface Translator {
+  (key: string, fallback?: string, params?: Record<string, string | number>): string;
+}
+
+interface PublicationAdapter {
   getPublicCatalog(query: CatalogQuery): Promise<PagedPublicationResult>;
   getResearcherSubmissions(): Promise<PublicationPaper[]>;
   getReviewerAssignments(): Promise<PublicationPaper[]>;
@@ -81,6 +86,17 @@ export interface PublicationAdapter {
   publishPaper(id: string): Promise<PublicationPaper>;
   rejectPaper(id: string, reason?: string): Promise<PublicationPaper>;
   deactivatePublishedPaper(id: string): Promise<PublicationPaper>;
+  /**
+   * After a paper is published, check the user-reward catalog and post a
+   * localized notification to the author if an active reward matches
+   * the canonical "researcher-published-paper" slug. Failures never
+   * propagate — the publish itself has already succeeded — so callers
+   * can call this defensively after every successful publish.
+   */
+  notifyAuthorOfPublishedPaperReward(
+    id: string,
+    t: Translator,
+  ): Promise<{ delivered: boolean; reason?: string; rewardMonths?: number }>;
 }
 
 const normalizedText = (value: string | null | undefined): string =>
@@ -916,6 +932,82 @@ class ApiPublicationAdapter implements PublicationAdapter {
       }
     }
     return toPublicationPaper(updated);
+  }
+
+  /**
+   * notifyAuthorOfPublishedPaperReward
+   *
+   * Runs after a successful publish. Looks up the canonical
+   * "researcher-published-paper" reward via the BE helper and posts a
+   * localized notification to the author describing the credit.
+   *
+   * Best-effort: any failure (BE down, no reward configured, author
+   * missing) returns `{ delivered: false, reason }` without throwing.
+   * The caller decides how to surface the result to the admin UI.
+   */
+  async notifyAuthorOfPublishedPaperReward(
+    id: string,
+    t: Translator,
+  ): Promise<{ delivered: boolean; reason?: string; rewardMonths?: number }> {
+    let paper: PublicationPaper;
+    try {
+      paper = await this.getPaperById(id);
+    } catch (err) {
+      console.warn('UserReward: failed to fetch paper for reward flow:', err);
+      return { delivered: false, reason: 'no_paper' };
+    }
+
+    const authorId =
+      typeof paper.authorId === 'number' && paper.authorId > 0
+        ? paper.authorId
+        : null;
+    if (!authorId) {
+      return { delivered: false, reason: 'no_author' };
+    }
+
+    let reward;
+    try {
+      reward = await userRewardService.matchActiveReward({
+        name: 'Research Publication Reward',
+      });
+    } catch (err) {
+      // The reward catalog being offline must not block the publish or
+      // undo the standard "published" notification above.
+      console.warn('UserReward: match endpoint unavailable:', err);
+      return { delivered: false, reason: 'match_unavailable' };
+    }
+
+    if (
+      !reward ||
+      typeof reward.rewardMonths !== 'number' ||
+      reward.rewardMonths <= 0
+    ) {
+      return { delivered: false, reason: 'no_reward' };
+    }
+
+    const message = t(
+      'admin.userRewards.rewardPublishedPaperMessage',
+      'Your paper "{title}" has been published. As a reward, {months} month(s) have been added to your annual subscription.',
+      {
+        title: paper.title ?? `#${id}`,
+        months: reward.rewardMonths,
+      },
+    );
+
+    try {
+      await notificationService.create({
+        userId: authorId,
+        message,
+      });
+    } catch (err) {
+      console.warn('UserReward: failed to send reward notification:', err);
+      return { delivered: false, reason: 'notify_failed' };
+    }
+
+    return {
+      delivered: true,
+      rewardMonths: reward.rewardMonths,
+    };
   }
 
   async rejectPaper(id: string, reason?: string): Promise<PublicationPaper> {

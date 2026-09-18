@@ -1273,8 +1273,16 @@
 .sidebarCollapsed .sidebarAccountText,
 .sidebarCollapsed .sidebarLogout { display: none; }
 .sidebarCollapseBtn, .sidebarCollapse, .navItem { color: var(--nav-text-on-dark, var(--ink-on-dark)); }
+/* Yellow collapse button keeps its dark icon so the chevron stays
+   legible on the yellow pill — `--nav-text-on-dark` is cream on dark
+   sidebar surfaces, which would otherwise wash out the glyph. */
+.sidebarCollapseBtn { color: #1a1a1a; }
 .sidebarCollapse:hover,
 .navItem:hover:not(.disabledNavItem):not(.navItemActive) { background: var(--sidebar-raised); color: var(--ink-on-dark); }
+/* In dark mode the cream icon blends into the yellow pill — switch
+   to white so the collapse control stays legible on hover/idle. */
+:global([data-theme='archive-dusk']) .sidebarCollapseBtn,
+:global([data-theme='archive-dusk']) .sidebarCollapseBtn:hover { color: #ffffff; }
 .sidebarCollapse:focus-visible,
 .navItem:focus-visible,
 .sidebarAccountProfile:focus-visible,

@@ -627,3 +627,67 @@ export function resolveNotificationRoute(
 // new entry to `ROUTE_SPECS` automatically extends this list.
 export const KNOWN_NOTIFICATION_KINDS: ReadonlyArray<NotificationKind> =
   ROUTE_SPECS.map((entry) => entry.kind);
+
+/**
+ * Strip a leading BE-side tag (e.g. `[Seminar] invitation`) so the
+ * remainder can be used as plain prose. Exported so the dropdown and the
+ * notifications page share the exact same definition — they used to
+ * duplicate this in two places and drift apart.
+ */
+export const stripNotificationTagPrefix = (raw: string): string =>
+  (raw ?? '').trim().replace(/^\[[^\]]+\]\s*/, '').replace(/^\([^\)]+\)\s*/, '');
+
+/**
+ * Pull just the dynamic suffix out of a BE notification message so it can
+ * be substituted into the English body template without dragging the
+ * whole Vietnamese sentence across.
+ *
+ * BE messages come in two shapes:
+ *
+ *   1. Legacy `[Tag] prefix: <DynamicValue>` — the original
+ *      machine-authored templates. The dynamic value sits after the
+ *      first colon. Example:
+ *        "[REVIEWER_PAPER_ASSIGNED] Bạn có một bài báo mới được phân
+ *         công phản biện: Deep Learning for Climate Prediction"
+ *      → suffix = "Deep Learning for Climate Prediction"
+ *
+ *   2. Natural-language prose — newer BE messages are full Vietnamese
+ *      sentences with the dynamic entity name embedded in quotes
+ *      (curly or straight). Example:
+ *        'Bạn đã được mời tham dự hội thảo "Demo Seminar 5" vào
+ *         Thứ Năm, 17 tháng 9 năm 2026.'
+ *      → suffix = "Demo Seminar 5"
+ *
+ * We try the quoted-name strategy first (it matches the vast majority
+ * of recent BE messages), then fall back to the legacy colon split, and
+ * finally return null so the English template can drop the `{suffix}`
+ * placeholder cleanly. Returning null instead of the full prose is the
+ * whole point of this fix — the previous fallback emitted a half-
+ * Vietnamese sentence inside an English notification.
+ */
+export function extractNotificationDynamicSuffix(stripped: string): string | null {
+  const text = (stripped ?? '').trim();
+  if (!text) return null;
+
+  // Strategy 1: a quoted entity name — straight OR curly quotes. Covers
+  // virtually every modern BE notification: seminar title, group name,
+  // topic title, etc.
+  const quoted = text.match(/["“”«»]([^"“”«»]{1,200})["“”«»]/u);
+  if (quoted && quoted[1].trim()) {
+    return quoted[1].trim();
+  }
+
+  // Strategy 2: legacy `[Tag] prefix: <DynamicValue>` format. Only
+  // honour the colon split if what follows looks like a short suffix
+  // (≤ 120 chars) — anything longer is almost certainly a full sentence
+  // and the legacy fallback would re-introduce the bug we just fixed.
+  const colonIdx = text.indexOf(':');
+  if (colonIdx >= 0) {
+    const after = text.slice(colonIdx + 1).trim();
+    if (after && after.length <= 120 && !/[.!?]\s/.test(after)) {
+      return after;
+    }
+  }
+
+  return null;
+}
