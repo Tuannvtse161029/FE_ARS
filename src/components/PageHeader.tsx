@@ -34,8 +34,6 @@ export interface PageHeaderProps {
   actions?: ReactNode;
   /** Role accent CSS variable or hex value. Defaults to ARS blue. */
   accent?: string;
-  /** Optional breadcrumb row above the title */
-  breadcrumbs?: ReactNode;
   className?: string;
 }
 
@@ -47,7 +45,6 @@ export const PageHeader = ({
   description,
   actions,
   accent,
-  breadcrumbs,
   className,
 }: PageHeaderProps) => {
   const style = accent
@@ -60,11 +57,6 @@ export const PageHeader = ({
       data-component="PageHeader"
     >
       <div className={styles.left}>
-        {breadcrumbs && <div className={styles.breadcrumbs}>{breadcrumbs}</div>}
-        {/* === GSI LOCALE + STATUS BADGE RELOCATE (this worker) ===
-            Title cluster wraps the title + optional `titleAccessory` in a
-            single flex container so the accessory visually belongs with
-            the title and wraps cleanly under it on narrow viewports. */}
         <div className={styles.titleCluster}>
           <h1 className={styles.title}>{title}</h1>
           {titleAccessory && (
@@ -73,7 +65,6 @@ export const PageHeader = ({
             </div>
           )}
         </div>
-        {/* === END GSI LOCALE + STATUS BADGE RELOCATE (this worker) === */}
         {description && <div className={styles.description}>{description}</div>}
       </div>
       {actions && <div className={styles.actions}>{actions}</div>}

@@ -253,10 +253,24 @@ export interface PhasedReportEvaluationRequest {
 }
 
 // ---------- Topic Learning Materials (BE-LEARNING-MATERIAL-TOPIC-ASSOCIATION-01) ----------
+//
+// IMPORTANT — `topicId` is NOT a BE field:
+//   `GET /api/ResearchTopic/{topicId}/learning-materials` returns
+//   `LearningMaterialResponse[]` (see Swagger: components.schemas.LearningMaterialResponse).
+//   That schema has no `topicId` column; the row's topic is implicit in the URL
+//   the caller used. Per-topic fetch callsites MUST inject `topicId` into each
+//   row before flattening, otherwise downstream consumers cannot resolve the
+//   row back to a `ResearchTopic` and the "Used by …" fan-out silently drops
+//   every row.
+//
+// `topicId` is therefore marked optional here. Callers that flatten across
+// multiple topics must inject it (see Materials.tsx `loadCrossReference`);
+// single-topic callers like LearningMaterialModal can leave it undefined.
 
 export interface TopicLearningMaterialResponse {
   learningMaterialId: number;
-  topicId: number;
+  /** FE-injected per-fetch; the BE does NOT return this. */
+  topicId?: number;
   lecturerId?: number | null;
   title: string;
   fileUrl: string;

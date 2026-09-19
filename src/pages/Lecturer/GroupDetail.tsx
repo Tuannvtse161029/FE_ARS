@@ -702,11 +702,17 @@ export const LecturerGroupDetail = (): JSX.Element => {
       <div className={styles.root} data-testid="lecturer-group-detail">
         <div className={styles.errorPanel}>
           <AlertTriangle size={18} aria-hidden />
-          <span>
-            {t('lecturer.groupDetail.missingParam')}
-            <Link to={ROUTES.RESEARCH_GROUP}>{t('lecturer.groupDetail.breadcrumbParent')}</Link>.
-          </span>
+          <span>{t('lecturer.groupDetail.missingParam')}</span>
         </div>
+        <button
+          type="button"
+          className={styles.backBtn}
+          onClick={() => navigate(ROUTES.RESEARCH_GROUP)}
+          aria-label={t('lecturer.groupDetail.breadcrumbParent')}
+        >
+          <ArrowLeft size={14} aria-hidden />
+          {t('lecturer.groupDetail.breadcrumbParent')}
+        </button>
       </div>
     );
   }
@@ -745,16 +751,6 @@ export const LecturerGroupDetail = (): JSX.Element => {
 
   return (
     <div className={styles.root} data-testid="lecturer-group-detail">
-      {/* Breadcrumb — "Research Groups > [Group Name]" so the lecturer
-          always knows their location in the hierarchy. */}
-      <div className={styles.breadcrumb}>
-        <Link to={ROUTES.RESEARCH_GROUP}>{t('lecturer.groupDetail.breadcrumbParent')}</Link>
-        <span className={styles.breadcrumbSep} aria-hidden>/</span>
-        <span className={styles.breadcrumbCurrent} title={groupName}>
-          {groupName}
-        </span>
-      </div>
-
       {/* Page header — title + subtitle left, status + actions right */}
       <header className={styles.pageHeader}>
         <div className={styles.headerLeft}>

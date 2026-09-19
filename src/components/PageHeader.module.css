@@ -27,14 +27,6 @@
   min-width: 0;
 }
 
-.breadcrumbs {
-  font-size: var(--font-size-xs);
-  color: var(--ink-muted);
-  font-family: var(--font-family-mono);
-  letter-spacing: 0.04em;
-  margin-bottom: var(--space-1);
-}
-
 .eyebrow {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);

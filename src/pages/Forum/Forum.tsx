@@ -232,12 +232,6 @@ export const Forum = () => {
             ? t('forum.descriptionVerified', 'Browse research conversations, follow colleagues, and contribute through the verified community workflow.')
             : t('forum.descriptionPending', 'Browse public discussions while your account is pending administrator verification.')
         }
-        breadcrumbs={
-          <>
-            {t('nav.home', 'Home')} <span aria-hidden>/</span>{' '}
-            <span className={styles.breadcrumbsActive}>{t('forum.title', 'Forum')}</span>
-          </>
-        }
         actions={
           <Button
             variant="primary"

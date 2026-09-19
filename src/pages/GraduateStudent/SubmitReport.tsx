@@ -397,14 +397,6 @@ export const SubmitReport = (): JSX.Element => {
 
   return (
     <div className={styles.page}>
-      <nav className={styles.breadcrumbs}>
-        {t('student.phaseReport.breadcrumbHome', 'Home')} &gt;{' '}
-        {t('student.phaseReport.breadcrumbWorkspace', 'Collaborative Workspace')} &gt;{' '}
-        <span className={styles.activeBreadcrumb}>
-          {t('student.phaseReport.breadcrumbSubmit', 'Submit Progress Report')}
-        </span>
-      </nav>
-
       <header className={styles.headerRow}>
         <div>
           <h1 className={styles.pageTitle}>

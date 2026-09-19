@@ -14,9 +14,12 @@
  *           "Checking…" (not a count) and the modal must render a skeleton.
  *
  *   TC-4 — error state: when the cross-reference fetch fails (`crossRefError`)
- *           the chip must NOT show "Not used" — it must show "Details unavailable".
+ *           the chip must NOT show "Not used" — it must show "Usage unavailable".
  *           The modal must NOT show the "Nothing links" empty state — it must
  *           show an error state with a Retry button.
+ *
+ * The helper also returns a `state` field: 'used' | 'unused' | 'unknown'.
+ * Tests below assert this field where relevant.
  *
  * For the modal rendering tests see MaterialUsageModal.unit.test.tsx.
  */
@@ -87,6 +90,7 @@ describe('getMaterialUsage', () => {
 
       expect(result.topics).toHaveLength(0);
       expect(result.phases).toHaveLength(1); // phase still matches by URL
+      expect(result.state).toBe('used'); // fan-out succeeded; one phase matched
     });
 
     /**
@@ -107,6 +111,8 @@ describe('getMaterialUsage', () => {
       });
 
       expect(result.topics).toHaveLength(0);
+      // No topics matched, no phases matched, but fan-out did succeed (topics > 0)
+      expect(result.state).toBe('unused');
     });
 
     /**
@@ -132,6 +138,7 @@ describe('getMaterialUsage', () => {
 
       expect(result.topics).toHaveLength(1);
       expect(result.topics[0].id).toBe(1);
+      expect(result.state).toBe('used');
     });
   });
 
@@ -155,6 +162,7 @@ describe('getMaterialUsage', () => {
 
       expect(result.topics).toHaveLength(1);
       expect(result.topics[0].id).toBe(1);
+      expect(result.state).toBe('used');
     });
 
     /**
@@ -179,11 +187,15 @@ describe('getMaterialUsage', () => {
       });
 
       expect(result.topics).toHaveLength(1);
+      expect(result.state).toBe('used');
     });
 
     /**
      * When both sides expose numeric IDs, require them to match to avoid
      * counting a row attached to a sibling material sharing the same URL.
+     * The topic is NOT matched via legacy URL (MATERIAL.materialsUrl is set
+     * but doesn't point at TOPIC_A), so after the junction is correctly
+     * skipped the result is 'unused'.
      */
     it('requires learningMaterialId match when both sides expose a numeric id', () => {
       const siblingMaterialId = 999;
@@ -200,6 +212,9 @@ describe('getMaterialUsage', () => {
       });
 
       expect(result.topics).toHaveLength(0);
+      // Junction is skipped (id mismatch); topic is not matched via legacy URL
+      // (MATERIAL.materialsUrl !== TOPIC_A.materialsUrl); result is genuinely empty
+      expect(result.state).toBe('unused');
     });
 
     /**
@@ -221,6 +236,7 @@ describe('getMaterialUsage', () => {
 
       expect(result.topics).toHaveLength(1);
       expect(result.topics[0].id).toBe(1);
+      expect(result.state).toBe('used');
     });
 
     /**
@@ -248,6 +264,7 @@ describe('getMaterialUsage', () => {
       });
 
       expect(result.phases).toHaveLength(1);
+      expect(result.state).toBe('used');
     });
   });
 
@@ -260,6 +277,7 @@ describe('getMaterialUsage', () => {
       });
       expect(result.topics).toHaveLength(0);
       expect(result.phases).toHaveLength(0);
+      expect(result.state).toBe('unused'); // no URL to match, no fan-out failure
     });
 
     it('returns empty arrays when topics and phases are empty', () => {
@@ -270,6 +288,8 @@ describe('getMaterialUsage', () => {
       });
       expect(result.topics).toHaveLength(0);
       expect(result.phases).toHaveLength(0);
+      // Both arrays are empty → fanOutSucceeded is false → 'unknown'
+      expect(result.state).toBe('unknown');
     });
 
     it('hasOPEN topic status detectable from the returned topics array', () => {
@@ -291,6 +311,7 @@ describe('getMaterialUsage', () => {
       const openTopicInResult = result.topics.find((t) => (t.status ?? '').toUpperCase() === 'OPEN');
       expect(openTopicInResult).toBeDefined();
       expect(openTopicInResult!.id).toBe(1);
+      expect(result.state).toBe('used');
     });
 
     it('drops junction rows with missing topicId', () => {
@@ -304,6 +325,8 @@ describe('getMaterialUsage', () => {
         topicMaterialJunctions: [rowNoTopicId],
       });
       expect(result.topics).toHaveLength(0);
+      // Junction has no topicId → skipped; no topics matched; fan-out succeeded
+      expect(result.state).toBe('unused');
     });
   });
 });

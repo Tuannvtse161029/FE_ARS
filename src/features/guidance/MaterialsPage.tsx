@@ -7,7 +7,6 @@
  *   - MaterialUpload (upload lifecycle helper)
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import {
   X,
   FileText,
@@ -44,7 +43,6 @@ import { useFirebaseFileUpload } from '../../hooks/useFirebaseFileUpload';
 import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/Button/Button';
 import { useT } from '../../i18n/I18nContext';
-import { ROUTES } from '../../routes/paths';
 import { validateHttpsUrl } from '../../utils/validationRules';
 import {
   buildConfigureMilestonesUrl,
@@ -527,10 +525,6 @@ export const LecturerMaterialsPage = () => {
         description="Manage your learning materials and shared research papers in one place."
         accent="var(--ars-lecturer)"
       />
-
-      <div className={styles.breadcrumbs}>
-        Home &gt; <Link to={ROUTES.FORUM}>Forums</Link> &gt; <span className={styles.activeBreadcrumb}>Materials</span>
-      </div>
 
       {banner.visible && (
         <div className={styles.successToastBanner}>

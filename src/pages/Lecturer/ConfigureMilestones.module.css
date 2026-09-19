@@ -32,18 +32,6 @@
   color: var(--ars-ink);
 }
 
-/* ── Breadcrumbs ─────────────────────────────────────────── */
-.breadcrumbs {
-  font-size: var(--font-size-xs);
-  font-family: var(--font-family-mono);
-  color: var(--ars-ink-muted);
-}
-
-.activeBreadcrumb {
-  font-weight: var(--font-weight-semibold);
-  color: var(--ars-ink);
-}
-
 /* ── Config Card ─────────────────────────────────────────── */
 .configCard {
   background: var(--ars-paper-alt);
@@ -1010,18 +998,6 @@
   .configCardBody {
     flex-direction: column;
   }
-}
-
-/* ── Breadcrumb back link ─────────────────────────────────── */
-.backLink {
-  color: var(--ars-ink-muted);
-  text-decoration: none;
-  font-weight: var(--font-weight-semibold);
-  transition: color var(--transition-fast);
-}
-
-.backLink:hover {
-  color: var(--ars-ink);
 }
 
 /* ── Topic context ────────────────────────────────────────── */

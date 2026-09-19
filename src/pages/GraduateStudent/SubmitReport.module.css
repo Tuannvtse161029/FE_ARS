@@ -28,24 +28,6 @@
   animation: spin 0.9s linear infinite;
 }
 
-/* ── Page Header ────────────────────────────────────────── */
-.breadcrumbs {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-1) var(--space-2);
-  margin: 0;
-  padding: var(--space-4) var(--space-5) 0;
-  color: var(--ink-muted);
-  font-size: var(--font-size-xs);
-  line-height: var(--line-height-normal);
-}
-
-.activeBreadcrumb {
-  color: var(--ink-primary);
-  font-weight: var(--font-weight-semibold);
-}
-
 .headerRow {
   position: relative;
   display: flex;
@@ -522,10 +504,6 @@
 }
 
 @media (max-width: 640px) {
-  .breadcrumbs {
-    padding-inline: var(--space-4);
-  }
-
   .headerRow {
     align-items: flex-start;
     padding-inline: var(--space-4);

@@ -20,7 +20,7 @@
 // records. No hardcoded "Topic 1" data.
 
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Plus,
   Check,
@@ -59,7 +59,6 @@ import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/Button/Button';
 import { usePagination } from '../../hooks/usePagination';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
-import { ROUTES } from '../../routes/paths';
 import { validateHttpsUrl } from '../../utils/validationRules';
 import {
   buildPhaseReportsUrl,
@@ -579,12 +578,6 @@ export const ResearchTopicsPage = () => {
         }
         accent="var(--ars-lecturer)"
       />
-
-      {/* Breadcrumbs */}
-      <div className={styles.breadcrumbs}>
-        Home &gt; <Link to={ROUTES.FORUM}>{t('lecturer.topics.breadcrumbParent')}</Link> &gt;{' '}
-        <span className={styles.activeBreadcrumb}>{t('lecturer.topics.breadcrumbCurrent')}</span>
-      </div>
 
       {/* BANNER */}
       {banner.visible && (

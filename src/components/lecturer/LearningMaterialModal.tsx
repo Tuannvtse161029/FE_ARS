@@ -34,6 +34,14 @@ import {
 import { ConfirmModal } from './ConfirmModal';
 import styles from './LearningMaterialModal.module.css';
 
+/**
+ * Custom event name dispatched (on `window`) after a successful attach, detach,
+ * or createAndAttach call inside LearningMaterialModal. Materials.tsx listens
+ * for this event to invalidate its junction cache without needing a shared
+ * prop/callback.
+ */
+export const TOPIC_MATERIALS_CHANGED_EVENT = 'ars:topic-materials-changed' as const;
+
 export interface LearningMaterialModalProps {
   isOpen: boolean;
   topic: ResearchTopic | null;
@@ -156,6 +164,8 @@ export const LearningMaterialModal = ({
           variant: 'success',
         });
         await fetchTopicMaterials();
+        // Notify listeners (Materials.tsx) to refresh junction cache.
+        window.dispatchEvent(new CustomEvent(TOPIC_MATERIALS_CHANGED_EVENT, { bubbles: true }));
         onSuccess?.();
       } catch (err: unknown) {
         const errorObj = err as { response?: { status?: number; data?: { message?: string } }; message?: string };
@@ -212,6 +222,8 @@ export const LearningMaterialModal = ({
         variant: 'success',
       });
       await fetchTopicMaterials();
+      // Notify listeners (Materials.tsx) to refresh junction cache.
+      window.dispatchEvent(new CustomEvent(TOPIC_MATERIALS_CHANGED_EVENT, { bubbles: true }));
       onSuccess?.();
     } catch (err: unknown) {
       const errorObj = err as { response?: { status?: number; data?: { message?: string } }; message?: string };
@@ -247,6 +259,8 @@ export const LearningMaterialModal = ({
         variant: 'success',
       });
       await fetchTopicMaterials();
+      // Notify listeners (Materials.tsx) to refresh junction cache.
+      window.dispatchEvent(new CustomEvent(TOPIC_MATERIALS_CHANGED_EVENT, { bubbles: true }));
       onSuccess?.();
     } catch (err: unknown) {
       const errorObj = err as { response?: { status?: number; data?: { message?: string } }; message?: string };

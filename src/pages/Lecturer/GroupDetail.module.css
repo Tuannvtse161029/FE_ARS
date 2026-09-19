@@ -48,45 +48,6 @@
   align-items: center;
 }
 
-/* ── Breadcrumb ─────────────────────────────────────────────── */
-/* Provides the "Research Groups > [Group Name]" context tab
-   so users can always see where they are in the hierarchy. */
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--font-size-xs);
-  font-family: var(--font-family-mono);
-  color: var(--ars-ink-muted);
-  flex-wrap: wrap;
-}
-
-.breadcrumb a {
-  color: var(--ars-lecturer);
-  text-decoration: none;
-  font-weight: var(--font-weight-semibold);
-  transition: opacity var(--transition-fast);
-}
-
-.breadcrumb a:hover {
-  opacity: 0.8;
-  text-decoration: underline;
-}
-
-.breadcrumbSep {
-  color: var(--ars-ink-muted);
-  opacity: 0.5;
-}
-
-.breadcrumbCurrent {
-  color: var(--ars-ink);
-  font-weight: var(--font-weight-semibold);
-  max-width: 300px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .backBtn {
   display: inline-flex;
   align-items: center;

@@ -1,8 +1,41 @@
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
-import { Info } from 'lucide-react';
+import { Info, X } from 'lucide-react';
 import { loadingTracker } from '../services/loadingTracker';
 import { useI18n } from '../i18n/I18nContext';
+
+/**
+ * Custom dismiss button rendered inside the "keep exploring" toast via Sonner's
+ * `action` slot.  Sonner renders the action button as a sibling of the toast body,
+ * but the toast container carries an `onClick` listener that fires the "done" toast
+ * when the loading tracker is already idle.  Stopping propagation here guarantees
+ * the button click does not bubble to that container handler.
+ */
+const DismissButton = () => (
+  <button
+    type="button"
+    aria-label="Dismiss notification"
+    onClick={(e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      toast.dismiss('loading-minimized');
+    }}
+    style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'transparent',
+      border: 'none',
+      cursor: 'pointer',
+      padding: '2px 4px',
+      borderRadius: '4px',
+      color: 'inherit',
+      lineHeight: 1,
+    }}
+  >
+    <X size={14} aria-hidden />
+  </button>
+);
 
 /**
  * Global toast notifier for the loading overlay lifecycle.
@@ -78,6 +111,7 @@ export const LoadingBubbles = () => {
           // the "done" toast replaces it (same id -> Sonner replaces).
           duration: KEEP_EXPLORING_TIMEOUT_MS,
           icon: <Info size={16} aria-hidden />,
+          action: <DismissButton />,
         });
       }
     };

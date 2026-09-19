@@ -34,18 +34,18 @@ export default defineConfig({
   timeout: 120_000,
   expect: { timeout: 20_000 },
   webServer: {
-    command: 'npx vite preview --port 4173 --strictPort --host 127.0.0.1',
-    url: 'http://127.0.0.1:4173',
+    command: 'npx vite preview --port 3000 --strictPort --host 127.0.0.1',
+    url: 'http://127.0.0.1:3000',
     cwd: __dirname,
     reuseExistingServer: !process.env.CI,
     timeout: 30_000,
     env: {
       VITE_API_BASE_URL:
-        process.env.VITE_API_BASE_URL || 'http://127.0.0.1:4173',
+        process.env.VITE_API_BASE_URL || 'http://127.0.0.1:3000',
     },
   },
   use: {
-    baseURL: 'http://127.0.0.1:4173',
+    baseURL: 'http://127.0.0.1:3000',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
