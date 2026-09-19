@@ -46,3 +46,9 @@ const child = spawn(
   { stdio: 'inherit', cwd: projectRoot, env: process.env },
 );
 child.on('exit', (code) => process.exit(code ?? 0));
+// Propagate SIGTERM / SIGINT from the child so Ctrl-C in the parent shell
+// actually stops the test run rather than leaving it orphaned.
+child.on('error', (err) => {
+  console.error(`\u274c vitest smoke spawn error: ${err.message}`);
+  process.exit(1);
+});

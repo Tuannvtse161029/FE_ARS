@@ -18,11 +18,6 @@
   background-color: var(--surface-canvas);
 }
 
-.breadcrumbsActive {
-  font-weight: var(--font-weight-semibold);
-  color: var(--ars-ink);
-}
-
 /* ─── Two-column layout ──────────────────────────────────── */
 .forumLayout {
   display: grid;
@@ -479,7 +474,6 @@
 
 /* ── Archive Dusk forum hierarchy ───────────────────────── */
 .forumPage { color: var(--ink-primary); background: transparent; }
-.breadcrumbsActive { color: var(--ink-primary); }
 .sidebar {
   background: var(--surface-sunken);
   border-color: var(--border-strong);

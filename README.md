@@ -6,6 +6,13 @@
 
 - [What is ARS?](#what-is-ars)
 - [Repository Scope](#repository-scope)
+- [Business Scope & Roles](#business-scope--roles)
+- [Role-Driven Feature Map](#role-driven-feature-map)
+  - [System Admin](#system-admin)
+  - [Lecturer](#lecturer)
+  - [Researcher](#researcher)
+  - [Reviewer](#reviewer)
+  - [Graduate Student](#graduate-student)
 - [Tech Stack](#tech-stack)
 - [Frontend Design & Localization Rule](#frontend-design--localization-rule)
 - [Quick Start](#quick-start)
@@ -14,7 +21,6 @@
 - [Available Scripts](#available-scripts)
 - [Project Structure](#project-structure)
 - [Barrel Files](#barrel-files)
-- [Feature Surfaces by Role](#feature-surfaces-by-role)
 - [Internationalization](#internationalization)
 - [API Reference](#api-reference)
 - [Project Integration](#project-integration)
@@ -306,21 +312,96 @@ The following folders maintain index barrel files for clean re-exports:
 
 ---
 
-## Feature Surfaces by Role
+## Business Scope & Roles
 
-| Role | Highlights |
-| --- | --- |
-| **Admin** | User moderation, payout clearance, audit log CSV export, accounts management, content reports |
-| **Lecturer** | Seminar scheduling with Google Meet generation, research group supervision, topic + phase planning, material library, shared materials with other lecturers, peer review of phased research workflow |
-| **Researcher** | Manuscript submission, revision tracking, status pipeline |
-| **Reviewer** | Peer review desk, DOI/PDF upload, feedback composer, wallet + withdrawals |
-| **Graduate Student** | Phased report submission, research group access |
+ARS exists to give a single multi-role academic team a complete workspace for the full life cycle of a research paper, a semester of student supervision, and a community of practice. The platform deliberately keeps **five user roles** plus a transient **Guest** state in the same shell and gates every page server-side via the BE JWT claims, so a user can hold multiple roles and switch between them without losing state. The role mapping, route guards, and effective-time states live in `src/types/auth.ts` (`BusinessRole`, `EffectiveRole`), and the per-role sidebar rails are defined in `src/layouts/MainLayout.tsx`.
 
-The common shell includes:
+The deeper reference (which role can do what, with which API, on which route, behind which guard) lives in **[`docs/PROJECT_BUSINESS_SCOPE.md`](docs/PROJECT_BUSINESS_SCOPE.md)**. Treat that document as the canonical "what is the system for?" file when you onboard, plan, or design a new feature.
 
-- **Role-aware workspace header** — `POST /api/auth/switch-role` is called when the user changes active role, updating JWT claims without forcing logout.
-- **Vietnamese + English** translation toggle, persisted to local storage.
-- **ARS Paper Day design tokens** in `src/styles/ars-tokens.css` — every screen pulls colors, spacing, and typography from this file. Hard-coded hex literals are flagged in review.
+### Role-Driven Feature Map
+
+The five roles split cleanly into three concerns: **platform stewardship** (Admin), **academic production** (Lecturer + Researcher), and **academic quality + community** (Reviewer + Graduate Student). Each role gets its own sidebar rail, its own landing route, its own service-layer wrappers, and (where it makes sense) its own payment and badge tier.
+
+#### System Admin
+
+**Business purpose**: keep the platform safe, fair, and monetised. Admins are not academic participants — they are the operational steward who decides who gets in, who stays out, and what gets published.
+
+| Capability | Primary route(s) | Key BE endpoints | Notes |
+| --- | --- | --- | --- |
+| Verify new and upgrade-role applications | `/admin/role-requests` | `GET /api/RoleRequest`, `POST /api/RoleRequest/{id}/approve|reject` | Drives the verification state machine (`Pending → Accepted/Rejected`) |
+| Moderation of all user accounts | `/admin/accounts` | `GET/POST /api/Account`, `POST /api/Account/{id}/suspend|unsuspend` | Admin cannot suspend themselves |
+| Subscription plan CRUD (Researcher + Lecturer paid plans) | `/admin/annual-fees` | `GET/POST/PUT/PATCH/DELETE /api/AnnualFees`, `/api/AnnualFees/{id}/toggle` | Plans with active subscribers cannot be deactivated |
+| Editorial pipeline — paper submissions, reviewer assignment, published catalog | `/admin/paper-submissions`, `/admin/reviewer-assignments`, `/admin/published-papers` | `GET /api/Paper`, `POST /api/Paper/{id}/assign-reviewers[-manual]`, `PUT /api/Paper/{id}/verify-authorship` | Owns the full `SUBMITTED → ADMIN_SCREENING → READY_FOR_REVIEWER → ... → PUBLISHED` state machine |
+| Reports / violation queue | `/admin/reports` | `GET /api/ViolationReport`, `POST /api/ViolationReport/{id}/resolve` | Surfaces content reports from any role |
+| Transactions and revenue analytics | `/admin/transactions` | `/api/Transactions`, `/api/Analytics/summary`, `/api/Analytics/timeseries` | Charts via Recharts; daily / weekly / monthly / yearly ranges |
+| Audit log CSV export | `/admin/audit-logs` | `GET /api/AuditLog`, `GET /api/AuditLog/export` | Compliance trail |
+| Policy documents (Privacy / ToS / Researcher + Reviewer responsibilities) | `/admin/policies` | Direct Firestore reads (`policyService`) | No `/api/Policy` endpoint by design |
+| Per-SubField grading rubric templates | `/admin/grading-rubric` | `GET /api/SubField`, `PATCH /api/SubField/{id}/rubric` | Drives reviewer scoring |
+| Academic medal catalog (tiers, artwork, criteria, recipients) | `/admin/medals` | `GET /api/Medal`, `POST /api/Medal/grant`, `PATCH /api/Medal/admin/user-medal/{userMedalId}/status` | Currently uses the `/api/Medal/*` surface — see ticket for the planned migration to `/api/admin/medals/*` |
+
+#### Lecturer
+
+**Business purpose**: own a research group, run a semester of supervision, and lead the live seminar programme. Lecturers are paid via the annual-fee plan (`/subscription`), gated by `SubscriptionRouteGuard`.
+
+| Capability | Primary route(s) | Key BE endpoints | Notes |
+| --- | --- | --- | --- |
+| Create and supervise research groups, invite students, accept / reject join requests | `/research-group`, `/lecturer/groups/:groupId` | `GET/POST/PUT/DELETE /api/ResearchGroup`, `POST /api/ResearchGroup/{id}/invite`, `/api/GroupMember/{id}/set-leader`, `/api/lecturer/research-groups/{groupId}/join-requests/{id}/accept|reject` | Delete is blocked while the group has members |
+| Research Topics CRUD (open → assigned → completed) | `/lecturer/research-topics` | `GET /api/ResearchTopic/my-topics`, `POST /api/ResearchTopic`, `PUT /api/ResearchTopic/{id}` | Frontend filters to the lecturer's own `userId` |
+| Phase / milestone configuration per topic | `/configure-milestones?topicId=…` | `GET /api/PhasedReport/topic-milestones`, `POST /api/PhasedReport` | Topic-scoped deep link `/lecturer/research-topics/:topicId/milestones` redirects here |
+| Evaluate phased reports submitted by Graduate Students | `/lecturer/evaluate-reports`, `/lecturer/phase-reports` | `GET /api/PhasedReport`, `POST /api/PhasedReport/{id}/evaluate`, `POST /api/PhasedReport/{id}/extend-deadline` | `Overdue` status derived locally when a deadline lapses |
+| Learning + Shared Materials library (per topic + cross-lecturer) | `/lecturer/materials` (cards + table views) | `GET/POST/PUT/DELETE /api/LearningMaterial`, `/api/SharedMaterial`, `/api/PhaseMaterial`, `/api/ResearchTopic/{id}/learning-materials/{materialId}` | Old `/lecturer/learning-materials` and `/lecturer/shared-materials` redirect here |
+| Schedule and host seminars (Google Meet generation, feedback collection, AI summaries) | `/seminar-workspace` | `GET/POST/PUT/DELETE /api/Seminar`, `POST /api/Seminar/{id}/feedback-form`, `POST /api/Seminar/{id}/summarize-feedback`, `POST /api/Seminar/{id}/summarize-audio` | Owner-only; participants see the lecturer surface from `/seminar-participations` |
+| Annual subscription / PayOS payment | `/subscription` | `POST /api/AnnualFees/{id}/purchase`, `/api/AnnualFees/payos-webhook` | Bounced here by `SubscriptionRouteGuard` if missing / expired |
+
+#### Researcher
+
+**Business purpose**: produce and own scholarly output. Researchers submit papers, track revisions, and (in their capacity as host) run seminars for the academic community.
+
+| Capability | Primary route(s) | Key BE endpoints | Notes |
+| --- | --- | --- | --- |
+| Authenticated research catalog (browse published papers) | `/home` | `GET /api/Paper`, `GET /api/OpenAlex/works/{workId}` | All four non-Admin roles share this catalog |
+| Submit a new manuscript | `/researcher/submissions/new` | `POST /api/Paper`, Firebase Storage direct upload for `pdfUrl` | Researcher submitts metadata + uploads PDF; BE stores the URL |
+| Track submission through the editorial state machine | `/researcher/submissions`, `/researcher/submissions/:id` | `GET /api/Paper/by-researcher`, `PUT /api/Paper/{id}` | Same `PUBLISHED / DRAFT / REVISION_REQUIRED / WITHDRAWN` machine |
+| Authorship verification (ORCID + Semantic Scholar + OpenAlex) | (inline on submission detail) | `POST /api/Paper/{id}/verify-authorship`, ORCID OAuth callback `/auth/orcid/callback` | Restricted to ORCID-eligible roles (Researcher / Reviewer / Lecturer) |
+| Host a seminar (for Researcher-as-organiser) | `/seminar-workspace` | Same `/api/Seminar/*` set | The Researcher-as-organiser flow shares the Lecturer surface; `SubscriptionRouteGuard` applies |
+| Annual subscription / PayOS payment | `/subscription` | `/api/AnnualFees` | Same gate as Lecturer |
+
+#### Reviewer
+
+**Business purpose**: provide independent peer-review of manuscripts, get paid for it, and stay discoverable to admins who need to assign reviewers. Reviewers do **not** publish, assign, or supervise.
+
+| Capability | Primary route(s) | Key BE endpoints | Notes |
+| --- | --- | --- | --- |
+| Open assigned manuscripts, read the PDF in-app, evaluate against the rubric | `/reviewer/assignments`, `/reviewer/assignments/:id` | `GET /api/ReviewRequest`, `POST /api/DetailedEvaluation`, `POST /api/ReviewRequest/{id}` | PDF rendered via `LazyPdfViewer` (pdf.js) — Firebase `X-Frame-Options` blocked the previous iframe viewer |
+| Mark self as available / unavailable for new assignments | Header availability toggle (`MainLayout.tsx`) | `PUT /api/ProfessionalProfile/{id}/availability` | Surfaced only for Reviewer role |
+| Edit own professional profile (used as the Admin assignment card) | `/profile?tab=professional` | `GET/PUT /api/ProfessionalProfile`, `GET /api/ProfessionalProfile/{id}` | Replaces the legacy `/reviewer/professional-profile` route |
+| Withdraw earned wallet balance to a bank account | `/profile` (wallet section) | `POST /api/WithdrawalRequest`, `GET /api/Wallet/{userId}` | Driven by the `WithdrawalRequest` schema |
+| Accept seminar invitations as an academic attendee | `/seminar-participations` | `GET /api/Seminar/my-invitations`, `PUT /api/SeminarParticipant/{id}` | Reviewer is the canonical invited role; feedback window is `SEMINAR_FEEDBACK_WINDOW_HOURS` |
+
+#### Graduate Student
+
+**Business purpose**: do the research. Graduate Students are the **base tier** of the platform — they cannot request a role upgrade from this position and other roles cannot be downgraded into it. They submit phased reports, track deadlines, and consume the materials their lecturers publish.
+
+| Capability | Primary route(s) | Key BE endpoints | Notes |
+| --- | --- | --- | --- |
+| Browse research groups, send a join request, accept an invitation | `/student/research-groups` | `GET /api/ResearchGroup`, `POST /api/ResearchGroup/{groupId}/join-requests`, `GET /api/GroupMember/by-status` | Banner surfaces pending invitations + lecturer rejection feedback |
+| Track daily / weekly research journey | `/student/dashboard` | `GET /api/GroupMember/by-status`, `GET /api/PhasedReport/group/{id}` | Primary CTA nudges group leaders to the dedicated tab |
+| Submit phased reports against lecturer-configured milestones; resubmit after rejection | `/submit-report?groupId=…` | `POST /api/PhasedReport/submit`, `GET /api/PhasedReport/topic/{topicId}` | Shows lecturer score + rejection reason; leader-only actions guarded |
+| Track which group you lead and reassign leadership | `/student/research-groups` (leader badge) | `POST /api/GroupMember/{id}/set-leader`, `/api/GroupMember/{id}/remove-leader` | Only group leaders see the badge and the leader-only actions |
+| Consume materials + submit feedback as a seminar attendee | `/seminar-participations` | `/api/Seminar/my-invitations`, `POST /api/Seminar/{id}/feedback` | Feedback window matches the Lecturer-side `SEMINAR_FEEDBACK_WINDOW_HOURS` |
+
+#### Shared (cross-role)
+
+| Capability | Primary route(s) | Notes |
+| --- | --- | --- |
+| Public project landing (signed-out) | `/` | Outside `PublicRoute` so returning users can also visit it |
+| Login + register (incl. Google and ORCID OAuth) | `/login`, `/register`, `/auth/google/callback`, `/auth/orcid/callback`, `/complete-google-registration` | See `src/utils/registrationRoles.ts` for the requestable role list |
+| Forum | `/forum` | Open to all authenticated roles (unverified `Guest` included) |
+| Personal profile (Account / Professional / Public tabs) | `/profile` | Professional tab is the legacy Reviewer deep-link target |
+| Notification inbox | `/notifications` | Per-role notification-type routing via `resolveNotificationRoute` |
+| Legal pages (Privacy / ToS) | `/privacy-policy`, `/terms-of-service` | Public |
+
+> **For deeper per-role behaviour, per-route guard rules, role-eligibility for ORCID and academic identifiers, and the persisted-vs-effective role state machine, read [`docs/PROJECT_BUSINESS_SCOPE.md`](docs/PROJECT_BUSINESS_SCOPE.md).** It is the single source of truth when a future task needs to know "what is this role supposed to do, and why?".
 
 ---
 
@@ -495,6 +576,7 @@ This project is **proprietary** and confidential. See the `LICENSE` file at the 
 - **Backend API** — `ars-platform-be` (private, .NET Core + MySQL)
 - **Mobile client** — _not yet published_
 - **Architecture docs** — `docs/local-only/` (kept out of git; check with the maintainers)
+- **Business-scope deep dive** — [`docs/PROJECT_BUSINESS_SCOPE.md`](docs/PROJECT_BUSINESS_SCOPE.md). The canonical "what is each role supposed to do, on which route, with which API?" reference for onboarding, planning, and future feature work.
 
 ---
 

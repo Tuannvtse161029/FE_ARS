@@ -30,27 +30,6 @@
   color: var(--ars-ink);
 }
 
-.breadcrumbs {
-  font-size: var(--font-size-xs);
-  font-family: var(--font-family-mono);
-  color: var(--ars-ink-muted);
-}
-
-.breadcrumbs a {
-  color: var(--ars-lecturer);
-  text-decoration: none;
-  font-weight: var(--font-weight-semibold);
-}
-
-.breadcrumbs a:hover {
-  text-decoration: underline;
-}
-
-.activeBreadcrumb {
-  font-weight: var(--font-weight-semibold);
-  color: var(--ars-ink);
-}
-
 .pageHeader {
   display: flex;
   align-items: flex-start;

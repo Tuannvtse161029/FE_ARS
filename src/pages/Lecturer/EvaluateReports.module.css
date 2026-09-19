@@ -34,18 +34,6 @@
   color: var(--ars-ink);
 }
 
-/* ── Breadcrumbs ─────────────────────────────────────────── */
-.breadcrumbs {
-  font-size: var(--font-size-xs);
-  font-family: var(--font-family-mono);
-  color: var(--ars-ink-muted);
-}
-
-.activeBreadcrumb {
-  font-weight: var(--font-weight-semibold);
-  color: var(--ars-ink);
-}
-
 /* ── Page Header ─────────────────────────────────────────── */
 .pageHeader {
   text-align: left;

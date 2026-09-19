@@ -20,11 +20,6 @@
   --profile-accent: var(--ars-blue, #2d3561);
 }
 
-.breadcrumbsActive {
-  font-weight: var(--font-weight-semibold);
-  color: var(--ars-ink);
-}
-
 /* ── Extras group: publications + forum posts sections ── */
 .extrasGroup {
   display: flex;

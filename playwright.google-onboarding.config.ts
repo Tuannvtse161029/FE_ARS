@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
  * Requires a fresh production build: `npm run build`.
  */
 
-const BASE_URL = process.env.VITE_E2E_APP_URL || 'http://127.0.0.1:4173';
+const BASE_URL = process.env.VITE_E2E_APP_URL || 'http://127.0.0.1:3000';
 const __filename = fileURLToPath(import.meta.url);
 const REPO_ROOT = path.resolve(path.dirname(__filename), '.');
 
@@ -33,7 +33,7 @@ export default defineConfig({
   expect: { timeout: 20_000 },
   webServer: {
     // vite preview serves the production build we created above.
-    command: 'npx vite preview --port 4173 --strictPort --host 127.0.0.1',
+    command: 'npx vite preview --port 3000 --strictPort --host 127.0.0.1',
     url: BASE_URL,
     cwd: REPO_ROOT,
     reuseExistingServer: !process.env.CI,

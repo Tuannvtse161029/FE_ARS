@@ -13,7 +13,6 @@
 // here also propagates to the topic-scoped list.
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
 import {
   Plus,
   X,
@@ -38,7 +37,6 @@ import { SortableHeader } from '../../components/table/SortableHeader';
 import { usePagination } from '../../hooks/usePagination';
 import { useTableSort } from '../../hooks/useTableSort';
 import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
-import { ROUTES } from '../../routes/paths';
 import { safeHref, validateHttpsUrl, validatePositiveInteger } from '../../utils/validationRules';
 import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/Button/Button';
@@ -333,11 +331,6 @@ export const LecturerLearningMaterialsPage = () => {
         }
         accent="var(--ars-lecturer)"
       />
-
-      <div className={styles.breadcrumbs}>
-        Home &gt; <Link to={ROUTES.FORUM}>Forums</Link> &gt;{' '}
-        <span className={styles.activeBreadcrumb}>Learning Materials</span>
-      </div>
 
       {banner.visible && (
         <div className={styles.successToastBanner}>

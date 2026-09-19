@@ -21,7 +21,7 @@ import {
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Plus,
   X,
@@ -81,7 +81,6 @@ import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/Button/Button';
 import { BackendGapBanner } from '../../components/BackendGapBanner';
 import { useT } from '../../i18n/I18nContext';
-import { ROUTES } from '../../routes/paths';
 import { validateHttpsUrl, safeHref } from '../../utils/validationRules';
 import { formatDisplayDateTime } from '../../utils/datetime';
 import { SortableHeader } from '../../components/table/SortableHeader';
@@ -114,11 +113,19 @@ import styles from './Materials.module.css';
 //   - A topic can appear at most once per material.
 //   - A phase can appear at most once per (topicId, groupId, phaseNumber).
 //
-// Matching rules:
-//   Topic: prefer junction rows whose `learningMaterialId === material.id` when
-//          both sides expose a numeric ID; otherwise fall back to junction rows
-//          whose `fileUrl === material.fileUrl` AND `topicId` is in `topics`.
-//   Phase: `phase.phasedMaterialsUrl === material.fileUrl`.
+// Junction matching priority (BUG FIX):
+//   Primary: match by numeric `learningMaterialId === material.id` — URL
+//   differences between the library material and the junction row are irrelevant
+//   when IDs match. This handles BE URL-rewrites on attach.
+//   Fallback: match by `fileUrl === material.fileUrl` when junction has no
+//   `learningMaterialId` (pre-fix BE payloads, or rows created without a known id).
+//   Legacy: `topic.materialsUrl === material.fileUrl` — continues to work as-is.
+//
+// Usage-state contract:
+//   'used'    — one or more topics or phases matched (fan-out completed successfully).
+//   'unused'  — fan-out completed successfully with zero matches.
+//   'unknown' — fan-out did not complete (topics array is empty AND should not be),
+//               indicating a failed lookup. UI must NOT show "Not used" in this state.
 //
 // Signature:
 //   material  — the LearningMaterial being inspected.
@@ -127,13 +134,43 @@ import styles from './Materials.module.css';
 //   opts.topicMaterialJunctions — full TopicLearningMaterialResponse list.
 //
 // Returns:
-//   { topics: ResearchTopic[], phases: PhasedReport[] }
+//   { topics: ResearchTopic[], phases: PhasedReport[], state: MaterialUsageState }
 //
 // Only exported for unit-testing; not used outside this file.
+
+/**
+ * Confidence level of the material-usage lookup result.
+ *
+ * - `'used'`    — fan-out completed; at least one topic or phase matched.
+ * - `'unused'`  — fan-out completed; no topics or phases matched.
+ * - `'unknown'` — fan-out did not complete (topics list empty when it shouldn't be,
+ *                 or junction array empty AND topics are empty). UI must NOT show
+ *                 "Not used" in this state — show "Usage unavailable" instead and
+ *                 disable the delete button.
+ */
+export type MaterialUsageState = 'used' | 'unused' | 'unknown';
 
 export type MaterialUsageResult = {
   topics: ResearchTopic[];
   phases: PhasedReport[];
+  /**
+   * 'used'    — lookup succeeded with at least one match.
+   * 'unused'  — lookup succeeded with no matches.
+   * 'unknown' — lookup failed or did not complete; "Not used" must NOT be shown.
+   */
+  state: MaterialUsageState;
+};
+
+/**
+ * Deterministically resolves the library-material numeric id, using the
+ * canonical `learningMaterialId ?? id` pattern from normalizeLearningMaterial.
+ * Safe to call on both junction rows (where the field is `learningMaterialId`)
+ * and library materials (where the field is `id` after normalisation).
+ */
+const resolveMaterialId = (m: { id?: number; learningMaterialId?: number }): number | undefined => {
+  if (typeof m.id === 'number') return m.id;
+  if (typeof m.learningMaterialId === 'number') return m.learningMaterialId;
+  return undefined;
 };
 
 export function getMaterialUsage(
@@ -149,11 +186,21 @@ export function getMaterialUsage(
   // selection (`usageModalMaterial` is null when the modal is closed)
   // previously crashed at `material.fileUrl`. Treat null/undefined as an
   // empty result so the chip and modal stay in sync.
-  if (!material) return { topics: [], phases: [] };
+  if (!material) return { topics: [], phases: [], state: 'unused' };
   const url = material.fileUrl?.trim();
-  if (!url) return { topics: [], phases: [] };
+  if (!url) return { topics: [], phases: [], state: 'unused' };
 
-  // ── Topic matching ────────────────────────────────────────────────
+  // ── Usage-state determination ───────────────────────────────────────────
+  // 'unknown' when neither topics nor junctions contain data, AND there are
+  // no phase matches. This indicates the fan-out did not produce any usable
+  // data — most likely a failed/empty fetch. The case where topics=[] but
+  // phases has matches is a valid 'used' state (phases loaded and matched).
+  const fanOutSucceeded =
+    topics.length > 0 ||
+    topicMaterialJunctions.length > 0 ||
+    phases.length > 0;
+
+  // ── Topic matching ────────────────────────────────────────────────────────
   // Pre-index topics by id for O(1) orphan-lookup.
   const topicById = new Map(topics.map((t) => [t.id, t]));
 
@@ -167,28 +214,61 @@ export function getMaterialUsage(
     }
   }
 
-  // Junction: rows whose `fileUrl` matches AND `topicId` resolves in `topics`.
+  // Junction pass 1 — PRIMARY: match by `learningMaterialId === material.id`.
+  // This is the fix for the URL-rewrite bug: even if the BE echoes back a
+  // canonical/transformed fileUrl, the ID match is authoritative.
+  const materialId = resolveMaterialId(material);
   for (const row of topicMaterialJunctions) {
-    if ((row.fileUrl ?? '').trim() !== url) continue;
-    // When both sides expose a numeric ID, require them to match.
+    const rowId = resolveMaterialId(row);
+    // Both sides must expose a numeric id AND they must match.
     if (
-      typeof row.learningMaterialId === 'number' &&
-      row.learningMaterialId > 0 &&
-      typeof material.id === 'number' &&
-      row.learningMaterialId !== material.id
+      typeof materialId === 'number' &&
+      typeof rowId === 'number' &&
+      materialId === rowId
+    ) {
+      if (typeof row.topicId !== 'number') continue;
+      if (matchedTopicSet.has(row.topicId)) continue;
+      const t = topicById.get(row.topicId);
+      if (!t) continue;
+      matchedTopicSet.add(row.topicId);
+      matchedTopics.push(t);
+    }
+  }
+
+  // Junction pass 2 — FALLBACK: URL-only match when junction has no
+  // `learningMaterialId` (pre-fix BE payloads, or rows created without a
+  // known id). This preserves the original URL-based behaviour.
+  for (const row of topicMaterialJunctions) {
+    const rowId = resolveMaterialId(row);
+    // Skip if we already matched this row by ID in pass 1.
+    if (
+      typeof materialId === 'number' &&
+      typeof rowId === 'number' &&
+      materialId === rowId
+    ) {
+      continue;
+    }
+    if ((row.fileUrl ?? '').trim() !== url) continue;
+    // Only include URL-only rows when the junction has no numeric id.
+    // If both id and url are present but id doesn't match, the row belongs
+    // to a different material — skip it (this is the existing id-mismatch
+    // guard from the pre-fix code).
+    if (
+      typeof rowId === 'number' &&
+      typeof materialId === 'number' &&
+      rowId !== materialId
     ) {
       continue;
     }
     if (typeof row.topicId !== 'number') continue;
     if (matchedTopicSet.has(row.topicId)) continue;
-    // Orphan-drop: skip if topicId does not resolve.
     const t = topicById.get(row.topicId);
     if (!t) continue;
     matchedTopicSet.add(row.topicId);
     matchedTopics.push(t);
   }
 
-  // ── Phase matching ───────────────────────────────────────────────
+  // ── Phase matching ───────────────────────────────────────────────────────
   // Dedupe by (topicId, groupId, phaseNumber).
   const matchedPhaseSet = new Set<string>();
   const matchedPhases: PhasedReport[] = [];
@@ -206,7 +286,14 @@ export function getMaterialUsage(
     matchedPhases.push(p);
   }
 
-  return { topics: matchedTopics, phases: matchedPhases };
+  const hasMatch = matchedTopics.length > 0 || matchedPhases.length > 0;
+  const state: MaterialUsageState = fanOutSucceeded
+    ? hasMatch
+      ? 'used'
+      : 'unused'
+    : 'unknown';
+
+  return { topics: matchedTopics, phases: matchedPhases, state };
 }
 
 type TabId =
@@ -520,10 +607,20 @@ export const LecturerMaterialsPage = () => {
       // acceptable; a dedicated reverse-lookup endpoint is tracked in
       // `tickets/backend/BE_MATERIAL_USAGE_REVERSE_LOOKUP.md` and would
       // replace this fan-out once shipped.
+      //
+      // The BE does NOT echo `topicId` back on each row — see
+      // `LearningMaterialResponse` in Swagger. We must inject it here
+      // (we know the topic from the request URL) before flattening,
+      // otherwise downstream `getMaterialUsage` cannot resolve rows
+      // back to a topic and silently drops every row.
       const junctionLists = await Promise.all(
         canonicalTopics.map((t) =>
           topicLearningMaterialService
             .getByTopicId(t.id as number)
+            .then(
+              (rows): TopicLearningMaterialResponse[] =>
+                rows.map((row) => ({ ...row, topicId: t.id as number })),
+            )
             .catch(() => [] as TopicLearningMaterialResponse[]),
         ),
       );
@@ -539,6 +636,17 @@ export const LecturerMaterialsPage = () => {
     void loadCrossReference();
   }, [loadCrossReference]);
 
+  // ── Cache invalidation: refresh cross-reference and library after an
+  //    attach/detach in LearningMaterialModal (opened from ResearchTopics.tsx).
+  //    Uses a custom DOM event so no shared callback prop is needed.
+  useEffect(() => {
+    const handler = () => {
+      void Promise.all([refetchLearning(), loadCrossReference()]);
+    };
+    window.addEventListener('ars:topic-materials-changed', handler);
+    return () => window.removeEventListener('ars:topic-materials-changed', handler);
+  }, [refetchLearning, loadCrossReference]);
+
   // Derived lists for the "Used by …" modal. Both `usedByTopicsForModal` and
   // `usedByPhasesForModal` delegate to `getMaterialUsage` so the chip and
   // the modal always apply the same filtering rules.
@@ -552,7 +660,7 @@ export const LecturerMaterialsPage = () => {
     [usageModalMaterial, topics, phases, topicMaterialJunctions],
   );
 
-// Map fileUrl → { topicCount, phaseCount, hasOpenTopic } for the usage chip.
+// Map fileUrl → { topicCount, phaseCount, hasOpenTopic, state } for the usage chip.
 // Sources counted as topic usage:
 //   1. The legacy single-URL link `topic.materialsUrl === url`.
 //   2. The newer `ResearchTopicLearningMaterial` junction rows attached via
@@ -561,10 +669,19 @@ export const LecturerMaterialsPage = () => {
 //      regardless of which attachment pathway the lecturer used.
 // Sources counted as phase usage:
 //   - `phase.phasedMaterialsUrl === url` (same as before).
+// State:
+//   'used'    — lookup succeeded with at least one match.
+//   'unused'  — lookup succeeded with zero matches.
+//   'unknown' — lookup did not complete (topics + junctions both empty).
 const usageByUrl = useMemo(() => {
   const map = new Map<
     string,
-    { topicCount: number; phaseCount: number; hasOpenTopic: boolean }
+    {
+      topicCount: number;
+      phaseCount: number;
+      hasOpenTopic: boolean;
+      state: MaterialUsageState;
+    }
   >();
 
   for (const m of materials) {
@@ -576,7 +693,7 @@ const usageByUrl = useMemo(() => {
     );
     const url = m.fileUrl?.trim();
     if (url) {
-      map.set(url, { topicCount, phaseCount, hasOpenTopic });
+      map.set(url, { topicCount, phaseCount, hasOpenTopic, state: usage.state });
     }
   }
   return map;
@@ -1268,11 +1385,6 @@ const usageByUrl = useMemo(() => {
         accent="var(--ars-lecturer)"
       />
 
-      <div className={styles.breadcrumbs}>
-        {t('common.home')} &gt; <Link to={ROUTES.FORUM}>{t('common.forums')}</Link> &gt;{' '}
-        <span className={styles.activeBreadcrumb}>{t('lecturer.materials.title', 'Materials')}</span>
-      </div>
-
       {banner.visible && (
         <div className={styles.successToastBanner}>
           <div className={styles.toastLeft}>
@@ -1777,15 +1889,26 @@ const usageByUrl = useMemo(() => {
                 topicCount: 0,
                 phaseCount: 0,
                 hasOpenTopic: false,
+                state: 'unknown' as MaterialUsageState,
               };
               const usageTotal = usage.topicCount + usage.phaseCount;
-              const disabledDelete = usageTotal > 0;
+              // Block deletion when: the material is in use, the lookup is still
+              // in progress, OR the lookup failed (we don't know if it's in use).
+              const disabledDelete =
+                usageTotal > 0 ||
+                usage.state === 'unknown' ||
+                (crossRefLoading && usageTotal === 0);
               const disabledOpen = !url;
               const deleteTitle = disabledDelete
-                ? t(
-                    'lecturer.materials.action.deleteBlockedTitle',
-                    'This material is in use and cannot be deleted.',
-                  )
+                ? usage.state === 'unknown' || (crossRefLoading && usageTotal === 0)
+                  ? t(
+                      'lecturer.materials.action.deleteUnverifiedTitle',
+                      'Usage not yet verified — please wait.',
+                    )
+                  : t(
+                      'lecturer.materials.action.deleteBlockedTitle',
+                      'This material is in use and cannot be deleted.',
+                    )
                 : undefined;
               const isConfirming = pendingDeleteId === id;
               const isSharedFromColleague =
@@ -1929,7 +2052,14 @@ const usageByUrl = useMemo(() => {
                         className={styles.materialUsageChipMuted}
                         title="Failed to load usage — retry available on refresh"
                       >
-                        Details unavailable
+                        Usage unavailable
+                      </span>
+                    ) : usage?.state === 'unknown' ? (
+                      <span
+                        className={styles.materialUsageChipMuted}
+                        title="Usage lookup did not complete — check your connection"
+                      >
+                        Usage unavailable
                       </span>
                     ) : usageTotal === 0 ? (
                       <span className={styles.materialUsageChipMuted}>
@@ -2115,9 +2245,15 @@ const usageByUrl = useMemo(() => {
                     topicCount: 0,
                     phaseCount: 0,
                     hasOpenTopic: false,
+                    state: 'unknown' as MaterialUsageState,
                   };
                   const usageTotal = usage.topicCount + usage.phaseCount;
-                  const disabledDelete = usageTotal > 0;
+                  // Block deletion when: the material is in use, the lookup is still
+                  // in progress, OR the lookup failed (we don't know if it's in use).
+                  const disabledDelete =
+                    usageTotal > 0 ||
+                    usage.state === 'unknown' ||
+                    (crossRefLoading && usageTotal === 0);
                   const isConfirming = pendingDeleteId === id;
                   const subtitle =
                     material.description?.trim() ||
@@ -2152,7 +2288,14 @@ const usageByUrl = useMemo(() => {
                             className={`${styles.usageBadge} ${styles.usageBadgeNone}`}
                             title="Failed to load usage — retry available on refresh"
                           >
-                            Details unavailable
+                            Usage unavailable
+                          </span>
+                        ) : usage?.state === 'unknown' ? (
+                          <span
+                            className={`${styles.usageBadge} ${styles.usageBadgeNone}`}
+                            title="Usage lookup did not complete — check your connection"
+                          >
+                            Usage unavailable
                           </span>
                         ) : usageTotal === 0 ? (
                           <span

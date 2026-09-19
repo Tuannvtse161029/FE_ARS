@@ -825,12 +825,6 @@ export const Profile = () => {
         <PageHeader
           title={t('profile.authRequired.title', 'Sign in to view your profile')}
           description={t('profile.authRequired.description', 'Your academic profile is private and only available once you have signed in. Please return to the sign-in page and authenticate to continue.')}
-          breadcrumbs={
-            <>
-              {t('profile.breadcrumbHome', 'Home')} <span aria-hidden>/</span>{' '}
-              <span className={styles.breadcrumbsActive}>{t('profile.breadcrumbActive', 'Profile')}</span>
-            </>
-          }
         />
         <EmptyState
           icon={null}
@@ -847,12 +841,6 @@ export const Profile = () => {
         <PageHeader
           title={isOwner ? t('profile.view.yourProfile', 'Your profile') : `${roleLabel}`}
           description={t('profile.loadingDescription', 'Fetching the latest profile information from the ARS platform.')}
-          breadcrumbs={
-            <>
-              {t('profile.breadcrumbHome', 'Home')} <span aria-hidden>/</span>{' '}
-              <span className={styles.breadcrumbsActive}>{t('profile.breadcrumbActive', 'Profile')}</span>
-            </>
-          }
         />
         <SkeletonRow count={6} rowHeight={48} gap={12} withHeader />
       </div>
@@ -864,12 +852,6 @@ export const Profile = () => {
       <div className={styles.page} style={accentStyle}>
         <PageHeader
           title={isOwner ? t('profile.view.yourProfile', 'Your profile') : `${roleLabel}`}
-          breadcrumbs={
-            <>
-              {t('profile.breadcrumbHome', 'Home')} <span aria-hidden>/</span>{' '}
-              <span className={styles.breadcrumbsActive}>{t('profile.breadcrumbActive', 'Profile')}</span>
-            </>
-          }
         />
         <ErrorBanner
           tone="error"
@@ -912,14 +894,6 @@ export const Profile = () => {
             : t('profile.title.publicDescription', 'Public academic presence with the profile details this member has chosen to share.')
         }
         accent={roleMeta.accentVar}
-        breadcrumbs={
-          <>
-            {t('profile.breadcrumbHome', 'Home')} <span aria-hidden>/</span>{' '}
-            <span className={styles.breadcrumbsActive}>
-              {isOwner ? t('profile.breadcrumbOwnSettings', 'Profile & Account Settings') : `${displayName}${t('profile.view.publicBreadcrumbSuffix', "'s Profile")}`}
-            </span>
-          </>
-        }
         actions={
           mode === 'view' ? (
             <>

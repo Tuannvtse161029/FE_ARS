@@ -549,9 +549,6 @@ const TopicPageView = ({
   if (state.kind === 'loading') {
     return (
       <div className={styles.configureMilestones}>
-        <div className={styles.breadcrumbs}>
-          Home &gt; <span className={styles.activeBreadcrumb}>Topic phases</span>
-        </div>
         <div className={styles.phasesEmpty}>
           <Loader size={16} className={styles.spinningIcon} aria-hidden />{' '}
           Loading topic…
@@ -597,14 +594,6 @@ const TopicPageView = ({
 
   return (
     <div className={styles.configureMilestones}>
-      <div className={styles.breadcrumbs}>
-        Home &gt;{' '}
-        <Link to={ROUTES.LECTURER_RESEARCH_TOPICS} className={styles.backLink}>
-          Research Topics
-        </Link>{' '}
-        &gt; <span className={styles.activeBreadcrumb}>Topic phases</span>
-      </div>
-
       <section className={styles.configCard}>
         <div className={styles.cardHeader}>
           <div className={styles.headerTitleRow}>
