@@ -325,7 +325,7 @@
 .primaryButton {
   border-color: var(--accent-primary);
   background: var(--accent-primary);
-  color: var(--ink-primary);
+  color: var(--button-primary-ink);
 }
 
 .primaryButton:hover:not(:disabled) {
@@ -348,7 +348,7 @@
 .orcidButton {
   border-color: var(--accent-primary) !important;
   background: var(--accent-primary) !important;
-  color: var(--ink-primary) !important;
+  color: var(--button-primary-ink) !important;
 }
 
 .orcidButton:hover:not(:disabled) {

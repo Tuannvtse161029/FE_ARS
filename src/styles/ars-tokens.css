@@ -516,11 +516,21 @@ html[lang='vi'],
   --ink-muted: #94a3b8;
   --text-muted: #94a3b8;
   --text-metadata: #94a3b8;
+  /* Ink-on-paper is the colour the design system expects for ink that
+     sits ON A PAPER SURFACE — warm parchment cards, raised modals,
+     sticky toolbars. In light mode it stays near-black so headers and
+     body text read on cream. In dark mode the paper surface itself is
+     dark (--surface-paper = #121a2d) so the ink must be LIGHT to remain
+     legible — hence the white value below. Note: this is intentionally
+     NOT the right token for yellow buttons / primary CTAs / accent
+     pills; those use --button-primary-ink so the ink can flip to dark
+     on yellow surfaces regardless of theme. */
   --ink-on-paper: #ffffff;
-  /* Yellow primary button background is too saturated for dark text in
-     Archive Dusk — flip to white so the manuscript/submit CTAs stay
-     legible on the yellow pill in dark mode (both idle and hover). */
-  --button-primary-ink: #ffffff;
+  /* Yellow primary button background needs DARK text to stay legible
+     (white text on the yellow pill disappeared against the dark
+     canvas). The previous `#ffffff` value made every primary CTA
+     invisible in dark mode — fixed for ARSP button color contract. */
+  --button-primary-ink: #1d1c19;
   --ink-on-dark: #ffffff;
   --text-inverse: #090d16;
 

@@ -27,7 +27,7 @@ body {
 
 ::selection {
   background: var(--accent-primary);
-  color: var(--ink-on-paper);
+  color: var(--button-primary-ink);
 }
 
 a {

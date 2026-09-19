@@ -63,7 +63,7 @@
   height: 20px;
   border-radius: 999px;
   background: var(--accent-primary);
-  color: var(--ink-on-paper);
+  color: var(--button-primary-ink);
   font-size: 0.6875rem;
   font-weight: 700;
 }

@@ -166,6 +166,7 @@
   border: 1px solid var(--accent-primary);
   border-radius: var(--radius-md);
   background: var(--accent-primary);
+  cursor: pointer;
   color: var(--ink-primary);
   cursor: pointer;
   min-height: 36px;

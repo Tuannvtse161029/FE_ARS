@@ -247,3 +247,68 @@ export interface PurchaseHistoryParams {
   page?: number;
   pageSize?: number;
 }
+
+/**
+ * Subscription snapshot for a single user — returned by the new admin
+ * overview endpoint:
+ *
+ *   GET /api/AnnualFees/admin/subscriptions?Page=&PageSize=&Search=&Role=&Status=
+ *
+ * This is the canonical answer to "what subscription does this user have
+ * and when does it expire" that admins see on `/admin/accounts` and the
+ * View Profile modal. It supersedes the previous admin workaround that
+ * tried to scope `GET /api/AnnualFees/my-subscription?userId={id}` to a
+ * specific user (which the BE rejected because the route is keyed off
+ * the caller's JWT).
+ *
+ * Wire model (PascalCase keys, BE convention):
+ *   - `userId`               int (required)
+ *   - `fullName`             string | null
+ *   - `email`                string | null
+ *   - `userRole`             string | null
+ *   - `subscriptionStatus`   string | null  ('Active' | 'Expired' | ...)
+ *   - `expiresAt`            ISO-8601 string | null
+ *   - `daysRemaining`        int | null
+ *   - `annualFee`            AnnualFee (embedded plan snapshot — see AnnualFeeResponse)
+ *   - `latestTransactionId`  int | null
+ *
+ * The response wrapper follows the standard paged result shape
+ * (`AdminUserSubscriptionResponsePagedResult`).
+ */
+export interface AdminUserSubscription {
+  userId: number;
+  fullName: string | null;
+  email: string | null;
+  userRole: string | null;
+  /** Free-form status string from the BE ('Active', 'Expired', etc.). */
+  subscriptionStatus: string | null;
+  /** ISO timestamp of when the subscription expires. */
+  expiresAt: string | null;
+  /** Negative when the subscription has already expired. */
+  daysRemaining: number | null;
+  /** Embedded plan snapshot — always returned by the BE. */
+  annualFee: AnnualFee;
+  /** Id of the most recent successful transaction, if any. */
+  latestTransactionId: number | null;
+}
+
+/** Filter parameters for the admin subscription overview endpoint. */
+export interface AdminUserSubscriptionListParams {
+  page?: number;
+  pageSize?: number;
+  /** Free-text search across name / email. */
+  search?: string;
+  /** Optional role filter — case-sensitive as the BE expects it. */
+  role?: AnnualFeeTargetRole | string | '';
+  /** Optional status filter, e.g. 'Active' | 'Expired'. */
+  status?: string;
+}
+
+/** Paged result wrapper for the admin subscription overview endpoint. */
+export interface AdminUserSubscriptionListResult {
+  items: AdminUserSubscription[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+

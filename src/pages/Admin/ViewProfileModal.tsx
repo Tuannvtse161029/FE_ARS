@@ -161,16 +161,17 @@ const SUBSCRIPTION_ELIGIBLE_ROLES = new Set(['RESEARCHER', 'LECTURER']);
  * Render the Subscription card inside the View Profile modal.
  *
  * Source of truth today:
- *   - Researcher / Lecturer → derive status from `account.plan`
- *     (PREMIUM = Active, anything else = Expired / None). The
- *     expiry date is fetched live from the BE via the same
- *     `/api/AnnualFees/my-subscription` endpoint that powers the
- *     Researcher's own Subscription page; the BE is queried with
- *     `?userId={id}` so admins can inspect any user's expiry. When
- *     the BE returns a subscription record, we display the live
- *     `expiresAt`. When the BE hasn't shipped the admin override
- *     yet, the row shows "—" with a one-line caption explaining
- *     the fallback.
+ *   - Researcher / Lecturer → fetch a live snapshot from the BE's
+ *     admin overview endpoint
+ *     `GET /api/AnnualFees/admin/subscriptions` (BE-blessed lookup
+ *     shipped 2026). The service searches by userId and returns the
+ *     matching row's `subscriptionStatus`, `expiresAt`,
+ *     `daysRemaining`, and embedded `annualFee`. The modal then
+ *     displays the live expiry date alongside the status pill.
+ *     A legacy fallback to `my-subscription?userId={id}` is kept for
+ *     mid-rollout deploys where the new endpoint may 404. When no
+ *     subscription record can be located for the user, the row shows
+ *     "—" with a one-line caption explaining the gap.
  *   - Reviewer / Graduate Student / Admin / Guest → render a single
  *     "Unavailable" status pill — these roles never pay the
  *     annual fee and never have a subscription record to query.
@@ -203,7 +204,17 @@ function SubscriptionSummary({
       return undefined;
     }
     setSubscriptionLoaded(false);
-    void getUserCurrentSubscription(account.id)
+    // The BE's `/api/AnnualFees/admin/subscriptions` `Search` parameter
+    // matches against fullName/email — NOT userId. Feed the service the
+    // most identifying fields we have so it can find the right row.
+    // The service re-verifies by userId before trusting any field.
+    const userRoleString = Array.isArray(account.roles) ? account.roles[0] ?? null : null;
+    void getUserCurrentSubscription({
+      userId: account.id,
+      email: account.email ?? null,
+      fullName: account.name ?? null,
+      userRole: userRoleString,
+    })
       .then((next) => {
         if (cancelled) return;
         setSubscription(next);
@@ -217,7 +228,7 @@ function SubscriptionSummary({
     return () => {
       cancelled = true;
     };
-  }, [eligible, account.id]);
+  }, [eligible, account.id, account.email, account.name, account.roles]);
 
   // Non-eligible roles: surface the "Unavailable" pill with the
   // canonical role-agnostic caption.

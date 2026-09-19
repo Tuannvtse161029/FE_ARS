@@ -86,7 +86,7 @@ describe('<ResearchTopicsPage> — real API integration', () => {
   });
 
   it('renders API-returned topics (not hardcoded sample rows)', async () => {
-    getAllTopicsMock.mockResolvedValueOnce([
+    getMyTopicsMock.mockResolvedValueOnce([
       {
         id: 1001,
         title: 'High-Concurrency Load Balancing',
@@ -94,7 +94,6 @@ describe('<ResearchTopicsPage> — real API integration', () => {
         status: 'OPEN',
       },
     ]);
-    getMyTopicsMock.mockResolvedValueOnce([]);
     renderPage();
     await waitFor(() =>
       expect(
@@ -105,7 +104,6 @@ describe('<ResearchTopicsPage> — real API integration', () => {
   });
 
   it('renders truthful empty state when the API returns []', async () => {
-    getAllTopicsMock.mockResolvedValueOnce([]);
     getMyTopicsMock.mockResolvedValueOnce([]);
     renderPage();
     await waitFor(() =>
@@ -116,11 +114,9 @@ describe('<ResearchTopicsPage> — real API integration', () => {
   });
 
   it('shows truthful empty state when the BE rejects — never silently renders fake cards', async () => {
-    // The hook uses Promise.allSettled so a rejected topics request becomes
-    // an empty array, NOT a thrown error. The page must show the truthful
-    // empty state — it must NOT invent sample rows.
+    // The hook falls back to [] on rejection so the page shows the
+    // truthful empty state — it must NOT invent sample rows.
     getAllGroupsMock.mockResolvedValueOnce([]);
-    getAllTopicsMock.mockRejectedValueOnce(new Error('Network failure'));
     getMyTopicsMock.mockRejectedValueOnce(new Error('Network failure'));
     renderPage();
     await waitFor(() =>
@@ -136,10 +132,9 @@ describe('<ResearchTopicsPage> — real API integration', () => {
       { id: 2, topicId: 50 },
       { id: 3, topicId: 99 },
     ]);
-    getAllTopicsMock.mockResolvedValueOnce([
+    getMyTopicsMock.mockResolvedValueOnce([
       { id: 50, title: 'Quantum Compilers', description: '', status: 'OPEN' },
     ]);
-    getMyTopicsMock.mockResolvedValueOnce([]);
     renderPage();
     await waitFor(() => expect(screen.getByText('Quantum Compilers')).toBeInTheDocument());
     // The page derives the badge count from researchGroupService.getAll(),
@@ -154,10 +149,9 @@ describe('<ResearchTopicsPage> — real API integration', () => {
     // CLOSED was removed from the research-topic status lifecycle
     // (see utils/researchStatus.ts). The remaining transition is OPEN/ASSIGNED
     // → COMPLETED, exercised here through the "Mark Completed" affordance.
-    getAllTopicsMock.mockResolvedValueOnce([
+    getMyTopicsMock.mockResolvedValueOnce([
       { id: 77, title: 'Old title', description: '', status: 'ASSIGNED' },
     ]);
-    getMyTopicsMock.mockResolvedValueOnce([]);
     updateTopicMock.mockResolvedValueOnce({
       id: 77,
       title: 'Old title',
@@ -165,9 +159,28 @@ describe('<ResearchTopicsPage> — real API integration', () => {
     });
     renderPage();
     await waitFor(() => expect(screen.getByText('Old title')).toBeInTheDocument());
-    await userEvent.click(screen.getByRole('button', { name: /Mark Completed/i }));
+    await userEvent.click(screen.getByRole('button', { name: /markCompleted/i }));
     await waitFor(() => expect(updateTopicMock).toHaveBeenCalledTimes(1));
     const payload = updateTopicMock.mock.calls[0][1];
     expect(payload.status).toBe('COMPLETED');
+  });
+
+  it('shows Phase Reports action for every topic row', async () => {
+    getMyTopicsMock.mockResolvedValueOnce([
+      { id: 5, title: 'Topic Alpha', description: '', status: 'OPEN' },
+      { id: 6, title: 'Topic Beta', description: '', status: 'OPEN' },
+    ]);
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByText('Topic Alpha')).toBeInTheDocument(),
+    );
+    const phaseBtns = screen.getAllByTestId('topic-phase-reports');
+    expect(phaseBtns).toHaveLength(2);
+    expect(phaseBtns[0]).toHaveAttribute('data-topic-id', '5');
+    expect(phaseBtns[1]).toHaveAttribute('data-topic-id', '6');
+    expect(phaseBtns[0]).toHaveAttribute(
+      'aria-label',
+      'View phase reports for Topic Alpha',
+    );
   });
 });

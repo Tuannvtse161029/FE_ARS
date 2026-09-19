@@ -51,7 +51,6 @@ import {
   CalendarCheck as SeminarParticipationIcon,
   FileCheck2 as PublicationIcon,
   Menu as MenuIcon,
-  Search,
   Library,
   Medal as MedalIcon,
   BookOpen as RubricIcon,
@@ -342,14 +341,19 @@ export const MainLayout = () => {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
   const mobileDrawerRef = useRef<HTMLElement>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
-  const [searchQuery, setSearchQuery] = useState('');
 
   // Global keyboard shortcuts — Part 1 of the keyboard-shortcut rollout.
   // The `?` shortcut opens the KeyboardShortcutsHelp modal from anywhere
   // in the app. The `useShortcuts` hook auto-skips text inputs and modal
   // surfaces so it never interferes with typing. Future shortcuts (list
   // navigation, form submit) will be registered by their respective pages.
+  //
+  // The previous `/` "Focus search" binding was removed together with the
+  // shared header search input — the global search bar is gone from the
+  // product surface, so advertising (or installing) the binding would be
+  // a stale affordance. Local page-level search fields (tables, topic
+  // lists, research groups, seminars, forums, etc.) keep their own
+  // focus bindings where their owners chose to wire them.
   useShortcuts([
     {
       key: '?',
@@ -359,13 +363,6 @@ export const MainLayout = () => {
       group: 'global',
       allowInInputs: true,
       handler: () => setShortcutsOpen(true),
-    },
-    {
-      key: '/',
-      label: 'Focus search',
-      description: 'Move focus to the global search bar.',
-      group: 'global',
-      handler: () => searchRef.current?.focus(),
     },
   ]);
 
@@ -944,24 +941,13 @@ export const MainLayout = () => {
 
           {/* Right Header Panel */}
           <div className={styles.headerRight}>
-            {/* Global search bar — Part 2 keyboard shortcuts. Accessible
-                from any authenticated route. The `/` key focuses it; users
-                can type and press Enter to search. The actual search
-                routing is implemented in a later part. */}
-            <div className={styles.searchContainer}>
-              <span className={styles.searchIcon} aria-hidden>
-                <Search size={14} />
-              </span>
-              <input
-                ref={searchRef}
-                type="search"
-                className={styles.searchInput}
-                placeholder={copy('Search…', 'Tìm kiếm…')}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                aria-label={copy('Search the platform', 'Tìm kiếm trên hệ thống')}
-              />
-            </div>
+            {/* The previous global "Search the platform" header bar was
+                removed per the Coordinator brief — the shared header input
+                advertised a feature that no longer exists in the product,
+                and the `/` keyboard shortcut was uninstalled from this
+                layout at the same time (see useShortcuts call above).
+                Page-level search fields (tables, topic lists, research
+                groups, seminars, forums, etc.) are unchanged. */}
 
             {/* Keyboard shortcuts help — opens the shortcuts reference modal.
                 Also reachable from anywhere on the page via the `?` key.
@@ -1090,10 +1076,16 @@ export const MainLayout = () => {
         </main>
 
         {/* Keyboard shortcuts help modal — opened by the `?` key or the
-            header button. Global so it works from any page. */}
+            header button. Global so it works from any page. The modal is
+            role-aware: Admin and Reviewer-only shortcuts are filtered out
+            for Lecturer / Graduate Student / Researcher accounts so a
+            privileged command is never advertised to the wrong audience.
+            Route guards and BE authorization remain the authoritative
+            gate — this filter is purely UX defense in depth. */}
         <KeyboardShortcutsHelp
           open={shortcutsOpen}
           onClose={() => setShortcutsOpen(false)}
+          role={activeRole}
         />
 
         {/* Publication-flow toast viewport. Mounted at the layout root so

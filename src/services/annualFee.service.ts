@@ -14,11 +14,14 @@
  *   POST   /api/AnnualFees/{id}/purchase
  *   GET    /api/AnnualFees/my-subscription
  *   GET    /api/AnnualFees/my-purchases?page=&pageSize=
+ *   GET    /api/AnnualFees/admin/subscriptions?Page=&PageSize=&Search=&Role=&Status=
  *
  * Note the inconsistent parameter casing between endpoints:
  *   - `/api/AnnualFees` (admin list) — uses **PascalCase** keys.
  *   - `/api/AnnualFees/active` and `/api/AnnualFees/my-purchases` —
  *     use **camelCase** keys. Centralised handling per function below.
+ *   - `/api/AnnualFees/admin/subscriptions` (new) — uses **PascalCase**
+ *     query keys (`Page`, `PageSize`, `Search`, `Role`, `Status`).
  *
  * The legacy `/api/AnnualFee` (singular) controller was dropped by the BE.
  */
@@ -26,6 +29,9 @@ import api from './axios';
 import { API_ENDPOINTS } from '../utils/constants';
 import type {
   ActiveAnnualFeeListParams,
+  AdminUserSubscription,
+  AdminUserSubscriptionListParams,
+  AdminUserSubscriptionListResult,
   AnnualFee,
   AnnualFeeListParams,
   AnnualFeePurchase,
@@ -274,37 +280,162 @@ export const getMyCurrentSubscription = async (): Promise<CurrentAnnualFeeSubscr
 /**
  * Admin-side: fetch the current subscription for an arbitrary user.
  *
- * Today the BE only documents `/api/AnnualFees/my-subscription` which
- * is keyed off the caller's JWT — there's no explicit
- * `/api/AnnualFees/admin/users/{userId}/subscription` route. To surface
- * the live `expiresAt` in the admin View Profile modal without waiting
- * for a brand-new endpoint, we call the same `my-subscription` route
- * with an optional `userId` query parameter. There are two possible
- * BE behaviours, both of which we tolerate gracefully:
+ * Primary path (new — 2026): the BE shipped
+ *   `GET /api/AnnualFees/admin/subscriptions?Search=&Role=&Status=`
+ * which returns a paged snapshot of every user's subscription.
  *
- *   • If the BE team has implemented the admin override, the call
- *     returns the target user's `{ daysRemaining, isExpired,
- *     expiresAt, purchase, annualFee }` and the modal renders the
- *     real expiry date. The shape `{ daysRemaining: 264, isExpired:
- *     false }` (with `purchase: null` and `annualFee: null`) is the
- *     common case in production right now — the BE tracks the
- *     subscription internally but does not surface the linked
- *     purchase, so we still treat it as Active and compute the
- *     expiry from `daysRemaining`.
- *   • If the BE keeps the strict "my own JWT only" contract, the call
- *     returns `{ message: "No active subscription." }` for the admin —
- *     we treat this as "the admin cannot inspect this user" and the
- *     modal renders an "Unavailable" hint instead of guessing an
- *     Expired state. The fallback deliberately does NOT call the
- *     admin's own `/my-subscription` (that would leak the admin's
- *     own subscription state into the target user's profile).
+ * The endpoint's `Search` parameter is a free-text needle matched by
+ * the BE against `fullName` / `email` — it does NOT match `userId`.
+ * So a naive `Search=<userId>` returns no rows, which is exactly the
+ * bug this function previously hit (modal kept falling back to
+ * `my-subscription`, which is scoped to the caller's JWT, so admins
+ * saw "No active subscription" for every target user).
  *
- * Either outcome is non-throwing so the parent modal never surfaces
- * an error card for this row.
+ * To get a deterministic match we feed the BE the target user's
+ * `email` first (highly unique) and fall back to `fullName`. The
+ * page is then narrowed down to that single row using `Role` (also
+ * passed in by the caller) and `Status` is left blank so both Active
+ * and Expired rows can be found. We then re-verify `userId` against
+ * the returned row before trusting any of its fields.
+ *
+ * Fallback path (kept for backward compatibility): if the admin
+ * endpoint is not yet reachable on a deploy (e.g. mid-rollout), we
+ * still try `GET /api/AnnualFees/my-subscription?userId={id}` — this
+ * used to be the only way admins could see a user's expiry. The BE
+ * may either honour the parameter (and return the target user's
+ * record) or return `{ message: "No active subscription." }` for the
+ * admin caller. Either outcome is non-throwing.
+ *
+ * The function always returns a `CurrentAnnualFeeSubscription | null`
+ * so the parent modal never surfaces an error card for this row.
+ * A `null` return means "we could not find any subscription record for
+ * this user" and the modal renders an "Unavailable" hint.
  */
+export interface UserSubscriptionLookup {
+  /** DB id of the target user — used for re-verifying the matched row. */
+  userId: number;
+  /** User email — preferred `Search` needle (most unique). Optional but recommended. */
+  email?: string | null;
+  /** User display name — fallback `Search` needle. */
+  fullName?: string | null;
+  /**
+   * User role string as surfaced by the BE on `AdminUserSubscription.userRole`
+   * — used as the `Role` query filter so the page narrows to the target
+   * user without scanning unrelated rows. Optional.
+   */
+  userRole?: string | null;
+}
+
 export const getUserCurrentSubscription = async (
-  userId: number,
+  lookup: UserSubscriptionLookup | number,
 ): Promise<CurrentAnnualFeeSubscription | null> => {
+  // Back-compat: callers that still pass a bare number get the legacy
+  // behaviour (search by userId as text, no role filter). New code
+  // should pass the full object.
+  const args: UserSubscriptionLookup =
+    typeof lookup === 'number' ? { userId: lookup } : lookup;
+  const { userId, email, fullName, userRole } = args;
+
+  // Pick the strongest identifier we have. Email is highly unique
+  // across the platform; fullName is the BE's `Search` field but can
+  // collide for common names — so we still verify the matched row's
+  // `userId` before trusting any of its fields.
+  const searchNeedle = (email && email.trim()) || (fullName && fullName.trim()) || '';
+  const hasNeedle = searchNeedle.length > 0;
+
+  // ── Primary path: new admin snapshot endpoint ─────────────────────
+  try {
+    const response = await api.get<{
+      items?: AdminUserSubscription[];
+      totalCount?: number;
+      pageNumber?: number;
+      pageSize?: number;
+    }>(ENDPOINTS.ADMIN_SUBSCRIPTIONS, {
+      params: {
+        Page: 1,
+        PageSize: 50,
+        // Only attach `Search` when we have something meaningful —
+        // sending an empty string can cause the BE to either ignore
+        // the param or return every row, depending on its parser.
+        ...(hasNeedle ? { Search: searchNeedle } : {}),
+        // Attach the role filter whenever the caller passed one. This
+        // narrows the page dramatically when the user has a common
+        // name like "Nguyen Van A" and there are dozens of matches.
+        ...(userRole ? { Role: userRole } : {}),
+      },
+    });
+    const raw = response.data ?? {};
+    const items = raw.items ?? [];
+
+    // Re-verify the row by `userId` — never trust the search alone,
+    // since the BE's free-text match can return a different user
+    // with a similar name. Fall back to the first row ONLY when the
+    // caller has no email/fullName and we're matching purely on
+    // userId-as-text (which the BE doesn't really support, but we
+    // keep the legacy behaviour here).
+    // Explicit type: `Array.find()` returns `T | undefined` and
+    // `items[0]` is `T | undefined` when the array is empty, so the
+    // union is `AdminUserSubscription | undefined`. We coerce the
+    // `undefined` case to `null` so the rest of the function can
+    // treat the sentinel as a single, well-defined value.
+    let match: AdminUserSubscription | null | undefined =
+      items.find((row) => row?.userId === userId) ??
+      (hasNeedle
+        ? null
+        : (items.find((row) => row?.userId === userId) ?? items[0])) ??
+      null;
+
+    // If we had no needle and the first row isn't ours, scan the
+    // remaining pages so we don't accidentally pick someone else's
+    // subscription.
+    if (!match && !hasNeedle) {
+      const totalPages =
+        typeof raw.totalCount === 'number' && raw.pageSize
+          ? Math.ceil(raw.totalCount / raw.pageSize)
+          : 1;
+      for (let page = 2; page <= Math.min(totalPages, 20); page += 1) {
+        const next = await api.get<{
+          items?: AdminUserSubscription[];
+        }>(ENDPOINTS.ADMIN_SUBSCRIPTIONS, {
+          params: { Page: page, PageSize: 50 },
+        });
+        const nextItems = next.data?.items ?? [];
+        match = nextItems.find((row) => row?.userId === userId) ?? null;
+        if (match) break;
+      }
+    }
+
+    if (match && match.userId === userId) {
+      const daysRemaining = typeof match.daysRemaining === 'number' ? match.daysRemaining : 0;
+      const statusLooksExpired =
+        typeof match.subscriptionStatus === 'string' &&
+        /expired|inactive|expire/i.test(match.subscriptionStatus);
+      const isExpired = statusLooksExpired || daysRemaining <= 0;
+
+      // Trust the BE's `expiresAt` first; fall back to a client-side
+      // computation from `daysRemaining` only when the BE omitted the
+      // timestamp (very rare — the AdminUserSubscriptionResponse schema
+      // marks it nullable but typically populated).
+      let expiresAt: string | null = match.expiresAt ?? null;
+      if (!expiresAt && daysRemaining > 0) {
+        expiresAt = new Date(Date.now() + daysRemaining * 86400000).toISOString();
+      }
+
+      return {
+        purchase: null,
+        annualFee: match.annualFee,
+        daysRemaining,
+        isExpired,
+        expiresAt,
+      };
+    }
+    // If the new endpoint returned no match for this user, fall
+    // through to the legacy path so we still try `my-subscription`.
+  } catch {
+    // Network / 404 / 500 on the new endpoint — fall through to legacy.
+  }
+
+  // ── Legacy fallback: `my-subscription?userId={id}` ─────────────────
   let data: any = null;
   try {
     // Attempt the admin-aware variant: `?userId={id}`. If the BE
@@ -359,6 +490,54 @@ export const getUserCurrentSubscription = async (
     daysRemaining,
     isExpired,
     expiresAt,
+  };
+};
+
+// ── Admin: subscription overview (paged) ─────────────────────────────
+
+/**
+ * Admin: paged snapshot of every user's subscription.
+ *
+ * Endpoint: `GET /api/AnnualFees/admin/subscriptions`
+ *
+ * Query params (PascalCase per BE admin route convention):
+ *   - `Page`      — 1-based page number, default 1
+ *   - `PageSize`  — page size, default 20
+ *   - `Search`    — free-text needle matched against user name / email
+ *   - `Role`      — role filter (e.g. `Researcher` | `Lecturer`)
+ *   - `Status`    — status filter (e.g. `Active` | `Expired`)
+ *
+ * Response shape: `AdminUserSubscriptionResponsePagedResult`
+ * (items[], totalCount, pageNumber, pageSize, totalPages, hasPrevious, hasNext)
+ *
+ * Powers the "Subscription status" column on `/admin/accounts` and
+ * the View Profile modal so admins can see exactly when each user's
+ * annual plan expires.
+ */
+export const listAdminUserSubscriptions = async (
+  params?: AdminUserSubscriptionListParams,
+): Promise<AdminUserSubscriptionListResult> => {
+  const response = await api.get<{
+    items?: AdminUserSubscription[];
+    totalCount?: number;
+    pageNumber?: number;
+    pageSize?: number;
+  }>(ENDPOINTS.ADMIN_SUBSCRIPTIONS, {
+    params: {
+      Page: params?.page ?? 1,
+      PageSize: params?.pageSize ?? 20,
+      Search: params?.search,
+      Role: params?.role || undefined,
+      Status: params?.status,
+    },
+  });
+  const raw = response.data ?? {};
+  const items = raw.items ?? [];
+  return {
+    items,
+    total: raw.totalCount ?? items.length,
+    page: raw.pageNumber ?? 1,
+    pageSize: raw.pageSize ?? items.length,
   };
 };
 
@@ -433,6 +612,7 @@ export const annualFeeService = {
   getMyCurrentSubscription,
   getMyPurchaseHistory,
   listAnnualFeePlanSubscribers,
+  listAdminUserSubscriptions,
 };
 
 export default annualFeeService;

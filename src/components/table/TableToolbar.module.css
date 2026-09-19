@@ -92,7 +92,7 @@
   border: 1px solid var(--accent-primary);
   border-radius: var(--radius-md);
   background: var(--accent-primary);
-  color: var(--ink-on-paper);
+  color: var(--button-primary-ink);
   font-size: var(--font-size-sm);
   font-weight: 500;
   cursor: pointer;

@@ -498,7 +498,7 @@
 .submitButton {
   background-color: var(--accent-primary) !important;
   border-color: var(--accent-primary) !important;
-  color: var(--ink-on-paper) !important;
+  color: var(--button-primary-ink) !important;
   font-weight: 700 !important;
   border-radius: var(--radius-md) !important;
   min-height: 50px !important;

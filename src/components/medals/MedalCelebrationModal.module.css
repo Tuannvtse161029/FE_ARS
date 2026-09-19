@@ -177,7 +177,7 @@
   border: 1px solid var(--accent-primary, #d97706);
   border-radius: var(--radius-sm, 8px);
   background: var(--accent-primary, #d97706);
-  color: #ffffff;
+  color: var(--button-primary-ink, #1d1c19);
   font-size: 0.9375rem;
   font-weight: 600;
   cursor: pointer;

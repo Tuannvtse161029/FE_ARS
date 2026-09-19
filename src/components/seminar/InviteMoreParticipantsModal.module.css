@@ -546,6 +546,7 @@
 
 .submitBtn {
   background: var(--accent-primary);
+  color: var(--button-primary-ink);
   border: 1px solid var(--accent-primary);
   color: var(--ink-primary);
 }

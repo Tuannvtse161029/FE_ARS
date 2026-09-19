@@ -211,7 +211,7 @@
 .tagChip:hover .tagChipCount,
 .tagChip:focus-visible .tagChipCount {
   background-color: var(--accent-primary);
-  color: var(--ink-on-paper);
+  color: var(--button-primary-ink);
 }
 
 /* Forum Stats — compact three-row overview that completes the sidebar.
@@ -513,7 +513,7 @@
   transform: none;
 }
 .tagChipCount { background: var(--surface-sunken); color: var(--ink-muted); }
-.tagChip:hover .tagChipCount { background: var(--accent-primary); color: var(--ink-on-paper); }
+.tagChip:hover .tagChipCount { background: var(--accent-primary); color: var(--button-primary-ink); }
 .statRow { color: var(--ink-secondary); }
 .statIcon { color: var(--ink-muted); }
 .statValue { color: var(--ink-primary); }

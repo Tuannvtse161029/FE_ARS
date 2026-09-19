@@ -531,6 +531,7 @@
 .closeTopicBtn,
 .completeTopicBtn,
 .materialsTopicBtn,
+.phaseReportsBtn,
 .assignGroupBtn {
   display: inline-flex;
   align-items: center;
@@ -618,6 +619,23 @@
   outline-offset: 2px;
 }
 
+/* Phase Reports — distinct accent so it doesn't read as a duplicate
+   of the Materials / Assign Group actions. Uses the same outline
+   button primitive defined above, only the palette differs. */
+.phaseReportsBtn {
+  color: var(--ars-lecturer);
+  border-color: color-mix(in srgb, var(--ars-lecturer) 35%, transparent);
+}
+
+.phaseReportsBtn:hover {
+  background: var(--ars-lecturer-light);
+}
+
+.phaseReportsBtn:focus-visible {
+  outline: 2px solid var(--ars-lecturer);
+  outline-offset: 2px;
+}
+
 .assignGroupBtn {
   color: var(--ars-info);
   border-color: color-mix(in srgb, var(--ars-info) 35%, transparent);
@@ -636,7 +654,8 @@
 .openTopicBtn:disabled,
 .closeTopicBtn:disabled,
 .completeTopicBtn:disabled,
-.materialsTopicBtn:disabled {
+.materialsTopicBtn:disabled,
+.phaseReportsBtn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -971,6 +990,7 @@
   .closeTopicBtn,
   .completeTopicBtn,
   .materialsTopicBtn,
+  .phaseReportsBtn,
   .assignGroupBtn,
   .topicActionPrimary {
     justify-content: center;

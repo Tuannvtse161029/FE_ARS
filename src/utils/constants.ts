@@ -299,6 +299,24 @@ export const API_ENDPOINTS = {
        * Returns `AnnualFeeSubscriberResponsePagedResult`.
        */
       SUBSCRIBERS: (id: number) => `/api/AnnualFees/${id}/subscribers`,
+      /**
+       * Admin — paged snapshot of every user's subscription
+       * (status + expiry + daysRemaining). Used by `/admin/accounts` and
+       * the View Profile modal so admins can see exactly when each
+       * user's annual plan expires. Replaces the previous
+       * `my-subscription?userId=` workaround that the BE silently
+       * scoped to the caller's JWT.
+       *
+       * Query params (PascalCase per the admin route convention):
+       *   - `Page`      — 1-based page number
+       *   - `PageSize`  — page size (default 20)
+       *   - `Search`    — free-text needle matched against name / email
+       *   - `Role`      — role filter, e.g. 'Researcher' | 'Lecturer'
+       *   - `Status`    — status filter, e.g. 'Active' | 'Expired'
+       *
+       * Returns `AdminUserSubscriptionResponsePagedResult`.
+       */
+      ADMIN_SUBSCRIPTIONS: '/api/AnnualFees/admin/subscriptions',
     },
     AUDIT_LOGS: {
       GET_ALL: '/api/AuditLog',

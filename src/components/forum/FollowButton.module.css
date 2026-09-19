@@ -55,7 +55,7 @@
 /* "Following" state — filled */
 .following {
   background-color: var(--accent-primary);
-  color: var(--ink-on-paper);
+  color: var(--button-primary-ink);
   border: 1px solid var(--accent-primary);
 }
 

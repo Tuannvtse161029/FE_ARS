@@ -544,44 +544,14 @@
   background-color: var(--surface-canvas);
 }
 
-/* Search */
-.searchContainer {
-  display: flex;
-  align-items: center;
-  background-color: var(--surface-canvas);
-  border: 1px solid var(--ars-node);
-  border-radius: var(--radius-md);
-  padding: 0 var(--space-3);
-  width: 320px;
-  height: 36px;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-}
-
-.searchContainer:focus-within {
-  border-color: var(--ars-blue);
-  box-shadow: 0 0 0 3px rgba(45, 53, 97, 0.12);
-}
-
-.searchIcon {
-  color: var(--ars-ink-muted);
-  display: flex;
-  align-items: center;
-  margin-right: var(--space-2);
-}
-
-.searchInput {
-  border: none;
-  background: transparent;
-  outline: none;
-  width: 100%;
-  font-size: var(--font-size-sm);
-  color: var(--ars-ink);
-  font-family: var(--font-family-ui);
-}
-
-.searchInput::placeholder {
-  color: var(--ars-ink-muted);
-}
+/* Search bar removed (Coordinator brief) — the previous `.searchContainer`,
+   `.searchIcon`, `.searchInput`, and `:focus-within` rules lived here.
+   The shared header search input is gone from the product, so the rules
+   are dead CSS and were deleted alongside the matching JSX (search ref,
+   search state, Search icon import, `/` keyboard binding) in
+   MainLayout.tsx. Page-level search inputs (tables, topic lists,
+   research groups, seminars, forums, etc.) carry their own scoped
+   styles and are unaffected. */
 
 /* Header right */
 .headerRight {
@@ -894,9 +864,9 @@
     padding: var(--space-5) var(--space-5);
   }
 
-  .searchContainer {
-    width: 240px;
-  }
+  /* The previous `.searchContainer` width override at this breakpoint
+     was removed together with the header search bar (see the comment
+     at the top of the Search section above for context). */
 }
 
 @media (max-width: 768px) {
@@ -908,12 +878,10 @@
      The `.runningHead` mobile-hide override previously lived here. The
      span it targeted has been removed from MainLayout.tsx and the base
      `.runningHead` rule was deleted above, so this override is dead
-     code and is removed too. */
-  .searchContainer {
-    flex: 1;
-    max-width: 280px;
-    width: auto;
-  }
+     code and is removed too.
+
+     The previous `.searchContainer` mobile sizing (flex / max-width)
+     was also removed with the header search bar. */
 
   .header {
     padding: 0 var(--space-3);
@@ -1294,7 +1262,7 @@
 .navItemActive::before { background: var(--accent-primary); }
 .navSectionHeader { border-top-color: var(--border-subtle); }
 .navSectionLabel { color: var(--ink-muted); }
-.navBadge { background: var(--accent-primary); color: var(--ink-on-paper); }
+.navBadge { background: var(--accent-primary); color: var(--button-primary-ink); }
 .sidebarAccount {
   display: flex;
   align-items: center;
@@ -1323,7 +1291,7 @@
   height: 30px;
   border-radius: 50%;
   background: var(--accent-primary);
-  color: var(--ink-on-paper);
+  color: var(--button-primary-ink);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1364,7 +1332,7 @@
   border-bottom-color: var(--border-subtle);
   backdrop-filter: blur(14px);
 }
-.menuToggle, .themeToggle, .availabilityToggle, .profileDropdownTrigger, .searchContainer {
+.menuToggle, .themeToggle, .availabilityToggle, .profileDropdownTrigger {
   background: var(--control-bg);
   border-color: var(--border-subtle);
   color: var(--control-text);
@@ -1373,7 +1341,6 @@
   background: var(--control-bg-hover);
   border-color: var(--border-strong);
 }
-.searchContainer:focus-within,
 .themeToggle:focus-visible,
 .menuToggle:focus-visible,
 .toggleSwitch:focus-visible,
@@ -1383,13 +1350,13 @@
   border-color: var(--focus-ring);
   box-shadow: none;
 }
-.searchInput, .userPillName { color: var(--control-text); }
-.searchIcon, .userPillRole { color: var(--ink-muted); }
-.avatarCircleSmall { background: var(--accent-primary); color: var(--ink-on-paper); }
+.userPillName { color: var(--control-text); }
+.userPillRole { color: var(--ink-muted); }
+.avatarCircleSmall { background: var(--accent-primary); color: var(--button-primary-ink); }
 .avatarCircleSmall img { width: 100%; height: 100%; object-fit: cover; }
 .profileDropdownMenu { background: var(--surface-raised); border-color: var(--border-strong); box-shadow: 0 14px 36px var(--shadow-color); }
 .dropdownItem { color: var(--ink-primary); }
-.dropdownItem:hover { background: var(--surface-selected); }
+.dropdownItem:hover { background: var(--surface-selected); color: var(--button-primary-ink); }
 .dropdownDivider { background: var(--border-subtle); }
 .backdrop { background: color-mix(in srgb, var(--sidebar-bg) 76%, transparent); }
 
