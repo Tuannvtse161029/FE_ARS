@@ -506,6 +506,105 @@ export interface SeminarFeedbackAiSummary {
   generatedAt: string;
 }
 
+/**
+ * Normalized shape for the AI text-feedback summary returned by
+ * `summarizeSeminarFeedback()`. All nullable/nested fields are guaranteed
+ * non-null with sensible defaults so components never crash on partial BE
+ * responses.
+ */
+export interface SeminarFeedbackSummary {
+  seminarId: number;
+  feedbackCount: number;
+  summary: string;
+  highlights: string[];
+  concerns: string[];
+  sentimentScore?: number;
+  generatedAt: string;
+  feedbackJson?: string;
+}
+
+/**
+ * Normalize the raw BE response of POST /api/Seminar/{id}/summarize-feedback.
+ * Guards against any nullable or missing fields so callers receive a stable,
+ * always-safe shape.
+ *
+ * The BE response shape (SeminarFeedbackAiSummary) maps to the normalized
+ * SeminarFeedbackSummary as follows:
+ *   - seminarId, feedbackCount, generatedAt          → pass through
+ *   - feedback.overallAssessment                     → summary
+ *   - feedback.commonStrengths                       → highlights
+ *   - feedback.areasForImprovement                  → concerns
+ *   - feedback.commonSuggestions                    → appended to concerns
+ *   - feedback.conflictingFeedback                  → appended to concerns
+ *   - feedback.recommendedActions                   → ignored (displayed via
+ *                                                      SeminarFeedbackPanel
+ *                                                      directly from the BE)
+ *   - sentimentScore                                → not exposed by BE;
+ *                                                      always undefined
+ *   - feedbackJson                                  → full JSON string of the
+ *                                                      raw feedback object
+ */
+function normalizeFeedbackSummary(
+  raw: unknown,
+  seminarId: number,
+): SeminarFeedbackSummary {
+  const obj = raw as Record<string, unknown> | null;
+
+  const feedback =
+    typeof obj?.feedback === 'object' && obj?.feedback !== null
+      ? (obj.feedback as Record<string, unknown>)
+      : null;
+
+  const overallAssessment =
+    typeof feedback?.overallAssessment === 'string'
+      ? feedback.overallAssessment
+      : typeof feedback?.overallAssessment === 'number'
+        ? String(feedback.overallAssessment)
+        : '';
+
+  const rawHighlights = feedback?.commonStrengths;
+  const highlights: string[] = Array.isArray(rawHighlights)
+    ? rawHighlights.filter((x): x is string => typeof x === 'string')
+    : [];
+
+  const rawImprovements = feedback?.areasForImprovement;
+  const areasForImprovement: string[] = Array.isArray(rawImprovements)
+    ? rawImprovements.filter((x): x is string => typeof x === 'string')
+    : [];
+
+  const rawSuggestions = feedback?.commonSuggestions;
+  const commonSuggestions: string[] = Array.isArray(rawSuggestions)
+    ? rawSuggestions.filter((x): x is string => typeof x === 'string')
+    : [];
+
+  const rawConflicting = feedback?.conflictingFeedback;
+  const conflictingFeedback: string[] = Array.isArray(rawConflicting)
+    ? rawConflicting.filter((x): x is string => typeof x === 'string')
+    : [];
+
+  // concerns = areasForImprovement + commonSuggestions + conflictingFeedback
+  const concerns = [...areasForImprovement, ...commonSuggestions, ...conflictingFeedback];
+
+  const generatedAt =
+    typeof obj?.generatedAt === 'string' && obj.generatedAt
+      ? obj.generatedAt
+      : new Date().toISOString();
+
+  const feedbackJson =
+    typeof raw === 'string' ? raw : JSON.stringify(raw ?? null);
+
+  return {
+    seminarId: typeof obj?.seminarId === 'number' ? obj.seminarId : seminarId,
+    feedbackCount:
+      typeof obj?.feedbackCount === 'number' ? obj.feedbackCount : 0,
+    summary: overallAssessment,
+    highlights,
+    concerns,
+    generatedAt,
+    feedbackJson,
+  };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // AI Audio Summary
 // ─────────────────────────────────────────────────────────────────────────────
@@ -818,8 +917,36 @@ export const seminarService = {
   },
 
   /**
+   * Normalized shape returned to callers. Guards against any nullable or
+   * missing fields the BE might return so downstream components never crash.
+   *
+   * Field choice: `feedbackJson` is the text-feedback-specific JSON blob stored
+   * in `Seminars.feedbackJson` — completely distinct from `aiSummary` (audio
+   * transcript) and `feedback` (form config). The AI summary endpoint
+   * `POST /api/Seminar/{id}/summarize-feedback` writes into `feedbackJson`.
+   * @see Seminar.feedbackJson
+   */
+  summarizeSeminarFeedback(seminarId: number): SeminarFeedbackSummary {
+    // axios.post accepts data: undefined for a true no-body POST
+    return api
+      .post<unknown>(API_ENDPOINTS.SEMINAR.SUMMARIZE_FEEDBACK(seminarId))
+      .then((response) => normalizeFeedbackSummary(response.data, seminarId))
+      .catch((error: unknown) => {
+        const message =
+          (error as { response?: { data?: { message?: string } } })?.response?.data
+            ?.message ??
+          (error instanceof Error ? error.message : 'Unknown error');
+        throw new Error(message);
+      });
+  },
+
+  /**
    * Owner-only — generate (or regenerate) AI feedback summary. The BE
    * overwrites the previous summary on every call (ticket §28-31).
+   *
+   * @deprecated Use `summarizeSeminarFeedback(seminarId)` instead.
+   *   `summarizeFeedback` returns the raw BE shape (un-normalized);
+   *   `summarizeSeminarFeedback` returns the normalized `SeminarFeedbackSummary`.
    */
   summarizeFeedback: async (
     seminarId: number,

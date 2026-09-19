@@ -57,9 +57,17 @@ export interface MaterialUsageModalProps {
    * Renders a skeleton list so the modal doesn't flash empty content.
    */
   loading?: boolean;
+  /**
+   * True when the parent's cross-reference fetch failed. When set the modal
+   * renders a recoverable error state instead of the "nothing links" empty
+   * state so the lecturer is never misled on a failed load.
+   */
+  error?: boolean;
   /** Fired when the user clicks a topic or phase row. */
   onNavigate: (target: UsageNavigationTarget) => void;
   onClose: () => void;
+  /** Optional retry callback for the error state. */
+  onRetry?: () => void;
 }
 
 const formatPhaseTitle = (phase: PhasedReport, fallbackNumber: number): string => {
@@ -120,8 +128,10 @@ export const MaterialUsageModal = ({
   usedByTopics,
   usedByPhases,
   loading = false,
+  error = false,
   onNavigate,
   onClose,
+  onRetry,
 }: MaterialUsageModalProps) => {
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
@@ -167,7 +177,7 @@ export const MaterialUsageModal = ({
 
   const titleId = 'material-usage-modal-title';
   const totalUses = usedByTopics.length + sortedPhases.length;
-  const hasNothing = totalUses === 0 && !loading;
+  const hasNothing = totalUses === 0 && !loading && !error;
 
   return (
     <div
@@ -212,9 +222,11 @@ export const MaterialUsageModal = ({
         <p className={styles.intro}>
           {loading
             ? 'Scanning your topics and phases for links to this material…'
-            : hasNothing
-              ? 'Nothing links to this material yet. It is only stored in your library.'
-              : `This material is referenced by ${usedByTopics.length} topic(s) and ${sortedPhases.length} phase(s). Click any row to jump straight to it.`}
+            : error
+              ? 'Failed to load usage details. Please try again.'
+              : hasNothing
+                ? 'Nothing links to this material yet. It is only stored in your library.'
+                : `This material is referenced by ${usedByTopics.length} topic(s) and ${sortedPhases.length} phase(s). Click any row to jump straight to it.`}
         </p>
 
         {loading ? (
@@ -222,6 +234,20 @@ export const MaterialUsageModal = ({
             {Array.from({ length: 3 }).map((_, idx) => (
               <div key={`sk-${idx}`} className={styles.skeletonRow} />
             ))}
+          </div>
+        ) : error ? (
+          <div className={styles.errorState}>
+            <AlertTriangle size={18} aria-hidden />
+            <span>Could not load usage details.</span>
+            {onRetry && (
+              <button
+                type="button"
+                className={styles.retryBtn}
+                onClick={onRetry}
+              >
+                Retry
+              </button>
+            )}
           </div>
         ) : (
           <>

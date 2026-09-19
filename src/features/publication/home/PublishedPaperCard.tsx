@@ -111,6 +111,9 @@ export const PublishedPaperCard = ({
           )}
         </div>
         <h2 className={card.title}>{paper.title}</h2>
+        {typeof paper.sourceName === 'string' && paper.sourceName.trim().length > 0 && (
+          <p className={card.sourceName}>{paper.sourceName}</p>
+        )}
         {paper.institutions.length > 0 && (
           <p className={card.institutions}>
             {paper.institutions.map((institution) => institution.name).join(' · ')}

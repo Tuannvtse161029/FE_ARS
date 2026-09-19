@@ -101,6 +101,114 @@ import {
 } from '../../components/lecturer/MaterialUsageModal';
 import styles from './Materials.module.css';
 
+// ── Single-authoritative material-usage helper ─────────────────────────────────
+//
+// Applies the SAME filtering rules for both:
+//   - The usage chip count (usageByUrl memo)
+//   - The "Used by …" modal lists (usedByTopicsForModal / usedByPhasesForModal)
+//
+// Orphan-drop rule: a junction row whose `topicId` does NOT resolve in `topics`
+// is silently dropped. The chip and dialog must agree on every row.
+//
+// Dedup rules (applied before counting/listening):
+//   - A topic can appear at most once per material.
+//   - A phase can appear at most once per (topicId, groupId, phaseNumber).
+//
+// Matching rules:
+//   Topic: prefer junction rows whose `learningMaterialId === material.id` when
+//          both sides expose a numeric ID; otherwise fall back to junction rows
+//          whose `fileUrl === material.fileUrl` AND `topicId` is in `topics`.
+//   Phase: `phase.phasedMaterialsUrl === material.fileUrl`.
+//
+// Signature:
+//   material  — the LearningMaterial being inspected.
+//   opts.topics              — full ResearchTopic list (used for orphan-drop).
+//   opts.phases              — full PhasedReport list (used for phase matching).
+//   opts.topicMaterialJunctions — full TopicLearningMaterialResponse list.
+//
+// Returns:
+//   { topics: ResearchTopic[], phases: PhasedReport[] }
+//
+// Only exported for unit-testing; not used outside this file.
+
+export type MaterialUsageResult = {
+  topics: ResearchTopic[];
+  phases: PhasedReport[];
+};
+
+export function getMaterialUsage(
+  material: LearningMaterial | null | undefined,
+  opts: {
+    topics: ResearchTopic[];
+    phases: PhasedReport[];
+    topicMaterialJunctions: TopicLearningMaterialResponse[];
+  },
+): MaterialUsageResult {
+  const { topics, phases, topicMaterialJunctions } = opts;
+  // Defensive: callers that drive the "Used by …" modal from a nullable
+  // selection (`usageModalMaterial` is null when the modal is closed)
+  // previously crashed at `material.fileUrl`. Treat null/undefined as an
+  // empty result so the chip and modal stay in sync.
+  if (!material) return { topics: [], phases: [] };
+  const url = material.fileUrl?.trim();
+  if (!url) return { topics: [], phases: [] };
+
+  // ── Topic matching ────────────────────────────────────────────────
+  // Pre-index topics by id for O(1) orphan-lookup.
+  const topicById = new Map(topics.map((t) => [t.id, t]));
+
+  // Legacy: `topic.materialsUrl === url`.
+  const matchedTopicSet = new Set<number>();
+  const matchedTopics: ResearchTopic[] = [];
+  for (const t of topics) {
+    if ((t.materialsUrl ?? '').trim() === url) {
+      matchedTopicSet.add(t.id);
+      matchedTopics.push(t);
+    }
+  }
+
+  // Junction: rows whose `fileUrl` matches AND `topicId` resolves in `topics`.
+  for (const row of topicMaterialJunctions) {
+    if ((row.fileUrl ?? '').trim() !== url) continue;
+    // When both sides expose a numeric ID, require them to match.
+    if (
+      typeof row.learningMaterialId === 'number' &&
+      row.learningMaterialId > 0 &&
+      typeof material.id === 'number' &&
+      row.learningMaterialId !== material.id
+    ) {
+      continue;
+    }
+    if (typeof row.topicId !== 'number') continue;
+    if (matchedTopicSet.has(row.topicId)) continue;
+    // Orphan-drop: skip if topicId does not resolve.
+    const t = topicById.get(row.topicId);
+    if (!t) continue;
+    matchedTopicSet.add(row.topicId);
+    matchedTopics.push(t);
+  }
+
+  // ── Phase matching ───────────────────────────────────────────────
+  // Dedupe by (topicId, groupId, phaseNumber).
+  const matchedPhaseSet = new Set<string>();
+  const matchedPhases: PhasedReport[] = [];
+  for (const p of phases) {
+    if ((p.phasedMaterialsUrl ?? '').trim() !== url) continue;
+    const key = [
+      p.topicId ?? '',
+      p.researchGroupId ?? '',
+      p.phaseNumber ?? '',
+    ]
+      .map(String)
+      .join('|');
+    if (matchedPhaseSet.has(key)) continue;
+    matchedPhaseSet.add(key);
+    matchedPhases.push(p);
+  }
+
+  return { topics: matchedTopics, phases: matchedPhases };
+}
+
 type TabId =
   | 'my-materials'
   | 'shared-by-me'
@@ -382,9 +490,11 @@ export const LecturerMaterialsPage = () => {
     TopicLearningMaterialResponse[]
   >([]);
   const [crossRefLoading, setCrossRefLoading] = useState(true);
+  const [crossRefError, setCrossRefError] = useState(false);
 
   const loadCrossReference = useCallback(async () => {
     setCrossRefLoading(true);
+    setCrossRefError(false);
     try {
       // The service returns its own wider BE-shape `ResearchTopic`
       // (`id?: number`); the rest of the page works against the canonical
@@ -418,6 +528,8 @@ export const LecturerMaterialsPage = () => {
         ),
       );
       setTopicMaterialJunctions(junctionLists.flat());
+    } catch {
+      setCrossRefError(true);
     } finally {
       setCrossRefLoading(false);
     }
@@ -427,46 +539,18 @@ export const LecturerMaterialsPage = () => {
     void loadCrossReference();
   }, [loadCrossReference]);
 
-  // Derived lists for the "Used by …" modal. We re-filter the already-loaded
-  // cross-reference data against the open material's fileUrl so the modal
-  // opens with no additional API call. Declared AFTER `topics` /
-  // `phases` so the dependency arrays actually resolve.
-  const usedByTopicsForModal = useMemo(() => {
-    if (!usageModalMaterial) return [];
-    const url = usageModalMaterial.fileUrl?.trim();
-    if (!url) return [];
-    // Legacy URL match — same as before.
-    const matched = topics.filter((t) => (t.materialsUrl ?? '').trim() === url);
-    const seenTopicIds = new Set(matched.map((t) => t.id));
-    // Junction-table match — surfaces topics that attached this material
-    // via `POST /api/ResearchTopic/{id}/learning-materials` (and may or
-    // may not have had `materialsUrl` updated at the same time).
-    for (const row of topicMaterialJunctions) {
-      if ((row.fileUrl ?? '').trim() !== url) continue;
-      if (
-        typeof row.learningMaterialId === 'number' &&
-        row.learningMaterialId > 0 &&
-        typeof usageModalMaterial.id === 'number' &&
-        row.learningMaterialId !== usageModalMaterial.id
-      ) {
-        continue;
-      }
-      if (typeof row.topicId !== 'number') continue;
-      if (seenTopicIds.has(row.topicId)) continue;
-      const t = topics.find((x) => x.id === row.topicId);
-      if (!t) continue;
-      matched.push(t);
-      seenTopicIds.add(t.id);
-    }
-    return matched;
-  }, [usageModalMaterial, topics, topicMaterialJunctions]);
+  // Derived lists for the "Used by …" modal. Both `usedByTopicsForModal` and
+  // `usedByPhasesForModal` delegate to `getMaterialUsage` so the chip and
+  // the modal always apply the same filtering rules.
+  const usedByTopicsForModal = useMemo(
+    () => getMaterialUsage(usageModalMaterial, { topics, phases, topicMaterialJunctions }).topics,
+    [usageModalMaterial, topics, phases, topicMaterialJunctions],
+  );
 
-  const usedByPhasesForModal = useMemo(() => {
-    if (!usageModalMaterial) return [];
-    const url = usageModalMaterial.fileUrl?.trim();
-    if (!url) return [];
-    return phases.filter((p) => (p.phasedMaterialsUrl ?? '').trim() === url);
-  }, [usageModalMaterial, phases]);
+  const usedByPhasesForModal = useMemo(
+    () => getMaterialUsage(usageModalMaterial, { topics, phases, topicMaterialJunctions }).phases,
+    [usageModalMaterial, topics, phases, topicMaterialJunctions],
+  );
 
 // Map fileUrl → { topicCount, phaseCount, hasOpenTopic } for the usage chip.
 // Sources counted as topic usage:
@@ -482,69 +566,18 @@ const usageByUrl = useMemo(() => {
     string,
     { topicCount: number; phaseCount: number; hasOpenTopic: boolean }
   >();
-  // Pre-index the topic junctions by fileUrl so we don't do an O(N*M)
-  // scan inside the per-material loop below.
-  const topicJunctionsByUrl = new Map<string, TopicLearningMaterialResponse[]>();
-  for (const row of topicMaterialJunctions) {
-    const key = (row.fileUrl ?? '').trim();
-    if (!key) continue;
-    const bucket = topicJunctionsByUrl.get(key) ?? [];
-    bucket.push(row);
-    topicJunctionsByUrl.set(key, bucket);
-  }
-  const openTopicIdsByMaterialId = new Set<number>();
-  for (const t of topics) {
-    if ((t.status ?? '').toUpperCase() === 'OPEN' && typeof t.id === 'number') {
-      openTopicIdsByMaterialId.add(t.id);
-    }
-  }
+
   for (const m of materials) {
+    const usage = getMaterialUsage(m, { topics, phases, topicMaterialJunctions });
+    const topicCount = usage.topics.length;
+    const phaseCount = usage.phases.length;
+    const hasOpenTopic = usage.topics.some(
+      (t) => (t.status ?? '').toUpperCase() === 'OPEN',
+    );
     const url = m.fileUrl?.trim();
-    if (!url) continue;
-    const entry = map.get(url) ?? {
-      topicCount: 0,
-      phaseCount: 0,
-      hasOpenTopic: false,
-    };
-    // Legacy single-URL link, per topic.
-    for (const topic of topics) {
-      if ((topic.materialsUrl ?? '').trim() === url) {
-        entry.topicCount += 1;
-        if ((topic.status ?? '').toUpperCase() === 'OPEN') {
-          entry.hasOpenTopic = true;
-        }
-      }
+    if (url) {
+      map.set(url, { topicCount, phaseCount, hasOpenTopic });
     }
-    // Junction-table references — count one per matching row, and mark
-    // the material as `hasOpenTopic` if any of the referencing topics is
-    // currently OPEN so the lecturer sees actionable urgency. Matching is
-    // primarily by `fileUrl` (the columns in this map are keyed by URL
-    // anyway); when both sides expose a numeric `learningMaterialId` we
-    // also require the IDs to match so we never double-count a row that
-    // was attached to a sibling material sharing the same URL.
-    const junctionRows = topicJunctionsByUrl.get(url) ?? [];
-    for (const row of junctionRows) {
-      if (
-        typeof row.learningMaterialId === 'number' &&
-        row.learningMaterialId > 0 &&
-        typeof m.id === 'number'
-      ) {
-        if (row.learningMaterialId !== m.id) continue;
-      }
-      entry.topicCount += 1;
-      if (
-        typeof row.topicId === 'number' &&
-        openTopicIdsByMaterialId.has(row.topicId)
-      ) {
-        entry.hasOpenTopic = true;
-      }
-    }
-    for (const phase of phases) {
-      if ((phase.phasedMaterialsUrl ?? '').trim() === url) {
-        entry.phaseCount += 1;
-      }
-    }
-    map.set(url, entry);
   }
   return map;
 }, [materials, topics, phases, topicMaterialJunctions]);
@@ -1891,6 +1924,13 @@ const usageByUrl = useMemo(() => {
                       <span className={styles.materialUsageChipMuted}>
                         Checking usage…
                       </span>
+                    ) : crossRefError ? (
+                      <span
+                        className={styles.materialUsageChipMuted}
+                        title="Failed to load usage — retry available on refresh"
+                      >
+                        Details unavailable
+                      </span>
                     ) : usageTotal === 0 ? (
                       <span className={styles.materialUsageChipMuted}>
                         {t('lecturer.materials.usage.none', 'Not used')}
@@ -2106,6 +2146,13 @@ const usageByUrl = useMemo(() => {
                               'lecturer.materials.usage.checking',
                               'Checking…',
                             )}
+                          </span>
+                        ) : crossRefError ? (
+                          <span
+                            className={`${styles.usageBadge} ${styles.usageBadgeNone}`}
+                            title="Failed to load usage — retry available on refresh"
+                          >
+                            Details unavailable
                           </span>
                         ) : usageTotal === 0 ? (
                           <span
@@ -2446,8 +2493,10 @@ const usageByUrl = useMemo(() => {
         usedByTopics={usedByTopicsForModal}
         usedByPhases={usedByPhasesForModal}
         loading={crossRefLoading}
+        error={crossRefError}
         onNavigate={handleUsageNavigate}
         onClose={closeUsageModal}
+        onRetry={loadCrossReference}
       />
 
       {/* Share Modal ΓÇö also lives outside the tab panels so the dialog

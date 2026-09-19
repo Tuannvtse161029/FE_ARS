@@ -751,7 +751,7 @@ export const MainLayout = () => {
             "Admin Console · Admin" inside the sidebar header; per the
             product update we hide the entire role-context pill for Admins
             (they identify themselves through the avatar + dropdown menu)
-            while keeping "Research Workspace · Researcher" for every other
+            while keeping "Workspace · Researcher" for every other
             authenticated role. The role-appropriate workspace label is
             chosen by `activeRole` so admins don't see "Research" in
             their admin console and researchers don't see "Admin" in
@@ -759,7 +759,7 @@ export const MainLayout = () => {
         {activeRole !== 'Admin' ? (
           <div className={styles.roleContext}>
             <span className={styles.roleContextWorkspace}>
-              {copy('Research Workspace', 'Không gian nghiên cứu')}
+              {copy('Workspace', 'Không gian làm việc')}
             </span>
             <span className={styles.roleContextSeparator} aria-hidden>·</span>
             <strong className={styles.roleContextRole}>{formatRole(displayedRole)}</strong>

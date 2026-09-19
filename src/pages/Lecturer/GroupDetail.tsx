@@ -80,6 +80,7 @@ import {
   type PhaseMaterialEntry,
 } from '../../utils/phaseMaterials';
 import { useTopicLearningMaterials } from '../../hooks/useTopicLearningMaterials';
+import { classifyPhaseReportStatus } from '../../utils/lecturerPhaseStatus';
 import styles from './GroupDetail.module.css';
 
 interface BannerState {
@@ -229,7 +230,9 @@ export const LecturerGroupDetail = (): JSX.Element => {
 
   // Phase timeline derived from the live PhasedReport API. Each phase
   // collapses to one timeline item; the state reflects the highest-
-  // priority submission state found for the phase.
+  // priority submission state found for the phase. Uses the canonical
+  // `classifyPhaseReportStatus` classifier so the timeline state is
+  // always consistent with what the PhaseReports page shows.
   const phaseTimelineItems = useMemo<PhaseTimelineItem[]>(() => {
     const byPhase = new Map<number, typeof reports[number]>();
     for (const r of reports) {
@@ -241,38 +244,38 @@ export const LecturerGroupDetail = (): JSX.Element => {
       }
     }
     const phases = Array.from(byPhase.keys()).sort((a, b) => a - b);
-    const now = Date.now();
-    const dayMs = 24 * 60 * 60 * 1000;
+    const now = new Date();
     return phases.map((phaseNumber) => {
       const report = byPhase.get(phaseNumber);
-      const status = (report?.status ?? '').toLowerCase();
       const deadlineMs = report?.deadlineAt
         ? new Date(report.deadlineAt).getTime()
         : NaN;
-      const overdue = Boolean(
-        report?.isOverdue ??
-          (report?.submittedAt && report?.deadlineAt &&
-            new Date(report.submittedAt) > new Date(report.deadlineAt)),
-      );
+
+      const cls = classifyPhaseReportStatus(report, now);
       let state: PhaseTimelineItem['state'] = 'upcoming';
-      if (status === 'evaluated' || status === 'passed' || status === 'approved') {
+
+      if (cls.status === 'evaluated') {
         state = 'accepted';
-      } else if (status === 'submitted' || status === 'pending_review') {
-        state = overdue ? 'overdue' : 'submitted';
-      } else if (
-        Number.isFinite(deadlineMs) &&
-        deadlineMs < now &&
-        status !== 'rejected' &&
-        status !== 'denied'
-      ) {
+      } else if (cls.status === 'submitted') {
+        state = 'submitted';
+      } else if (cls.status === 'submitted-late') {
         state = 'overdue';
-      } else if (
-        Number.isFinite(deadlineMs) &&
-        deadlineMs - now <= 7 * dayMs &&
-        deadlineMs >= now
-      ) {
-        state = 'dueSoon';
+      } else if (cls.status === 'overdue') {
+        state = 'overdue';
+      } else if (cls.status === 'rejected') {
+        state = 'upcoming'; // rejected phases are treated as upcoming on the timeline
+      } else if (cls.status === 'awaiting-submission') {
+        // Only mark dueSoon / overdue when we have a real deadline
+        if (Number.isFinite(deadlineMs)) {
+          const dayMs = 24 * 60 * 60 * 1000;
+          if (deadlineMs - now.getTime() <= 7 * dayMs && deadlineMs >= now.getTime()) {
+            state = 'dueSoon';
+          } else if (deadlineMs < now.getTime()) {
+            state = 'overdue';
+          }
+        }
       }
+
       return {
         number: phaseNumber,
         title: report?.milestoneTitle ?? '',

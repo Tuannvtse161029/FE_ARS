@@ -24,10 +24,9 @@ import styles from './PhaseReportStatusTabs.module.css';
 
 export type PhaseReportStatusFilter =
   | 'all'
-  | 'awaiting'
+  | 'awaiting-submission'
   | 'submitted'
   | 'overdue'
-  | 'overdueAwaiting'
   | 'evaluated'
   | 'rejected';
 
@@ -36,19 +35,17 @@ export interface PhaseReportStatusTabsProps {
   onChange: (next: PhaseReportStatusFilter) => void;
   counts: {
     all: number;
-    awaiting: number;
+    'awaiting-submission': number;
     submitted: number;
     overdue: number;
-    overdueAwaiting: number;
     evaluated: number;
     rejected: number;
   };
   labels: {
     all: string;
-    awaiting: string;
+    'awaiting-submission': string;
     submitted: string;
     overdue: string;
-    overdueAwaiting: string;
     evaluated: string;
     rejected: string;
   };
@@ -68,8 +65,7 @@ export const PhaseReportStatusTabs = ({
 }: PhaseReportStatusTabsProps) => {
   const tabs: TabSpec[] = [
     { key: 'all', label: labels.all, count: counts.all },
-    { key: 'awaiting', label: labels.awaiting, count: counts.awaiting },
-    { key: 'overdueAwaiting', label: labels.overdueAwaiting, count: counts.overdueAwaiting },
+    { key: 'awaiting-submission', label: labels['awaiting-submission'], count: counts['awaiting-submission'] },
     { key: 'submitted', label: labels.submitted, count: counts.submitted },
     { key: 'overdue', label: labels.overdue, count: counts.overdue },
     { key: 'evaluated', label: labels.evaluated, count: counts.evaluated },

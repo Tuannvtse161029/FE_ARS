@@ -262,6 +262,46 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 
+.errorState {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  font-size: var(--font-size-sm);
+  color: var(--ars-error);
+  background: var(--ars-error-bg);
+  border: 1px solid var(--ars-error);
+  border-radius: 10px;
+  margin: 0 var(--space-5) var(--space-4) var(--space-5);
+}
+
+.retryBtn {
+  appearance: none;
+  margin-left: auto;
+  border: 1px solid var(--ars-error);
+  background: var(--ars-error);
+  color: #ffffff;
+  border-radius: 6px;
+  padding: 4px 12px;
+  font: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: background 120ms ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.retryBtn:hover {
+  background: #b91c1c;
+  border-color: #b91c1c;
+}
+
+.retryBtn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
 .skeletonList {
   display: flex;
   flex-direction: column;
