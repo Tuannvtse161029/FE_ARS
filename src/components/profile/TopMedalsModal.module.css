@@ -109,7 +109,7 @@
   align-items: center;
   justify-content: center;
   background: var(--accent-primary);
-  color: var(--ink-on-paper);
+  color: var(--button-primary-ink);
   font-weight: var(--font-weight-bold);
 }
 
@@ -227,7 +227,7 @@
 .saveButton {
   border: 1px solid var(--accent-primary);
   background: var(--accent-primary);
-  color: var(--ink-on-paper);
+  color: var(--button-primary-ink);
   padding: 0 var(--space-4);
   font-weight: var(--font-weight-semibold);
 }

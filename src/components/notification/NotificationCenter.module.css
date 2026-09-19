@@ -174,7 +174,7 @@
 
 .retryBtn {
   background-color: var(--accent-primary);
-  color: var(--ink-on-paper);
+  color: var(--button-primary-ink);
   border: none;
   padding: 6px 14px;
   border-radius: 6px;
@@ -248,7 +248,7 @@
 
 .itemIconUnread {
   background-color: var(--accent-primary);
-  color: var(--ink-on-paper);
+  color: var(--button-primary-ink);
 }
 
 .itemBody {

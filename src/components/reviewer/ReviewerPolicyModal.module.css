@@ -201,7 +201,7 @@
 
 .acceptBtn {
   background-color: var(--color-primary);
-  color: #ffffff;
+  color: var(--button-primary-ink);
 }
 
 .acceptBtn:hover {

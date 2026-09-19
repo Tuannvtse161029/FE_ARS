@@ -2419,6 +2419,10 @@ export const dictionary: Dictionary = {
     'lecturer.researchGroups.deleteConfirm': 'Xóa nhóm này? Thao tác này không thể hoàn tác.',
     'lecturer.researchGroups.deleteSuccess': 'đã bị xóa.',
     'lecturer.researchGroups.deleteFailed': 'Xóa thất bại:',
+    'lecturer.researchGroups.deleteBlockedHasMembers':
+      'Không thể xóa: nhóm vẫn còn {count} thành viên. Hãy xóa hết thành viên trước khi xóa nhóm.',
+    'lecturer.researchGroups.deleteBlockedMembersLoading':
+      'Không thể xóa trong khi đang tải dữ liệu thành viên. Vui lòng thử lại sau ít phút.',
     'lecturer.researchGroups.viewGroup': 'Xem nhóm',
     'lecturer.researchGroups.joinRequestFrom': '{name} đã yêu cầu tham gia nhóm này',
     'lecturer.researchGroups.openJoinRequest': 'Mở yêu cầu tham gia từ {name}',
@@ -2660,6 +2664,8 @@ export const dictionary: Dictionary = {
     'lecturer.topics.viewMaterials': 'Xem Tài liệu',
     'lecturer.topics.materialsHint': 'Quản lý tài liệu học tập cho đề tài này',
     'lecturer.topics.materialsReadOnlyHint': 'Xem tài liệu học tập (chỉ xem đối với đề tài do giảng viên khác phụ trách)',
+    'lecturer.topics.phaseReports': 'Báo cáo theo giai đoạn',
+    'lecturer.topics.phaseReportsHint': 'Xem báo cáo theo giai đoạn cho đề tài này',
     'lecturer.topics.editDisabledNotOwner': 'Bạn không thể chỉnh sửa đề tài của giảng viên khác.',
     'lecturer.topics.materialsReadOnlyNotice': 'Chế độ chỉ xem: Đề tài này do {name} phụ trách. Chỉ giảng viên phụ trách mới có quyền gán hoặc gỡ tài liệu.',
     'lecturer.topics.materialsReadOnlyFormNotice': 'Chỉ giảng viên phụ trách đề tài mới có thể thêm hoặc gán tài liệu.',

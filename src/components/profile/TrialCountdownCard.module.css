@@ -77,6 +77,7 @@
   height: 44px;
   border-radius: 999px;
   background: var(--accent-primary);
+  display: flex;
   color: var(--ink-primary);
   display: flex;
   align-items: center;

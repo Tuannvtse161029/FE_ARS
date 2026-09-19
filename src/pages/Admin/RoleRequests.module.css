@@ -460,6 +460,7 @@
 
 .retryBtn {
   background: var(--accent-primary);
+  border: none;
   color: var(--ink-primary);
   border: none;
   border-radius: var(--radius-md);

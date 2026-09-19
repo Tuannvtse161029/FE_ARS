@@ -324,12 +324,15 @@
   text-underline-offset: 2px;
 }
 
-/* OpenAlex work link — uses OpenAlex black brand. */
+/* OpenAlex work link — in dark mode the original OpenAlex black brand
+   would be invisible on the dark surface, so use the shared ink token
+   instead. The hover state keeps the brand-flavoured deep amber for
+   affordance. */
 .workLinkOpenAlex {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: #000;
+  color: var(--ars-ink, #1d1c19);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
   text-decoration: none;
@@ -398,6 +401,7 @@
   border: 1px solid var(--accent-primary);
   border-radius: var(--radius-sm);
   background: var(--accent-primary);
+  font-size: var(--font-size-sm);
   color: var(--ink-primary);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
@@ -540,6 +544,7 @@
 .primaryButton {
   border-color: var(--accent-primary);
   background: var(--accent-primary);
+}
   color: var(--ink-primary);
 }
 

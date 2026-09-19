@@ -198,6 +198,7 @@
   flex: 0 0 32px;
   border-radius: 50%;
   background: var(--accent-primary);
+  font-family: var(--font-family-mono);
   color: var(--ars-paper);
   font-family: var(--font-family-mono);
   font-size: var(--font-size-sm);
@@ -299,6 +300,7 @@
   border: 0;
   border-radius: var(--radius-md);
   background: var(--accent-primary);
+  font: inherit;
   color: var(--ars-paper);
   font: inherit;
   font-weight: var(--font-weight-semibold);
@@ -768,7 +770,7 @@
 .submitPhaseBtn {
   border: 1px solid var(--accent-primary);
   background: var(--accent-primary);
-  color: var(--ink-on-paper);
+  color: var(--button-primary-ink);
 }
 
 .submitPhaseBtn:hover {

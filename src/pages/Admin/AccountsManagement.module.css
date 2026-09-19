@@ -593,7 +593,7 @@
 .confirmBtnUnsuspend {
   background-color: var(--accent-primary);
   border-color: var(--accent-primary);
-  color: var(--ink-primary);
+  color: var(--button-primary-ink);
 }
 
 .confirmBtnUnsuspend:hover:not(:disabled) {

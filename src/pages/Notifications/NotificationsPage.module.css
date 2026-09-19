@@ -100,7 +100,7 @@
 
 .filterTabActive .filterCount {
   background-color: var(--accent-primary);
-  color: var(--ink-on-paper);
+  color: var(--button-primary-ink);
 }
 
 /* ── Search ─────────────────────────────────────────────────────────────── */
@@ -299,7 +299,7 @@
 
 .itemIconUnread {
   background-color: var(--accent-primary);
-  color: var(--ink-on-paper);
+  color: var(--button-primary-ink);
 }
 
 .itemBody {

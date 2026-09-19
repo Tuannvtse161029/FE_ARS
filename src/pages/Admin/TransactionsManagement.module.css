@@ -302,6 +302,7 @@
 
 .retryBtn {
   background: var(--accent-primary);
+  border: 1px solid var(--accent-primary);
   color: var(--ink-primary);
   border: 1px solid var(--accent-primary);
   border-radius: var(--radius-sm);

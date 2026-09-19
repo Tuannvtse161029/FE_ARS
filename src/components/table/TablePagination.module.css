@@ -72,7 +72,7 @@
 .paginationBtnActive {
   background: var(--accent-primary);
   border-color: var(--accent-primary);
-  color: var(--ink-on-paper);
+  color: var(--button-primary-ink);
 }
 
 .paginationBtnActive:hover:not(:disabled) {

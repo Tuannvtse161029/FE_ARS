@@ -23,13 +23,36 @@ import type { ShortcutSpec } from '../hooks/useShortcuts';
  * owns the shortcut — entries here describe the *spec*, not the action.
  * This keeps the help modal consistent regardless of who installs the
  * handler.
+ *
+ * Role visibility (defense in depth):
+ *   Each role-specific group (admin / reviewer) declares which roles are
+ *   allowed to see it via `visibleTo`. The help modal passes the
+ *   authenticated role through `shortcutsForRole(role)` so a Lecturer
+ *   never sees Admin or Reviewer shortcuts, an Admin never sees
+ *   Reviewer-only shortcuts, etc. Route guards and BE authorization are
+ *   the authoritative layers — this filter is purely UX hardening so a
+ *   privileged user cannot accidentally learn (or be misled into
+ *   attempting) a command their role cannot perform.
  */
+import type { UserRole } from '../types/auth';
 
 export interface ShortcutEntry {
   /** Stable id used for the help modal's React `key`. */
   id: string;
-  /** Group/category — drives the help modal section headers. */
+  /**
+   * Group/category — drives the help modal section headers.
+   * `global` is always visible. The other groups are gated by
+   * `visibleTo` below (defense in depth — the BE / route guards remain
+   * authoritative).
+   */
   group: 'global' | 'list' | 'form' | 'forum' | 'admin' | 'reviewer';
+  /**
+   * Which authenticated roles are allowed to see this shortcut in the
+   * help modal. Required for non-`global` groups so a stale shortcut
+   * can't silently leak across roles. `global` entries omit this
+   * because they are always available.
+   */
+  visibleTo?: ReadonlyArray<UserRole>;
   /** Display label, e.g. "New submission". */
   label: string;
   /** Optional longer explanation shown in the help modal. */
@@ -54,13 +77,6 @@ export const SHORTCUT_CATALOGUE: ShortcutEntry[] = [
     label: 'Show keyboard shortcuts',
     description: 'Open this help dialog from anywhere on the page.',
     key: '?',
-  },
-  {
-    id: 'global.search',
-    group: 'global',
-    label: 'Focus search',
-    description: 'Move focus to the page-level search input.',
-    key: '/',
   },
   {
     id: 'global.close',
@@ -88,6 +104,9 @@ export const SHORTCUT_CATALOGUE: ShortcutEntry[] = [
     allowInInputs: true,
   },
   // ── List / Table navigation (Part 3) ───────────────────────
+  // List shortcuts are intentionally NOT gated — every role that uses a
+  // table benefits from them. If a future role lacks any tabular
+  // surface, that role simply has no list section rendered.
   {
     id: 'list.up',
     group: 'list',
@@ -124,6 +143,9 @@ export const SHORTCUT_CATALOGUE: ShortcutEntry[] = [
     key: 'f',
   },
   // ── Forum (Part 4) ───────────────────────────────────────
+  // Forum shortcuts are visible to every authenticated role — the
+  // forum is the one workspace surface that Guests can read too,
+  // and every signed-in role can post.
   {
     id: 'forum.list.up',
     group: 'forum',
@@ -186,9 +208,13 @@ export const SHORTCUT_CATALOGUE: ShortcutEntry[] = [
     allowInInputs: true,
   },
   // ── Admin (Part 5) ──────────────────────────────────────
+  // Admin shortcuts are visible only to Admin — never to Lecturer or
+  // Reviewer. Filtering happens in `shortcutsForRole`; the route
+  // guards and BE authorization remain the authoritative gate.
   {
     id: 'admin.list.up',
     group: 'admin',
+    visibleTo: ['Admin'],
     label: 'Previous row',
     description: 'Move focus to the row above.',
     key: 'j',
@@ -196,6 +222,7 @@ export const SHORTCUT_CATALOGUE: ShortcutEntry[] = [
   {
     id: 'admin.list.down',
     group: 'admin',
+    visibleTo: ['Admin'],
     label: 'Next row',
     description: 'Move focus to the row below.',
     key: 'k',
@@ -203,6 +230,7 @@ export const SHORTCUT_CATALOGUE: ShortcutEntry[] = [
   {
     id: 'admin.list.open',
     group: 'admin',
+    visibleTo: ['Admin'],
     label: 'Open editorial record',
     description: 'Open the full editorial record for the focused row.',
     key: 'Enter',
@@ -210,6 +238,7 @@ export const SHORTCUT_CATALOGUE: ShortcutEntry[] = [
   {
     id: 'admin.list.filter',
     group: 'admin',
+    visibleTo: ['Admin'],
     label: 'Focus filter',
     description: 'Move focus to the search / filter toolbar.',
     key: 'f',
@@ -217,6 +246,7 @@ export const SHORTCUT_CATALOGUE: ShortcutEntry[] = [
   {
     id: 'admin.approve',
     group: 'admin',
+    visibleTo: ['Admin'],
     label: 'Approve paper',
     description: 'Approve the focused submission (opens approval confirmation).',
     key: 'a',
@@ -224,6 +254,7 @@ export const SHORTCUT_CATALOGUE: ShortcutEntry[] = [
   {
     id: 'admin.deny',
     group: 'admin',
+    visibleTo: ['Admin'],
     label: 'Deny paper',
     description: 'Deny the focused submission (opens rejection form).',
     key: 'd',
@@ -231,6 +262,7 @@ export const SHORTCUT_CATALOGUE: ShortcutEntry[] = [
   {
     id: 'admin.reject',
     group: 'admin',
+    visibleTo: ['Admin'],
     label: 'Reject paper',
     description: 'Reject the focused submission outright.',
     key: 'r',
@@ -238,14 +270,18 @@ export const SHORTCUT_CATALOGUE: ShortcutEntry[] = [
   {
     id: 'admin.export',
     group: 'admin',
+    visibleTo: ['Admin'],
     label: 'Export CSV',
     description: 'Export the current filtered list as a CSV file.',
     key: 'x',
   },
   // ── Reviewer (Part 5) ────────────────────────────────────
+  // Reviewer shortcuts are visible only to Reviewer — never to Admin
+  // or Lecturer. Same defense-in-depth pattern as `admin`.
   {
     id: 'reviewer.list.up',
     group: 'reviewer',
+    visibleTo: ['Reviewer'],
     label: 'Previous assignment',
     description: 'Move focus to the assignment above.',
     key: 'j',
@@ -253,6 +289,7 @@ export const SHORTCUT_CATALOGUE: ShortcutEntry[] = [
   {
     id: 'reviewer.list.down',
     group: 'reviewer',
+    visibleTo: ['Reviewer'],
     label: 'Next assignment',
     description: 'Move focus to the assignment below.',
     key: 'k',
@@ -260,6 +297,7 @@ export const SHORTCUT_CATALOGUE: ShortcutEntry[] = [
   {
     id: 'reviewer.list.open',
     group: 'reviewer',
+    visibleTo: ['Reviewer'],
     label: 'Open assignment',
     description: 'Open the full assignment detail view.',
     key: 'Enter',
@@ -267,6 +305,7 @@ export const SHORTCUT_CATALOGUE: ShortcutEntry[] = [
   {
     id: 'reviewer.accept',
     group: 'reviewer',
+    visibleTo: ['Reviewer'],
     label: 'Accept assignment',
     description: 'Accept the focused review assignment.',
     key: 'a',
@@ -274,6 +313,7 @@ export const SHORTCUT_CATALOGUE: ShortcutEntry[] = [
   {
     id: 'reviewer.decline',
     group: 'reviewer',
+    visibleTo: ['Reviewer'],
     label: 'Decline assignment',
     description: 'Decline the focused review assignment.',
     key: 'd',
@@ -281,6 +321,7 @@ export const SHORTCUT_CATALOGUE: ShortcutEntry[] = [
   {
     id: 'reviewer.submit',
     group: 'reviewer',
+    visibleTo: ['Reviewer'],
     label: 'Submit evaluation',
     description: 'Submit the paper evaluation (works inside the form).',
     key: 'Enter',
@@ -288,6 +329,40 @@ export const SHORTCUT_CATALOGUE: ShortcutEntry[] = [
     allowInInputs: true,
   },
 ];
+
+/**
+ * Resolve the catalogue entries that the given authenticated role is
+ * allowed to see. `null`/`undefined` role returns only `global`
+ * shortcuts — keeps the help modal safe to render during the brief
+ * unauthenticated window before the auth context resolves.
+ *
+ * Visibility rules:
+ *   - `global` entries are always visible.
+ *   - `form`, `list`, and `forum` groups are visible to every signed-in
+ *     role (form submission, table navigation, and forum are universal
+ *     UX affordances).
+ *   - `admin` group entries require `role === 'Admin'`.
+ *   - `reviewer` group entries require `role === 'Reviewer'`.
+ *
+ * This is UX hardening only — the BE / route guards remain
+ * authoritative. A Lecturer who somehow navigated to an admin route
+ * would still be 403'd, and they wouldn't even see "Approve paper"
+ * advertised in the help modal.
+ */
+export const shortcutsForRole = (
+  role: UserRole | null | undefined,
+): ShortcutEntry[] => {
+  if (!role) {
+    return SHORTCUT_CATALOGUE.filter((entry) => entry.group === 'global');
+  }
+  return SHORTCUT_CATALOGUE.filter((entry) => {
+    if (entry.group === 'global') return true;
+    if (entry.group === 'admin') return role === 'Admin';
+    if (entry.group === 'reviewer') return role === 'Reviewer';
+    // form / list / forum are universal within the signed-in cohort.
+    return true;
+  });
+};
 
 /**
  * Format a shortcut for display in the help modal. Returns an array of

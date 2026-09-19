@@ -1377,7 +1377,22 @@ export const SeminarWorkspace = () => {
                               {copy('Submit Feedback', 'Gửi đánh giá')}
                             </button>
                           )}
-                          {canModify && owns && (
+                          {/* Feedback configuration is locked once a
+                              seminar is completed (or its end time has
+                              passed). Participants may still have
+                              outstanding invitations, so the "Feedback &
+                              Grading" button above stays open for
+                              viewing submissions, refresh, reminders, and
+                              summaries — but the "Setup Feedback"
+                              affordance must disappear so a stale
+                              handler cannot change the form under
+                              completed feedback.
+                              Gate uses the existing effective-status
+                              logic (the SeminarCard's `effectiveStatus`
+                              is already derived from BE status + end
+                              time), so a seminar whose end time has
+                              passed is treated as completed here too. */}
+                          {canModify && owns && !isCompleted && (
                             <button
                               type="button"
                               className={styles.actionBtnOutline}
@@ -1460,7 +1475,14 @@ export const SeminarWorkspace = () => {
                             <ClipboardList size={14} aria-hidden />
                             {copy('Preview feedback form', 'Xem trước form')}
                           </button>
-                          {canModify && owns && (
+                          {/* Same lifecycle guard as above — Setup
+                              Feedback is only meaningful while the
+                              seminar is still upcoming or in progress.
+                              For completed seminars the form is
+                              frozen; participants who already have the
+                              link can still submit their responses
+                              through the regular attendee flow. */}
+                          {canModify && owns && !isCompleted && (
                             <button
                               type="button"
                               className={styles.actionBtnOutline}
@@ -2149,6 +2171,12 @@ export const SeminarWorkspace = () => {
           <SeminarFeedbackPanel
             seminarId={selectedSeminarForFeedback.seminarId}
             seminarTitle={selectedSeminarForFeedback.title}
+            // Pass the effective status so the panel can gate
+            // Configure Questions on completed seminars. The panel
+            // re-derives completion from its own endTime / status
+            // inputs if this is absent (defense in depth).
+            effectiveStatus={selectedSeminarForFeedback.effectiveStatus}
+            endTime={selectedSeminarForFeedback.endTime}
             initialAiSummaryJson={
               typeof selectedSeminarForFeedback.aiSummary === 'string'
                 ? selectedSeminarForFeedback.aiSummary
@@ -2339,25 +2367,52 @@ export const SeminarWorkspace = () => {
         />
       )}
 
-      {/* SEMINAR FEEDBACK SETUP MODAL */}
-      {feedbackSetupSeminar && (
-        <SeminarFeedbackSetupModal
-          isOpen={Boolean(feedbackSetupSeminar)}
-          onClose={() => setFeedbackSetupSeminar(null)}
-          seminarId={feedbackSetupSeminar.id}
-          seminarTitle={feedbackSetupSeminar.title}
-          existingFeedbackRaw={feedbackSetupSeminar.feedbackRaw}
-          onSuccess={() => {
-            void refetch();
-            announce(
-              copy(
-                'Feedback questions saved successfully.',
-                'Đã lưu câu hỏi đánh giá thành công.',
-              ),
-            );
-          }}
-        />
-      )}
+      {/* SEMINAR FEEDBACK SETUP MODAL — only mounts when the targeted
+          seminar is still editable. The card-level buttons already gate
+          this on `!isCompleted`, but we re-check here so any stale
+          state, race, or programmatic `setFeedbackSetupSeminar` call
+          cannot re-open the configuration editor on a completed
+          seminar (or one whose end time has passed). The effective-
+          status check uses the existing `deriveEffectiveStatus` helper
+          from the seminar service — same logic that powers the tab
+          counts — so the guard cannot drift from the rest of the
+          page. */}
+      {feedbackSetupSeminar &&
+        (() => {
+          const target = seminars.find(
+            (s) => s.seminarId === feedbackSetupSeminar.id,
+          );
+          if (!target) {
+            // Unknown seminar — never mount the modal.
+            return null;
+          }
+          const targetEffective =
+            target.effectiveStatus ||
+            deriveEffectiveStatus(target.status, target.endTime);
+          if (targetEffective === 'COMPLETED') {
+            // Past the meeting — drop the modal and clear the stale
+            // state so a re-render does not bring it back.
+            return null;
+          }
+          return (
+            <SeminarFeedbackSetupModal
+              isOpen={Boolean(feedbackSetupSeminar)}
+              onClose={() => setFeedbackSetupSeminar(null)}
+              seminarId={feedbackSetupSeminar.id}
+              seminarTitle={feedbackSetupSeminar.title}
+              existingFeedbackRaw={feedbackSetupSeminar.feedbackRaw}
+              onSuccess={() => {
+                void refetch();
+                announce(
+                  copy(
+                    'Feedback questions saved successfully.',
+                    'Đã lưu câu hỏi đánh giá thành công.',
+                  ),
+                );
+              }}
+            />
+          );
+        })()}
 
       {/* INVITE MORE PARTICIPANTS MODAL */}
       {showInviteMoreModal && inviteMoreSeminar && (

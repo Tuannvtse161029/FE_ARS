@@ -381,12 +381,65 @@ export const ResearchGroup = () => {
   };
 
   const handleDeleteGroup = async (groupId: number, name: string) => {
+    // Worker D: refuse to even open the destructive confirmation
+    // modal when the membership data is not trustworthy. If we don't
+    // know the roster (still loading, or the request failed), we
+    // cannot prove the group is empty, so the safe default is to
+    // block the user. The same gate runs again inside
+    // `confirmDeleteGroup` as a second wall before the API call.
+    if (isLoadingMembers || membersError) {
+      showBannerMessage(
+        t('lecturer.researchGroups.deleteBlockedMembersLoading'),
+        'error',
+      );
+      return;
+    }
+    const currentMembers = memberIndex[groupId] ?? [];
+    if (currentMembers.length > 0) {
+      showBannerMessage(
+        t(
+          'lecturer.researchGroups.deleteBlockedHasMembers',
+          'Cannot delete: this group still has {count} member(s). Remove all members before deleting.',
+          { count: currentMembers.length },
+        ),
+        'error',
+      );
+      return;
+    }
     setDeleteConfirm({ open: true, groupId, groupName: name });
   };
 
   const confirmDeleteGroup = async () => {
     const { groupId } = deleteConfirm;
     if (groupId === null) return;
+
+    // Worker D — second wall: re-check membership at the moment the
+    // user confirms. Membership state could have changed (a student
+    // could have been added between the initial click and the
+    // confirmation), and the destructive call must not run unless we
+    // can prove the group is empty *now*.
+    if (isLoadingMembers || membersError) {
+      showBannerMessage(
+        t('lecturer.researchGroups.deleteBlockedMembersLoading'),
+        'error',
+      );
+      setDeleteConfirm({ open: false, groupId: null, groupName: '' });
+      return;
+    }
+    const currentMembers = memberIndex[groupId] ?? [];
+    if (currentMembers.length > 0) {
+      showBannerMessage(
+        t(
+          'lecturer.researchGroups.deleteBlockedHasMembers',
+          'Cannot delete: this group still has {count} member(s). Remove all members before deleting.',
+          { count: currentMembers.length },
+        ),
+        'error',
+      );
+      setDeleteConfirm({ open: false, groupId: null, groupName: '' });
+      return;
+    }
+
     setDeleteConfirm({ open: false, groupId: null, groupName: '' });
     try {
       await researchGroupService.delete(groupId);
@@ -962,17 +1015,51 @@ export const ResearchGroup = () => {
                         <Power size={14} aria-hidden />
                       )}
                     </button>
-                    <button
-                      type="button"
-                      className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
-                      title={t('lecturer.researchGroups.deleteGroup')}
-                      aria-label={t('lecturer.researchGroups.deleteGroup')}
-                      onClick={() =>
-                        handleDeleteGroup(gid, grp.name ?? idLabel)
-                      }
-                    >
-                      <Trash2 size={14} aria-hidden />
-                    </button>
+                    {/* Worker D: deletion is gated on membership. The
+                        button is hidden entirely when a group clearly
+                        has members (we know for sure), and disabled
+                        with an accessible reason when membership
+                        data is loading or has failed (so a stale
+                        delete cannot race the membership fetch). */}
+                    {(() => {
+                      const memberCount = roster.length;
+                      const hasMembers = memberCount > 0;
+                      const membershipUnknown = isLoadingMembers || membersError !== null;
+                      const blockReason = hasMembers
+                        ? t(
+                            'lecturer.researchGroups.deleteBlockedHasMembers',
+                            'Cannot delete: this group still has {count} member(s). Remove all members before deleting.',
+                            { count: memberCount },
+                          )
+                        : membershipUnknown
+                        ? t('lecturer.researchGroups.deleteBlockedMembersLoading')
+                        : null;
+                      const canDelete = !hasMembers && !membershipUnknown;
+                      return (
+                        <button
+                          type="button"
+                          className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
+                          title={
+                            blockReason ?? t('lecturer.researchGroups.deleteGroup')
+                          }
+                          aria-label={
+                            blockReason ?? t('lecturer.researchGroups.deleteGroup')
+                          }
+                          aria-disabled={!canDelete}
+                          disabled={!canDelete}
+                          data-testid="delete-group-btn"
+                          data-group-id={gid}
+                          data-has-members={hasMembers ? 'true' : 'false'}
+                          data-membership-unknown={membershipUnknown ? 'true' : 'false'}
+                          onClick={() => {
+                            if (!canDelete) return;
+                            handleDeleteGroup(gid, grp.name ?? idLabel);
+                          }}
+                        >
+                          <Trash2 size={14} aria-hidden />
+                        </button>
+                      );
+                    })()}
                   </div>
                   <Link
                     to={

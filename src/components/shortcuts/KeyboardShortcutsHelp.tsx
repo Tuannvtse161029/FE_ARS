@@ -2,16 +2,28 @@ import { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import {
   GROUP_TITLES,
-  SHORTCUT_CATALOGUE,
   formatShortcut,
   groupCatalogue,
+  shortcutsForRole,
   type ShortcutEntry,
 } from '../../utils/shortcutRegistry';
+import type { UserRole } from '../../types/auth';
 import styles from './KeyboardShortcutsHelp.module.css';
 
 interface Props {
   open: boolean;
   onClose: () => void;
+  /**
+   * Active authenticated role. The modal renders ONLY the shortcuts
+   * permitted for that role — Admin shortcuts stay out of a Lecturer's
+   * view, Reviewer shortcuts stay out of an Admin's view, etc. Passing
+   * `null`/`undefined` falls back to global-only shortcuts so the modal
+   * stays safe during the brief unauthenticated window.
+   *
+   * The route guards and BE authorization remain authoritative — this
+   * filter is purely UX defense in depth.
+   */
+  role: UserRole | null | undefined;
 }
 
 /**
@@ -30,8 +42,12 @@ interface Props {
  *     so screen-reader users land in a known spot.
  *   - The shortcuts are presented as a definition list, not a table, so
  *     the structure survives responsive layouts.
+ *
+ * Role gating: the parent MUST pass the active role. With no role we
+ * show only global shortcuts so the modal cannot accidentally advertise
+ * a privileged command to the wrong audience.
  */
-export const KeyboardShortcutsHelp = ({ open, onClose }: Props) => {
+export const KeyboardShortcutsHelp = ({ open, onClose, role }: Props) => {
   const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -50,7 +66,8 @@ export const KeyboardShortcutsHelp = ({ open, onClose }: Props) => {
 
   if (!open) return null;
 
-  const grouped = groupCatalogue(SHORTCUT_CATALOGUE);
+  const visibleEntries = shortcutsForRole(role);
+  const grouped = groupCatalogue(visibleEntries);
   const orderedGroups: ShortcutEntry['group'][] = [
     'global',
     'list',

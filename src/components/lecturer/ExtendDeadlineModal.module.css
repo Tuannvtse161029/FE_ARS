@@ -201,7 +201,7 @@
   border-radius: var(--radius-md, 8px);
   border: none;
   background: var(--primary, #d9a200);
-  color: #ffffff;
+  color: var(--button-primary-ink, #1d1c19);
   font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;

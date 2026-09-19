@@ -540,10 +540,11 @@
   background: var(--ars-admin-light);
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  /* Deep amber text on the warm-yellow chip surface so the button
-     label reads clearly. Hover inverts to a solid dark-amber chip
-     with a light-on-dark label. */
-  color: #92400e;
+  /* Near-black text on the warm-yellow chip surface so the button label
+     reads clearly in BOTH light and dark mode. In dark mode the
+     translucent yellow surface can wash out amber text, so we use the
+     shared --button-primary-ink token (dark) instead. */
+  color: var(--button-primary-ink, #1d1c19);
   padding: 4px 10px;
   font: inherit;
   font-size: var(--font-size-xs);

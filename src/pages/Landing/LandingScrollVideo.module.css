@@ -355,6 +355,7 @@
   gap: 9px;
   padding: 0 18px;
   background: var(--accent-primary);
+  border: 1px solid var(--accent-primary);
   color: var(--ink-primary);
   border: 1px solid var(--accent-primary);
   border-radius: 4px;
@@ -370,7 +371,7 @@
 .loginButton:hover,
 .loginButton:focus-visible {
   background: var(--accent-hover);
-  color: #ffffff;
+  color: var(--button-primary-ink);
   border-color: var(--accent-hover);
 }
 
@@ -595,6 +596,7 @@
   justify-content: center;
   gap: 9px;
   background: var(--accent-primary);
+  font-size: 0.9rem;
   color: var(--ink-primary);
   font-size: 0.9rem;
   font-weight: 750;
@@ -613,7 +615,7 @@
 .primaryButton:hover,
 .primaryButton:focus-visible {
   background: var(--accent-hover);
-  color: #ffffff;
+  color: var(--button-primary-ink);
   border-color: var(--accent-hover);
   box-shadow: 0 6px 18px color-mix(in srgb, var(--accent-primary) 30%, transparent);
   transform: translateY(-1px);

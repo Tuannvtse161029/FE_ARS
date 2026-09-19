@@ -936,7 +936,7 @@
   gap: var(--space-2);
   padding: var(--space-2) var(--space-4);
   background: var(--ars-info, #facc15);
-  color: #ffffff;
+  color: var(--button-primary-ink, #1d1c19);
   border: 1px solid var(--ars-info, #facc15);
   border-radius: var(--radius-md);
   font-family: var(--font-family-ui);

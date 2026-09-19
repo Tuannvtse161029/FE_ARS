@@ -79,7 +79,7 @@ table {
 
 ::selection {
   background-color: var(--accent-primary);
-  color: var(--ink-on-paper);
+  color: var(--button-primary-ink);
 }
 
 /* ── Keyboard focus for interactive elements ────────────── */

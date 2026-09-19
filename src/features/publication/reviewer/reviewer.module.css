@@ -70,6 +70,7 @@
 
 .tabActive {
   background: var(--accent-primary);
+  color: var(--button-primary-ink);
   border-color: var(--accent-primary);
   color: var(--ink-primary);
 }

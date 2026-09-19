@@ -134,7 +134,7 @@
 
 .button--outline:hover:not(:disabled) {
   background-color: var(--surface-selected);
-  color: var(--ink-primary);
+  color: var(--button-primary-ink);
 }
 
 .button--outline:active:not(:disabled) {
@@ -150,7 +150,7 @@
 
 .button--ghost:hover:not(:disabled) {
   background-color: var(--surface-selected);
-  color: var(--ink-primary);
+  color: var(--button-primary-ink);
 }
 
 .button--ghost:active:not(:disabled) {

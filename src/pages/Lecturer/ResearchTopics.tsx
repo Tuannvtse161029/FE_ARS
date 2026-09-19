@@ -20,7 +20,7 @@
 // records. No hardcoded "Topic 1" data.
 
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Plus,
   Check,
@@ -33,6 +33,7 @@ import {
   CheckCircle2,
   Library,
   Lightbulb,
+  ClipboardList,
 } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nContext';
 import { useResearchTopics } from '../../hooks/useResearchTopics';
@@ -61,6 +62,7 @@ import { DEFAULT_PAGE_SIZE } from '../../utils/tableConstants';
 import { ROUTES } from '../../routes/paths';
 import { validateHttpsUrl } from '../../utils/validationRules';
 import {
+  buildPhaseReportsUrl,
   parseHighlightFlag,
   parseIdFromSearch,
 } from '../../utils/topicRouting';
@@ -87,6 +89,7 @@ const formatTopicId = (id: number): string =>
 
 export const ResearchTopicsPage = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { t } = useI18n();
 
@@ -113,7 +116,7 @@ export const ResearchTopicsPage = () => {
     isLoading,
     error: topicsError,
     refetch: refetchTopics,
-  } = useResearchTopics();
+  } = useResearchTopics({ ownerUserId: currentLecturerId });
 
   // Groups are used both to compute "Assigned to N groups" badge per
   // topic and to populate the Assign Topic modal.
@@ -914,6 +917,31 @@ export const ResearchTopicsPage = () => {
                                 {isOwner
                                   ? t('lecturer.topics.manageMaterials')
                                   : t('lecturer.topics.viewMaterials')}
+                              </button>
+                              {/* Phase Reports action — deep-links to the
+                                  existing /lecturer/phase-reports page
+                                  pre-filtered by `topicId`. Uses the
+                                  shared `buildPhaseReportsUrl` helper so
+                                  the URL contract stays consistent with
+                                  Materials / Groups cross-links. The
+                                  accessible label names the topic so a
+                                  screen-reader user hears which row is
+                                  being acted on. */}
+                              <button
+                                type="button"
+                                className={styles.phaseReportsBtn}
+                                onClick={() => {
+                                  if (typeof topic.id !== 'number') return;
+                                  navigate(buildPhaseReportsUrl({ topicId: topic.id }));
+                                }}
+                                disabled={!topic.id}
+                                aria-label={`View phase reports for ${topic.title ?? `Topic #${topic.id}`}`}
+                                title={t('lecturer.topics.phaseReportsHint')}
+                                data-testid="topic-phase-reports"
+                                data-topic-id={topic.id ?? ''}
+                              >
+                                <ClipboardList size={14} aria-hidden />
+                                {t('lecturer.topics.phaseReports')}
                               </button>
                             </div>
                           </div>

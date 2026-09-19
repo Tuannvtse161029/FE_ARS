@@ -1296,6 +1296,10 @@ export const dictionary: Dictionary = {
     'lecturer.researchGroups.deleteConfirm': 'Delete this action cannot be undone.',
     'lecturer.researchGroups.deleteSuccess': 'deleted.',
     'lecturer.researchGroups.deleteFailed': 'Delete failed:',
+    'lecturer.researchGroups.deleteBlockedHasMembers':
+      'Cannot delete: this group still has {count} member(s). Remove all members before deleting.',
+    'lecturer.researchGroups.deleteBlockedMembersLoading':
+      'Cannot delete while member data is loading. Try again in a moment.',
     'lecturer.researchGroups.viewGroup': 'View Group',
     'lecturer.researchGroups.joinRequestFrom': '{name} asked to join this group',
     'lecturer.researchGroups.openJoinRequest': 'Open join request from {name}',
@@ -1540,6 +1544,8 @@ export const dictionary: Dictionary = {
     'lecturer.topics.viewMaterials': 'View Materials',
     'lecturer.topics.materialsHint': 'Manage the learning materials scoped to this topic',
     'lecturer.topics.materialsReadOnlyHint': 'View learning materials (read-only for topics created by another lecturer)',
+    'lecturer.topics.phaseReports': 'Phase Reports',
+    'lecturer.topics.phaseReportsHint': 'View phase reports for this topic',
     'lecturer.topics.editDisabledNotOwner': 'You cannot edit topics created by another lecturer.',
     'lecturer.topics.materialsReadOnlyNotice': 'Read-only mode: This topic is managed by {name}. Only the topic owner can attach or detach materials.',
     'lecturer.topics.materialsReadOnlyFormNotice': 'Adding or attaching materials is restricted to the topic owner.',

@@ -51,7 +51,7 @@
 .statValue {
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--ink-on-paper, #0f172a);
+  color: var(--ink-primary, #1d1c19);
 }
 
 .toolbarCard {
@@ -95,7 +95,7 @@
   border: 1px solid var(--border-strong, #cbd5e1);
   background: var(--surface-paper, #ffffff);
   font-size: 0.875rem;
-  color: var(--ink-on-paper, #0f172a);
+  color: var(--ink-primary, #1d1c19);
 }
 
 .filterSelect {
@@ -104,7 +104,7 @@
   border: 1px solid var(--border-strong, #cbd5e1);
   background: var(--surface-paper, #ffffff);
   font-size: 0.875rem;
-  color: var(--ink-on-paper, #0f172a);
+  color: var(--ink-primary, #1d1c19);
   font-weight: 500;
   cursor: pointer;
 }
@@ -221,7 +221,7 @@
 
 .medalNameVi {
   font-weight: 600;
-  color: var(--ink-on-paper, #0f172a);
+  color: var(--ink-primary, #1d1c19);
 }
 
 .medalNameEn {
@@ -308,8 +308,22 @@
 .tierBadge_Gold    { background: var(--tier-gold-pill-bg);   color: var(--tier-gold-pill-fg);   border-color: var(--tier-gold-pill-bd);   }
 .tierBadge_Platinum{ background: var(--tier-platinum-pill-bg); color: var(--tier-platinum-pill-fg); border-color: var(--tier-platinum-pill-bd); }
 
+/* Dark mode — hardcoded light-mode tier badges become invisible on dark
+   surface because the translucent backgrounds wash out. */
+:root[data-theme='paper-day'] .tierBadgeBronze  { background: rgba(180, 83, 9, 0.65);  color: #fcd34d; border-color: rgba(250, 204, 21, 0.5);  }
+:root[data-theme='paper-day'] .tierBadgeSilver  { background: rgba(100, 116, 139, 0.45); color: #e2e8f0; border-color: rgba(148, 163, 184, 0.5);  }
+:root[data-theme='paper-day'] .tierBadgeGold   { background: rgba(161, 98, 7, 0.65);  color: #fef08a; border-color: rgba(250, 204, 21, 0.5);  }
+:root[data-theme='paper-day'] .tierBadgePlatinum{ background: rgba(3, 105, 161, 0.45); color: #bae6fd; border-color: rgba(56, 189, 248, 0.5);  }
+
+/* Dark mode — token-based tier badges (e.g. .tierBadge_Bronze) inherit
+   --tier-*-pill-bg which is rgba(..., 0.18) in dark — too translucent. */
+:root[data-theme='paper-day'] .tierBadge_Bronze  { background: rgba(180, 83, 9, 0.65);  color: #fcd34d; border-color: rgba(250, 204, 21, 0.5);  }
+:root[data-theme='paper-day'] .tierBadge_Silver  { background: rgba(100, 116, 139, 0.45); color: #e2e8f0; border-color: rgba(148, 163, 184, 0.5);  }
+:root[data-theme='paper-day'] .tierBadge_Gold   { background: rgba(161, 98, 7, 0.65);  color: #fef08a; border-color: rgba(250, 204, 21, 0.5);  }
+:root[data-theme='paper-day'] .tierBadge_Platinum{ background: rgba(3, 105, 161, 0.45); color: #bae6fd; border-color: rgba(56, 189, 248, 0.5);  }
+
 .criteriaText {
-  color: var(--ink-on-paper, #334155);
+  color: var(--ink-primary, #1d1c19);
   font-weight: 500;
 }
 
@@ -378,8 +392,8 @@
 }
 
 .viewToggleBtnActive {
-  background: #ffffff;
-  color: var(--ink-on-paper, #0f172a);
+  background: var(--surface-raised, #ffffff);
+  color: var(--ink-primary, #1d1c19);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
@@ -460,7 +474,7 @@
 .cardTitleVi {
   font-weight: 700;
   font-size: 1rem;
-  color: var(--ink-on-paper, #0f172a);
+  color: var(--ink-primary, #1d1c19);
   line-height: 1.3;
 }
 
@@ -517,8 +531,8 @@
   font-size: 0.8125rem;
   font-weight: 500;
   border: 1px solid var(--border-subtle, #cbd5e1);
-  background: #ffffff;
-  color: var(--ink-on-paper, #334155);
+  background: var(--surface-raised, #ffffff);
+  color: var(--ink-primary, #1d1c19);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -543,14 +557,14 @@
 }
 
 .btnActionPrimary {
-  background: #d9a200;
-  color: #ffffff;
-  border-color: #d9a200;
+  background: var(--accent-primary, #d9a200);
+  color: var(--button-primary-ink, #1d1c19);
+  border-color: var(--accent-primary, #d9a200);
 }
 
 .btnActionPrimary:hover {
-  background: #c78e12;
-  color: #ffffff;
+  background: var(--accent-hover, #c78e12);
+  color: var(--button-primary-ink, #1d1c19);
 }
 
 .btnChangeImgDirect {
@@ -568,7 +582,7 @@
 .emptyStateContainer {
   padding: 48px 24px;
   text-align: center;
-  background: #ffffff;
+  background: var(--surface-raised, #ffffff);
   border: 1px dashed #cbd5e1;
   border-radius: 16px;
   display: flex;
@@ -614,7 +628,7 @@
 
 .cardMetricAccent .cardMetricIcon {
   background: var(--accent-primary, #e2ad2f);
-  color: var(--ink-primary, #1d1c19);
+  color: var(--button-primary-ink), #1d1c19);
 }
 
 .cardMetricAccent .cardMetricValue {
@@ -655,7 +669,7 @@
 .cardMetricValue {
   font-size: 1.125rem;
   font-weight: 700;
-  color: var(--ink-on-paper, #0f172a);
+  color: var(--ink-primary, #1d1c19);
   font-feature-settings: 'tnum';
 }
 
@@ -772,7 +786,7 @@
 .tierLadderName {
   font-size: 0.8125rem;
   font-weight: 600;
-  color: var(--ink-on-paper, #0f172a);
+  color: var(--ink-primary, #1d1c19);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

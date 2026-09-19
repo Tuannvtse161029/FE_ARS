@@ -124,7 +124,8 @@
 
 .acceptBtn {
   background: #d9a200;
-  color: #ffffff;
+  border: 1.5px solid #d9a200;
+  color: var(--button-primary-ink, #1d1c19);
   border: 1.5px solid #d9a200;
 }
 .acceptBtn:hover:not(:disabled) {
