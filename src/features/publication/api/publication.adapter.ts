@@ -178,6 +178,7 @@ const toPublicationPaper = async (
   paper: Paper,
   request?: ReviewRequest,
   evaluation: DetailedEvaluation | null = null,
+  allRequests?: ReviewRequest[],
 ): Promise<PublicationPaper> => {
   // The paper record is authoritative for terminal editorial states. However, a
   // paper with an active review request should never be shown as "Inactive" to
@@ -308,6 +309,31 @@ const toPublicationPaper = async (
     assignmentCreatedAt: request?.createdAt,
     reviewType: request?.type ?? null,
     aiRecommended: request?.airecommended ?? null,
+    assignedReviewers: (allRequests && allRequests.length > 0)
+      ? allRequests.map((r) => ({
+          reviewRequestId: r.id,
+          reviewerId: r.reviewerId ?? undefined,
+          reviewerName: r.reviewerName?.trim() || (r.reviewerId ? `Reviewer #${r.reviewerId}` : 'Assigned reviewer'),
+          reviewerEmail: r.reviewerEmail ?? null,
+          reviewerAvatarUrl: r.reviewerAvatarUrl ?? null,
+          status: r.status ?? null,
+          deadline: r.deadline ?? null,
+          type: r.type ?? null,
+          createdAt: r.createdAt,
+        }))
+      : request
+        ? [{
+            reviewRequestId: request.id,
+            reviewerId: request.reviewerId ?? undefined,
+            reviewerName: request.reviewerName?.trim() || (request.reviewerId ? `Reviewer #${request.reviewerId}` : 'Assigned reviewer'),
+            reviewerEmail: request.reviewerEmail ?? null,
+            reviewerAvatarUrl: request.reviewerAvatarUrl ?? null,
+            status: request.status ?? null,
+            deadline: request.deadline ?? null,
+            type: request.type ?? null,
+            createdAt: request.createdAt,
+          }]
+        : undefined,
   });
 };
 
@@ -469,22 +495,37 @@ class ApiPublicationAdapter implements PublicationAdapter {
       reviewRequestService.getAll(),
     ]);
     const requestMap = latestRequestByPaper(requests);
+    const allRequestsMap = new Map<string, ReviewRequest[]>();
+    for (const r of requests) {
+      if (r.paperId == null) continue;
+      const key = String(r.paperId);
+      const list = allRequestsMap.get(key) ?? [];
+      list.push(r);
+      allRequestsMap.set(key, list);
+    }
     return Promise.all(
       papers.map(async (paper) => {
-        const request = requestMap.get(String(paper.id));
-        return toPublicationPaper(await paperService.getById(paper.id), request, await evaluationFor(request));
+        const key = String(paper.id);
+        const request = requestMap.get(key);
+        const paperRequests = allRequestsMap.get(key);
+        // Use the paper object already returned by listAllPapers() to avoid
+        // an N+1 GET /api/paper/{id} call per paper that caused timeouts and
+        // empty lists when the system has many submissions.
+        return toPublicationPaper(paper, request, await evaluationFor(request), paperRequests);
       }),
     );
   }
+
 
   async getPaperById(id: string): Promise<PublicationPaper> {
     const [paper, requests] = await Promise.all([
       paperService.getById(id),
       reviewRequestService.getAll(),
     ]);
+    const paperRequests = requests.filter((r) => String(r.paperId) === String(id));
     const request = latestRequestByPaper(requests).get(String(id));
     const evaluation = await evaluationFor(request);
-    return toPublicationPaper(paper, request, evaluation);
+    return toPublicationPaper(paper, request, evaluation, paperRequests);
   }
 
   async createDraft(input: SubmissionInput, submitToAdmin = false): Promise<PublicationPaper> {

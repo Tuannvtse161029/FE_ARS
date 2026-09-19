@@ -11,6 +11,7 @@ import { useI18n } from '../../../i18n/I18nContext';
 import { publicationAdapter } from '../api/publication.adapter';
 import { useTableSort } from '../../../hooks/useTableSort';
 import shared from '../components/PublicationShared.module.css';
+import { formatDate } from '../../../utils/formatDate';
 import { PageHeader } from '../../../components/PageHeader';
 import { TableToolbar } from '../../../components/table/TableToolbar';
 import { TablePagination } from '../../../components/table/TablePagination';
@@ -39,20 +40,22 @@ import { RejectPaperModal } from './RejectPaperModal';
 import { PublicationConfirmation } from './PublicationConfirmation';
 
 interface StatusTabOption {
-  value: PublicationStatus | 'ALL';
+  value: string;
   label: string;
 }
 
 interface AdminListConfig {
-  eyebrow: string;
-  title: string;
-  subtitle: string;
-  statusOptions: readonly PublicationStatus[];
-  defaultStatus: PublicationStatus | 'ALL';
+  eyebrowKey: string;
+  titleKey: string;
+  subtitleKey: string;
+  statusOptions: readonly string[];
+  defaultStatus: string;
   /** Human-friendly item label used by the pagination control. */
   itemLabel: string;
   /** Optional map of status → custom display label for the filter tabs. */
-  customLabels?: Partial<Record<PublicationStatus | 'ALL', string>>;
+  customLabels?: Partial<Record<string, string>>;
+  scopeFilter?: (paper: PublicationPaper) => boolean;
+  getBucket?: (paper: PublicationPaper) => string;
 }
 
 type AdminListSortColumn =
@@ -61,36 +64,66 @@ type AdminListSortColumn =
   | 'reviewer'
   | 'submittedAt';
 
-const REVIEWER_ASSIGNMENTS_CONFIG: Omit<AdminListConfig, 'eyebrow' | 'title' | 'subtitle'> & {
-  eyebrowKey: string;
-  titleKey: string;
-  subtitleKey: string;
-} = {
+const isReviewerAssignedPaper = (paper: PublicationPaper): boolean =>
+  Boolean(
+    paper.reviewRequestId != null ||
+    paper.reviewer != null ||
+    (paper.assignedReviewers && paper.assignedReviewers.length > 0) ||
+    [
+      'REVIEWER_ASSIGNED',
+      'UNDER_REVIEW',
+      'REVISION_REQUIRED',
+      'RESUBMITTED',
+      'REVIEWER_RECOMMENDED_ACCEPT',
+      'REVIEWER_RECOMMENDED_REJECT',
+    ].includes(paper.status)
+  );
+
+const getReviewerAssignmentBucket = (paper: PublicationPaper): string => {
+  const reqStatus = (paper.reviewRequestStatus ?? '').toUpperCase();
+  if (
+    reqStatus === 'COMPLETED' ||
+    paper.status === 'REVIEWER_RECOMMENDED_ACCEPT' ||
+    paper.status === 'REVIEWER_RECOMMENDED_REJECT' ||
+    Boolean(paper.reviewer?.recommendation)
+  ) {
+    return 'REVIEWER_RECOMMENDED_ACCEPT';
+  }
+  if (
+    reqStatus === 'IN_PROGRESS' ||
+    reqStatus === 'INPROGRESS' ||
+    reqStatus === 'IN PROGRESS' ||
+    paper.status === 'UNDER_REVIEW'
+  ) {
+    return 'UNDER_REVIEW';
+  }
+  if (reqStatus === 'PENDING' || paper.status === 'REVIEWER_ASSIGNED') {
+    return 'REVIEWER_ASSIGNED';
+  }
+  return paper.status;
+};
+
+const REVIEWER_ASSIGNMENTS_CONFIG: AdminListConfig = {
   eyebrowKey: 'admin.publicationLists.assignmentsEyebrow',
   titleKey: 'admin.publicationLists.assignmentsTitle',
   subtitleKey: 'admin.publicationLists.assignmentsSubtitle',
   statusOptions: [
+    'UNDER_REVIEW',
     'REVIEWER_ASSIGNED',
     'REVIEWER_RECOMMENDED_ACCEPT',
-    'REVIEWER_RECOMMENDED_REJECT',
   ],
   defaultStatus: 'ALL',
   itemLabel: 'assignments',
-  // Custom labels: keep the filter bar to 3 short, plain-language tabs.
-  // 'REVIEWER_RECOMMENDED_ACCEPT' is rendered as "Reviewer recommended"
-  // and 'REVIEWER_RECOMMENDED_REJECT' as "Reviewer not recommended".
+  scopeFilter: isReviewerAssignedPaper,
+  getBucket: getReviewerAssignmentBucket,
   customLabels: {
-    REVIEWER_ASSIGNED: 'Reviewer Assigned',
-    REVIEWER_RECOMMENDED_ACCEPT: 'Reviewer recommended',
-    REVIEWER_RECOMMENDED_REJECT: 'Reviewer not recommended',
+    UNDER_REVIEW: 'Under Review',
+    REVIEWER_ASSIGNED: 'Assigned',
+    REVIEWER_RECOMMENDED_ACCEPT: 'Completed',
   },
 };
 
-const PUBLISHED_PAPERS_CONFIG: Omit<AdminListConfig, 'eyebrow' | 'title' | 'subtitle'> & {
-  eyebrowKey: string;
-  titleKey: string;
-  subtitleKey: string;
-} = {
+const PUBLISHED_PAPERS_CONFIG: AdminListConfig = {
   eyebrowKey: 'admin.publicationLists.publishedEyebrow',
   titleKey: 'admin.publicationLists.publishedTitle',
   subtitleKey: 'admin.publicationLists.publishedSubtitle',
@@ -99,35 +132,34 @@ const PUBLISHED_PAPERS_CONFIG: Omit<AdminListConfig, 'eyebrow' | 'title' | 'subt
   itemLabel: 'published papers',
 };
 
-// Build tab options from status options
+// Build tab options from status options with i18n support
 const buildTabOptions = (
-  config: Omit<AdminListConfig, 'eyebrow' | 'title' | 'subtitle'> & {
-    eyebrowKey: string;
-    titleKey: string;
-    subtitleKey: string;
-  },
+  config: AdminListConfig,
+  t: (key: string, fallback?: string) => string,
 ): StatusTabOption[] => {
   const customLabels = config.customLabels ?? {};
   return [
-    { value: 'ALL', label: customLabels.ALL ?? 'All' },
-    ...config.statusOptions.map((status) => ({
-      value: status as PublicationStatus | 'ALL',
-      label: customLabels[status] ?? statusLabel(status),
-    })),
+    { value: 'ALL', label: t('admin.publicationLists.tabAll', 'All') },
+    ...config.statusOptions.map((status) => {
+      let label = customLabels[status] ?? (statusLabel as (s: string) => string)(status as PublicationStatus);
+      if (status === 'UNDER_REVIEW') label = t('admin.publicationLists.tabUnderReview', customLabels[status] ?? 'Under Review');
+      else if (status === 'REVIEWER_ASSIGNED') label = t('admin.publicationLists.tabAssigned', customLabels[status] ?? 'Assigned');
+      else if (status === 'REVIEWER_RECOMMENDED_ACCEPT') label = t('admin.publicationLists.tabCompleted', customLabels[status] ?? 'Completed');
+      return {
+        value: status,
+        label,
+      };
+    }),
   ];
 };
 
 const AdminList = ({
   config,
 }: {
-  config: Omit<AdminListConfig, 'eyebrow' | 'title' | 'subtitle'> & {
-    eyebrowKey: string;
-    titleKey: string;
-    subtitleKey: string;
-  };
+  config: AdminListConfig;
 }) => {
   const { t } = useI18n();
-  const localizedConfig: AdminListConfig = {
+  const localizedConfig = {
     ...config,
     eyebrow: t(config.eyebrowKey, config.eyebrowKey),
     title: t(config.titleKey, config.titleKey),
@@ -138,7 +170,7 @@ const AdminList = ({
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [statusTab, setStatusTab] = useState<PublicationStatus | 'ALL'>(
+  const [statusTab, setStatusTab] = useState<string>(
     config.defaultStatus,
   );
   const [page, setPage] = useState(1);
@@ -156,7 +188,13 @@ const AdminList = ({
   } | null>(null);
 
   // Build tab options for this config
-  const tabOptions = useMemo(() => buildTabOptions(config), [config]);
+  const tabOptions = useMemo(() => buildTabOptions(config, t), [config, t]);
+
+  // Scoped papers: either custom scopeFilter (for Reviewer Assignments) or statusOptions (for Published Papers)
+  const scoped = useMemo(
+    () => (config.scopeFilter ? papers.filter(config.scopeFilter) : papers.filter((paper) => config.statusOptions.includes(paper.status))),
+    [papers, config],
+  );
 
   // Count papers per status tab
   const tabCounts = useMemo(() => {
@@ -165,14 +203,15 @@ const AdminList = ({
       if (tab.value !== 'ALL') counts[tab.value] = 0;
     });
 
-    papers.filter((paper) => config.statusOptions.includes(paper.status)).forEach((paper) => {
+    scoped.forEach((paper) => {
       counts.ALL++;
-      if (counts[paper.status] !== undefined) {
-        counts[paper.status]++;
+      const bucket = config.getBucket ? config.getBucket(paper) : paper.status;
+      if (counts[bucket] !== undefined) {
+        counts[bucket]++;
       }
     });
     return counts;
-  }, [papers, tabOptions, config.statusOptions]);
+  }, [scoped, tabOptions, config]);
 
   // Default sort by submittedAt (newest first) so recently submitted papers
   // surface at the top. The user can override per column header click.
@@ -297,17 +336,14 @@ const AdminList = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // The published-list view includes both active and deactivated published records.
-  const scoped = useMemo(
-    () => papers.filter((paper) => config.statusOptions.includes(paper.status)),
-    [papers, config.statusOptions],
-  );
-
   // Apply the search and status filters before sorting the full result set.
   const sortedFiltered = useMemo(() => {
     const filtered = scoped.filter((paper) => {
       // Apply status tab filter
-      if (statusTab !== 'ALL' && paper.status !== statusTab) return false;
+      if (statusTab !== 'ALL') {
+        const bucket = config.getBucket ? config.getBucket(paper) : paper.status;
+        if (bucket !== statusTab) return false;
+      }
       // Apply search filter
       if (search.trim() && !matchesSearch(paper, search.trim().toLowerCase())) {
         return false;
@@ -320,14 +356,16 @@ const AdminList = ({
           return paper.title ?? '';
         case 'status':
           return paper.status;
-        case 'reviewer':
-          return paper.reviewer?.reviewerName ?? '';
+        case 'reviewer': {
+          const firstRev = paper.assignedReviewers?.[0]?.reviewerName;
+          return firstRev ?? paper.reviewer?.reviewerName ?? '';
+        }
         case 'submittedAt':
         default:
           return paper.submittedAt ?? paper.createdAt ?? null;
       }
     });
-  }, [scoped, sort, statusTab, search]);
+  }, [scoped, sort, statusTab, search, config]);
 
   const totalCount = sortedFiltered.length;
   const totalPages = Math.max(1, Math.ceil(totalCount / DEFAULT_PAGE_SIZE));
@@ -541,9 +579,39 @@ const AdminList = ({
                         </div>
                       </td>
                       <td data-label="Reviewer">
-                        {reviewer ? (
+                        {paper.assignedReviewers && paper.assignedReviewers.length > 0 ? (
+                          <div className={adminStyles.reviewerCell}>
+                            {paper.assignedReviewers.map((rev, rIdx) => {
+                              const revStatus = (rev.status ?? '').toLowerCase();
+                              const statusClass =
+                                revStatus === 'completed'
+                                  ? adminStyles.reviewerStatusCompleted
+                                  : revStatus === 'in progress' || revStatus === 'in_progress'
+                                    ? adminStyles.reviewerStatusInProgress
+                                    : adminStyles.reviewerStatusPending;
+                              return (
+                                <div key={rev.reviewRequestId ?? rIdx} className={adminStyles.reviewerRow}>
+                                  <span className={adminStyles.reviewerName}>{rev.reviewerName}</span>
+                                  {rev.reviewerEmail ? (
+                                    <span className={adminStyles.reviewerEmail}>{rev.reviewerEmail}</span>
+                                  ) : null}
+                                  <div className={adminStyles.reviewerMeta}>
+                                    <span className={`${adminStyles.reviewerStatusBadge} ${statusClass}`}>
+                                      {rev.status || t('admin.publicationLists.assignedBadge', 'Assigned')}
+                                    </span>
+                                    {rev.deadline ? (
+                                      <small className={shared.fieldHint}>
+                                        {formatDate(rev.deadline)}
+                                      </small>
+                                    ) : null}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : reviewer ? (
                           <span>
-                            {reviewer}
+                            <strong>{reviewer}</strong>
                             <br />
                             <small className={shared.fieldHint}>
                               Public:{' '}
@@ -552,7 +620,7 @@ const AdminList = ({
                           </span>
                         ) : (
                           <span className={adminStyles.fileMissing}>
-                            Not assigned
+                            {t('admin.publicationLists.notAssigned', 'Not assigned')}
                           </span>
                         )}
                       </td>
