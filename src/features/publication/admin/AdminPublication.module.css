@@ -589,6 +589,66 @@
   font-style: italic;
 }
 
+.reviewerCell {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 170px;
+}
+
+.reviewerRow {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reviewerName {
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
+  font-size: var(--font-size-sm);
+}
+
+.reviewerEmail {
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-xs);
+  word-break: break-all;
+}
+
+.reviewerMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  flex-wrap: wrap;
+}
+
+.reviewerStatusBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.02em;
+  background: var(--status-warning-surface);
+  color: var(--status-warning-text);
+}
+
+.reviewerStatusCompleted {
+  background: var(--status-success-surface);
+  color: var(--status-success-text);
+}
+
+.reviewerStatusInProgress {
+  background: var(--status-accent-surface);
+  color: var(--status-accent-text);
+}
+
+.reviewerStatusPending {
+  background: var(--status-warning-surface);
+  color: var(--status-warning-text);
+}
+
 /* ── Detail page blocks ─────────────────────────────────── */
 .detailHeader {
   display: flex;

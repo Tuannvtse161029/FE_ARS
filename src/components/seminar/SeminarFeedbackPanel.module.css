@@ -412,7 +412,8 @@
 }
 
 .aiLoading,
-.aiError {
+.aiError,
+.vietnameseNote {
   display: flex;
   align-items: flex-start;
   gap: var(--space-3);
@@ -421,6 +422,28 @@
   font-size: var(--font-size-sm);
   line-height: var(--line-height-normal);
   border: 1px solid;
+}
+
+.vietnameseNote {
+  background: var(--ars-warning-bg);
+  border-color: var(--ars-warning);
+  color: var(--ars-warning);
+}
+
+.vietnameseNote div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.vietnameseNote strong {
+  display: block;
+  font-weight: var(--font-weight-semibold);
+}
+
+.vietnameseNote span {
+  display: block;
+  opacity: 0.9;
 }
 
 .aiLoading {

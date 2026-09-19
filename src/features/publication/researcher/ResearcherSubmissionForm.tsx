@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, FileText, Info, Save, Send, Eye } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, FileText, Info, Send, Eye } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
 import { useFirebaseUpload } from '../../../hooks/useFirebaseUpload';
 import { useMajorFields, useSubFields } from '../../../hooks/useMajorFields';
@@ -47,14 +47,10 @@ const formatBytes = (bytes: number): string => {
 // Behaviour (unchanged from the legacy version):
 //   - PDF upload must complete before the form can submit.
 //   - OpenAlex lookup validates the work ID, calls the ARS backend, and
-//     renders a reviewable preview before the researcher confirms an import.
-//   - Save draft keeps the paper in DRAFT status; Submit advances to
-//     SUBMITTED via the adapter.
-//
-// Save-draft / submit copy: the form NEVER claims autosave. The
-// "Save draft" button is explicit; nothing is persisted until the user
-// clicks Save draft or Submit to Admin.
+//     calls the ARS backend, and renders a reviewable preview before
+//     the researcher confirms an import.
 
+// W2 cleanup 2026-09-19: removed fake save-draft UI per brief #2
 export const ResearcherSubmissionForm = () => {
   const navigate = useNavigate();
   const t = useT();
@@ -291,10 +287,8 @@ export const ResearcherSubmissionForm = () => {
       }, sendToAdmin);
       const paper = draft;
       publicationToast.success(
-        sendToAdmin
-          ? t('researcher.form.toast.submittedToAdmin')
-          : t('researcher.form.toast.draftSaved'),
-        sendToAdmin ? 'submission-to-admin' : 'submission-draft',
+        t('researcher.form.toast.submittedToAdmin'),
+        'submission-to-admin',
       );
       navigate(`/researcher/submissions/${paper.id}`);
     } catch (caught) {
@@ -841,7 +835,7 @@ export const ResearcherSubmissionForm = () => {
           </div>
         </section>
 
-        {/* ── Final review (Save draft / Submit) ──────────────────── */}
+        {/* ── Final review / Submit ──────────────────────────────── */}
         <footer className={styles.formFinalReview}>
           <header className={styles.formSectionHeader}>
             <h2 className={styles.formSectionTitle}>{t('researcher.form.section.finalReview.title')}</h2>
@@ -854,16 +848,6 @@ export const ResearcherSubmissionForm = () => {
             </p>
           )}
           <div className={styles.formActionButtons}>
-            <Button
-              variant="outline"
-              size="md"
-              disabled={saving || !canSubmit}
-              onClick={() => void submit(false)}
-              leftIcon={<Save size={14} aria-hidden />}
-              data-testid="submission-save-draft"
-            >
-              {t('researcher.form.footer.saveDraft')}
-            </Button>
             <Button
               type="submit"
               variant="primary"

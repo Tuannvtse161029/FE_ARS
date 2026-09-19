@@ -37,17 +37,25 @@
   flex-shrink: 0;
 }
 
-/* PhasedReport variants — info/warning/success/error tones */
-.waiting {
+/* PhasedReport variants — strict colour contract (brief #7):
+   submitted (on-time) + submitted-late → info/blue
+   awaiting-submission                   → info/blue
+   evaluated                             → success/green
+   rejected                              → error/red
+   overdue                               → error/red
+   Both color AND label are always visible (WCAG — never color alone). */
+
+.submitted,
+.submitted-late {
   background-color: var(--ars-info-bg);
   color: var(--ars-info);
   border-color: color-mix(in srgb, var(--ars-info) 30%, transparent);
 }
 
-.submitted {
-  background-color: var(--ars-warning-bg);
-  color: var(--ars-warning);
-  border-color: color-mix(in srgb, var(--ars-warning) 30%, transparent);
+.awaiting-submission {
+  background-color: var(--ars-info-bg);
+  color: var(--ars-info);
+  border-color: color-mix(in srgb, var(--ars-info) 30%, transparent);
 }
 
 .evaluated {
@@ -62,14 +70,19 @@
   border-color: color-mix(in srgb, var(--ars-error) 30%, transparent);
 }
 
-/* Synthetic overdue variants (computed in PhaseReports when deadline has
- * passed). Both use the danger palette but with a slightly stronger stroke
- * for awaiting-but-overdue so it stands out from the regular awaiting/waiting
- * blue. */
+/* Overdue: same red as rejected. Both carry equal urgency. */
 .overdue {
   background-color: var(--ars-error-bg);
   color: var(--ars-error);
   border-color: color-mix(in srgb, var(--ars-error) 50%, transparent);
+}
+
+/* Legacy .waiting alias kept for existing callers outside PhaseReports
+   that still pass raw "waiting" strings. Same blue as awaiting-submission. */
+.waiting {
+  background-color: var(--ars-info-bg);
+  color: var(--ars-info);
+  border-color: color-mix(in srgb, var(--ars-info) 30%, transparent);
 }
 
 .overdueAwaiting {

@@ -43,6 +43,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useResearchGroups } from '../../hooks/useResearchGroups';
+import { useResearchTopics } from '../../hooks/useResearchTopics';
 import {
   phasedReportService,
   type PhasedReport,
@@ -55,9 +56,11 @@ import {
   type PhaseReportStatusFilter,
 } from '../../components/lecturer/PhaseReportStatusTabs';
 import {
-  statusFilterOf,
-  statusLabelOf,
+  classifyPhaseReportStatus,
+  classifyPhaseReportStatusToFilter,
+  filterByPhaseReportStatus,
   isLecturerDeadlineOverdue,
+  statusLabelOf,
 } from '../../utils/lecturerPhaseStatus';
 import { useI18n } from '../../i18n/I18nContext';
 import { PageHeader } from '../../components/PageHeader';
@@ -65,7 +68,10 @@ import { Button } from '../../components/Button/Button';
 import { EmptyState } from '../../components/EmptyState';
 import { SkeletonRow } from '../../components/SkeletonRow';
 import { TableToolbar } from '../../components/table/TableToolbar';
-import { parseIdFromSearch } from '../../utils/topicRouting';
+import {
+  parseIdFromSearch,
+  parseTopicIdFromSearch,
+} from '../../utils/topicRouting';
 import { formatDisplayDate } from '../../utils/datetime';
 import styles from './PhaseReports.module.css';
 
@@ -157,12 +163,28 @@ export const PhaseReports = () => {
   const [searchParams] = useSearchParams();
 
   // URL-scoped filter values (null = show all)
-  const urlTopicId = parseIdFromSearch(searchParams, 'topicId');
+  // Use parseTopicIdFromSearch so we distinguish "missing param" from
+  // "invalid id" — both are treated as "no filter active" but the chip
+  // needs to know the difference for its loading / missing states.
+  const { topicId: urlTopicId } = parseTopicIdFromSearch(searchParams);
   const urlGroupId = parseIdFromSearch(searchParams, 'groupId');
 
   const { groups, isLoading: groupsLoading } = useResearchGroups({
     lecturerId: user?.userId ?? null,
   });
+
+  // Fetch the full lecturer-owned topic list so the scope chip can resolve
+  // the numeric topicId to a human-readable title.  The hook call mirrors
+  // GroupDetail.tsx (lines 204-208).
+  const { topics, isLoading: topicsLoading } = useResearchTopics({
+    ownerUserId: user?.userId ?? null,
+  });
+
+  const topicName = useMemo((): string | null => {
+    if (urlTopicId === null) return null;
+    const found = topics.find((t) => t.id === urlTopicId);
+    return found?.title ?? null;
+  }, [urlTopicId, topics]);
 
   const [reports, setReports] = useState<PhasedReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -225,18 +247,22 @@ export const PhaseReports = () => {
   // Filter-tab counts — always reflect the FULL owned set so the user
   // can see how many of each status exist before picking a filter.
   const filterCounts = useMemo(() => {
-    const counts = {
+    const counts: Record<
+      'all' | 'awaiting-submission' | 'submitted' | 'overdue' | 'evaluated' | 'rejected',
+      number
+    > = {
       all: ownedReports.length,
-      awaiting: 0,
+      'awaiting-submission': 0,
       submitted: 0,
       overdue: 0,
-      overdueAwaiting: 0,
       evaluated: 0,
       rejected: 0,
     };
+    const now = new Date();
     for (const r of ownedReports) {
-      const key = statusFilterOf(r);
-      counts[key] += 1;
+      const cls = classifyPhaseReportStatus(r, now);
+      const key = classifyPhaseReportStatusToFilter(cls);
+      if (key in counts) counts[key] += 1;
     }
     return counts;
   }, [ownedReports]);
@@ -245,9 +271,10 @@ export const PhaseReports = () => {
   // then sorted so consecutive same-topic / same-group rows are
   // adjacent. Topic / group rowspan merging reads from this sorted list.
   const displayedReports = useMemo(() => {
+    const now = new Date();
     let rows = ownedReports;
     if (statusFilter !== 'all') {
-      rows = rows.filter((r) => statusFilterOf(r) === statusFilter);
+      rows = filterByPhaseReportStatus(rows, statusFilter, now);
     }
     const q = search.trim().toLowerCase();
     if (q) {
@@ -257,22 +284,22 @@ export const PhaseReports = () => {
           .some((v) => String(v).toLowerCase().includes(q)),
       );
     }
-    // Stable ordering: overdue (any flavour) first, then submitted (awaiting
-    // review), then rejected, then awaiting, then evaluated. The
-    // `overdueAwaiting` bucket sits right after `overdue` so a lecturer
-    // triaging at-risk rows sees them clustered at the top.
-    const bucketOrder: Record<PhaseReportStatusFilter, number> = {
+    // Stable ordering: overdue first, then submitted (awaiting review), then
+    // rejected, then awaiting-submission, then evaluated.
+    const bucketOrder: Record<
+      'overdue' | 'submitted' | 'rejected' | 'awaiting-submission' | 'evaluated',
+      number
+    > = {
       overdue: 0,
-      overdueAwaiting: 1,
-      submitted: 2,
-      rejected: 3,
-      awaiting: 4,
-      evaluated: 5,
-      all: 6,
+      submitted: 1,
+      rejected: 2,
+      'awaiting-submission': 3,
+      evaluated: 4,
     };
     return [...rows].sort((a, b) => {
       const order =
-        bucketOrder[statusFilterOf(a)] - bucketOrder[statusFilterOf(b)];
+        bucketOrder[classifyPhaseReportStatus(a, now).status as keyof typeof bucketOrder] -
+        bucketOrder[classifyPhaseReportStatus(b, now).status as keyof typeof bucketOrder];
       if (order !== 0) return order;
       const topicCompare = String(a.topicTitle ?? '').localeCompare(
         String(b.topicTitle ?? ''),
@@ -296,14 +323,24 @@ export const PhaseReports = () => {
   );
 
   // True when a deep-link pre-filter is active and the URL still has it.
-  const scopeChipText =
-    urlTopicId !== null
-      ? t(
-          'lecturer.phaseReports.scopeChip',
-          'Filtered to topic #{id}',
-          { id: urlTopicId },
-        )
-      : null;
+  // topicName is:
+  //   null      → no topicId in URL → chip hidden
+  //   string    → topicId valid + name resolved
+  //   undefined → topicId present but name not yet fetched / not in list
+  const scopeChipVisible = urlTopicId !== null;
+  const scopeChipLabel = useMemo((): string => {
+    if (urlTopicId === null) return '';
+    if (topicsLoading) {
+      return t('lecturer.phaseReports.scopeChipLoading', 'Loading topic…');
+    }
+    if (topicName !== null) return topicName;
+    // Missing from the list (network error, or the user navigated to a
+    // topic they no longer own). Show a graceful fallback — never raw "#N".
+    return t(
+      'lecturer.phaseReports.scopeChipMissing',
+      'Selected research topic',
+    );
+  }, [urlTopicId, topicName, topicsLoading, t]);
 
   return (
     <div className={styles.page}>
@@ -328,9 +365,12 @@ export const PhaseReports = () => {
       />
 
       {/* ── Scope chip (only when a deep-link filter is active) ── */}
-      {scopeChipText && (
+      {scopeChipVisible && (
         <div className={styles.scopeChip}>
-          <span>{scopeChipText}</span>
+          <span>
+            {t('lecturer.phaseReports.scopeChipPrefix', 'Filtered to topic:')}{' '}
+            <strong>{scopeChipLabel}</strong>
+          </span>
           <Link to="/lecturer/phase-reports" className={styles.scopeChipClear}>
             <X size={12} aria-hidden />{' '}
             {t('lecturer.phaseReports.scopeClear', 'Clear filter')}
@@ -363,7 +403,7 @@ export const PhaseReports = () => {
           counts={filterCounts}
           labels={{
             all: t('lecturer.phaseReports.filters.all', 'All'),
-            awaiting: t(
+            'awaiting-submission': t(
               'lecturer.phaseReports.filters.awaiting',
               'Awaiting',
             ),
@@ -374,10 +414,6 @@ export const PhaseReports = () => {
             overdue: t(
               'lecturer.phaseReports.filters.overdue',
               'Overdue',
-            ),
-            overdueAwaiting: t(
-              'lecturer.phaseReports.filters.overdueAwaiting',
-              'Overdue awaiting',
             ),
             evaluated: t(
               'lecturer.phaseReports.filters.evaluated',
@@ -478,10 +514,7 @@ export const PhaseReports = () => {
                   report.milestoneTitle ??
                   `Phase ${report.phaseNumber ?? '—'}`;
                 const deadlineText = formatDisplayDate(report.deadlineAt);
-                const filter = statusFilterOf(report);
-                const overdue =
-                  filter === 'overdue' || filter === 'overdueAwaiting';
-                const canExtendDeadline = isDeadlineOverdue(report);
+                const overdue = isDeadlineOverdue(report);
                 const colTopic = t(
                   'lecturer.phaseReports.columns.topic',
                   'Research topic',
@@ -554,7 +587,8 @@ export const PhaseReports = () => {
                     </td>
                     <td data-cell={colStatus}>
                       <StatusBadge
-                        status={statusFilterOf(report)}
+                        status={statusLabelOf(report)}
+                        normalizedStatus={classifyPhaseReportStatus(report).status}
                         label={statusLabelOf(report)}
                         size="sm"
                       />
@@ -577,10 +611,10 @@ export const PhaseReports = () => {
                           size="sm"
                           variant="outline"
                           onClick={() => setDeadlineModalReport(report)}
-                          disabled={!canExtendDeadline || id == null}
+                          disabled={!overdue || id == null}
                           leftIcon={<Clock size={13} />}
                           title={
-                            canExtendDeadline
+                            overdue
                               ? t(
                                   'lecturer.phaseReports.detail.updateDeadline',
                                   'Update deadline',

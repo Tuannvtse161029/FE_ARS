@@ -69,7 +69,7 @@ import styles from './SeminarWorkspace.module.css';
 
 const SEMINARS_PER_PAGE = 3;
 
-type TabKey = 'all' | 'upcoming' | 'completed' | 'drafts' | 'inactive';
+type TabKey = 'all' | 'upcoming' | 'completed' | 'inactive';
 type WorkspaceTab = 'manage' | 'participate';
 
 interface InviteeCandidate {
@@ -368,14 +368,12 @@ export const SeminarWorkspace = () => {
             counts.upcoming += 1;
           } else if (effective === 'COMPLETED') {
             counts.completed += 1;
-          } else if (effective === 'DRAFT') {
-            counts.drafts += 1;
           } else if (effective === 'INACTIVE') {
             counts.inactive += 1;
           }
           return counts;
         },
-        { upcoming: 0, completed: 0, drafts: 0, inactive: 0 },
+        { upcoming: 0, completed: 0, inactive: 0 },
       ),
     [seminars],
   );
@@ -388,7 +386,6 @@ export const SeminarWorkspace = () => {
         return effective === 'UPCOMING' || effective === 'IN PROGRESS';
       }
       if (activeTab === 'completed') return effective === 'COMPLETED';
-      if (activeTab === 'drafts') return effective === 'DRAFT';
       if (activeTab === 'inactive') return effective === 'INACTIVE';
       return true;
     });
@@ -947,7 +944,6 @@ export const SeminarWorkspace = () => {
       label: 'Completed',
       count: seminarCounts.completed,
     },
-    { key: 'drafts', label: 'Drafts', count: seminarCounts.drafts },
     {
       key: 'inactive',
       label: copy('Inactive', 'Đã tạm dừng'),
@@ -1160,12 +1156,6 @@ export const SeminarWorkspace = () => {
       {/* List */}
       {isLoadingSeminars ? (
         <SkeletonRow count={4} withHeader />
-      ) : activeTab === 'drafts' && filteredSeminars.length === 0 ? (
-        <EmptyState
-          icon={<FileText size={20} aria-hidden />}
-          title="No drafts"
-          description="Saved drafts will appear here once the BE exposes draft lifecycle."
-        />
       ) : activeTab === 'inactive' && filteredSeminars.length === 0 ? (
         <EmptyState
           icon={<Ban size={20} aria-hidden />}
@@ -2177,9 +2167,13 @@ export const SeminarWorkspace = () => {
             // inputs if this is absent (defense in depth).
             effectiveStatus={selectedSeminarForFeedback.effectiveStatus}
             endTime={selectedSeminarForFeedback.endTime}
+            // Pass the text-feedback-specific JSON blob (distinct from
+            // `aiSummary` which holds the audio/video transcript).
+            // `feedback` is written by `POST /api/Seminar/{id}/summarize-feedback`
+            // and stored in `Seminars.feedback` (semantic of `feedbackJson`).
             initialAiSummaryJson={
-              typeof selectedSeminarForFeedback.aiSummary === 'string'
-                ? selectedSeminarForFeedback.aiSummary
+              typeof selectedSeminarForFeedback.feedback === 'string'
+                ? selectedSeminarForFeedback.feedback
                 : null
             }
             initialAiGeneratedAt={

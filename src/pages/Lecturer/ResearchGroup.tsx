@@ -68,9 +68,6 @@ interface BannerState {
   variant: 'success' | 'error';
 }
 
-const formatGroupId = (id: number): string =>
-  `RG-${new Date().getFullYear()}-${String(id).padStart(3, '0')}`;
-
 const initialsOf = (raw: string): string =>
   raw
     .split(/\s+/)
@@ -602,10 +599,8 @@ export const ResearchGroup = () => {
       setGroupDeadline('');
       setGroupNameError(null);
       setGroupDeadlineError(null);
-      const idLabel =
-        typeof created.id === 'number' ? formatGroupId(created.id) : '';
       showBannerMessage(
-        `${idLabel} ("${created.name ?? groupName}") ${t('lecturer.researchGroups.createdSuccess')}`,
+        `"${created.name ?? groupName}" ${t('lecturer.researchGroups.createdSuccess')}`,
       );
       await refetchGroups();
     } catch (err) {
@@ -835,7 +830,6 @@ export const ResearchGroup = () => {
         <div className={styles.grid}>
           {pagedGroups.map((grp) => {
             const gid = typeof grp.id === 'number' ? grp.id : -1;
-            const idLabel = gid >= 0 ? formatGroupId(gid) : '—';
             const topic = grp.topicId ? topicById.get(grp.topicId) : null;
             const status = deriveGroupStatus(grp, topic?.status ?? null);
             const deadlineLabel = grp.deadline
@@ -847,7 +841,6 @@ export const ResearchGroup = () => {
               <article className={styles.groupCard} key={gid}>
                 <div className={styles.cardTopRow}>
                   <div className={styles.metaPills}>
-                    <span className={styles.idPill}>{idLabel}</span>
                     <StatusBadge status={status} />
                     {/* ACTIVE / INACTIVE badge — lecturer can toggle this per group */}
                     <GroupStatusBadge isActive={grp.isActive !== false} size="sm" />
@@ -1053,7 +1046,7 @@ export const ResearchGroup = () => {
                           data-membership-unknown={membershipUnknown ? 'true' : 'false'}
                           onClick={() => {
                             if (!canDelete) return;
-                            handleDeleteGroup(gid, grp.name ?? idLabel);
+                            handleDeleteGroup(gid, grp.name ?? `Group #${gid}`);
                           }}
                         >
                           <Trash2 size={14} aria-hidden />
