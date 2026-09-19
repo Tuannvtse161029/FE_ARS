@@ -103,6 +103,19 @@ export interface PublicationPaper {
   assignmentCreatedAt?: string;
   reviewType?: string | null;
   aiRecommended?: boolean | null;
+  assignedReviewers?: AssignedReviewerInfo[];
+}
+
+export interface AssignedReviewerInfo {
+  reviewRequestId?: number;
+  reviewerId?: number;
+  reviewerName: string;
+  reviewerEmail?: string | null;
+  reviewerAvatarUrl?: string | null;
+  status?: string | null;
+  deadline?: string | null;
+  type?: string | null;
+  createdAt?: string;
 }
 
 export const isAuthorshipAllowed = (paper?: PublicationPaper | null): boolean => {

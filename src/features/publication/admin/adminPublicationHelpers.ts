@@ -90,8 +90,9 @@ const buildSearchHaystack = (paper: PublicationPaper): string => {
     ...paper.keywords,
     ...paper.authors.map((author) => author.name),
     ...paper.authors.map((author) => author.orcid ?? ''),
-    ...paper.institutions.map((institution) => institution.name),
     paper.reviewer?.reviewerName ?? '',
+    ...(paper.assignedReviewers?.map((r) => r.reviewerName) ?? []),
+    ...(paper.assignedReviewers?.map((r) => r.reviewerEmail ?? '') ?? []),
   ]
     .filter(Boolean)
     .join(' \u2022 ')
