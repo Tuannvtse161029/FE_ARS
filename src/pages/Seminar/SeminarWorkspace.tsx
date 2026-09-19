@@ -2169,11 +2169,11 @@ export const SeminarWorkspace = () => {
             endTime={selectedSeminarForFeedback.endTime}
             // Pass the text-feedback-specific JSON blob (distinct from
             // `aiSummary` which holds the audio/video transcript).
-            // `feedbackJson` is written by `POST /api/Seminar/{id}/summarize-feedback`
-            // and stored in `Seminars.feedbackJson`.
+            // `feedback` is written by `POST /api/Seminar/{id}/summarize-feedback`
+            // and stored in `Seminars.feedback` (semantic of `feedbackJson`).
             initialAiSummaryJson={
-              typeof selectedSeminarForFeedback.feedbackJson === 'string'
-                ? selectedSeminarForFeedback.feedbackJson
+              typeof selectedSeminarForFeedback.feedback === 'string'
+                ? selectedSeminarForFeedback.feedback
                 : null
             }
             initialAiGeneratedAt={

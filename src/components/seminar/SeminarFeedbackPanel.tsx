@@ -43,13 +43,12 @@ import {
   Sliders,
 } from 'lucide-react';
 
-import { useLocale, useT } from '../../i18n/I18nContext';
+import { useT } from '../../i18n/I18nContext';
 
 import {
   hasSubmittedFeedback,
   parseAiFeedback,
   seminarService,
-  type SeminarFeedbackAiContent,
   type SeminarFeedbackSummary,
   type SeminarParticipantFeedback,
   type SeminarStats,
@@ -144,8 +143,6 @@ export const SeminarFeedbackPanel = ({
   onRefreshSeminar,
 }: SeminarFeedbackPanelProps) => {
   const t = useT();
-  const locale = useLocale();
-  const isVi = locale === 'vi';
 
   const [stats, setStats] = useState<SeminarStats | null>(initialStats);
   const [feedback, setFeedback] = useState<SeminarParticipantFeedback[]>([]);
@@ -673,7 +670,6 @@ const FeedbackCard = ({ entry, questions, t }: FeedbackCardProps) => {
   const initials = initialsOf(entry.userFullName, displayName);
   const [viewerOpen, setViewerOpen] = useState(false);
   const answerCount = answers.length;
-  const hasQuestions = (questions ?? []).length > 0;
 
   return (
     <li className={styles.feedbackCard}>

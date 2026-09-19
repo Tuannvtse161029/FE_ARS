@@ -2217,7 +2217,7 @@ export const dictionary: Dictionary = {
     'researcher.form.file.errorType': 'Chỉ chấp nhận tệp PDF.',
     'researcher.form.file.errorSize': 'Kích thước tệp phải từ 10 MB trở xuống.',
     'researcher.form.toast.submittedToAdmin': 'Đã nộp bài báo cho Ban biên tập.',
-    'researcher.form.toast.draftSaved': null,
+    'researcher.form.toast.draftSaved': 'Đã lưu bản nháp.',
     'researcher.form.openalex.lookupCta': 'Tra cứu siêu dữ liệu',
     'researcher.form.openalex.skip': 'Tiếp tục mà không nhập',
     'researcher.form.openalex.invalidTitle': 'OpenAlex ID không hợp lệ',

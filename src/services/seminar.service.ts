@@ -926,18 +926,20 @@ export const seminarService = {
    * `POST /api/Seminar/{id}/summarize-feedback` writes into `feedbackJson`.
    * @see Seminar.feedbackJson
    */
-  summarizeSeminarFeedback(seminarId: number): SeminarFeedbackSummary {
+  async summarizeSeminarFeedback(seminarId: number): Promise<SeminarFeedbackSummary> {
     // axios.post accepts data: undefined for a true no-body POST
-    return api
-      .post<unknown>(API_ENDPOINTS.SEMINAR.SUMMARIZE_FEEDBACK(seminarId))
-      .then((response) => normalizeFeedbackSummary(response.data, seminarId))
-      .catch((error: unknown) => {
-        const message =
-          (error as { response?: { data?: { message?: string } } })?.response?.data
-            ?.message ??
-          (error instanceof Error ? error.message : 'Unknown error');
-        throw new Error(message);
-      });
+    try {
+      const response = await api.post<unknown>(
+        API_ENDPOINTS.SEMINAR.SUMMARIZE_FEEDBACK(seminarId),
+      );
+      return normalizeFeedbackSummary(response.data, seminarId);
+    } catch (error: unknown) {
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message ??
+        (error instanceof Error ? error.message : 'Unknown error');
+      throw new Error(message);
+    }
   },
 
   /**

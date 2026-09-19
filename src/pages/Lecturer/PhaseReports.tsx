@@ -61,7 +61,6 @@ import {
   filterByPhaseReportStatus,
   isLecturerDeadlineOverdue,
   statusLabelOf,
-  type PhaseReportStatus,
 } from '../../utils/lecturerPhaseStatus';
 import { useI18n } from '../../i18n/I18nContext';
 import { PageHeader } from '../../components/PageHeader';
@@ -167,8 +166,7 @@ export const PhaseReports = () => {
   // Use parseTopicIdFromSearch so we distinguish "missing param" from
   // "invalid id" — both are treated as "no filter active" but the chip
   // needs to know the difference for its loading / missing states.
-  const { topicId: urlTopicId, error: urlTopicIdError } =
-    parseTopicIdFromSearch(searchParams);
+  const { topicId: urlTopicId } = parseTopicIdFromSearch(searchParams);
   const urlGroupId = parseIdFromSearch(searchParams, 'groupId');
 
   const { groups, isLoading: groupsLoading } = useResearchGroups({

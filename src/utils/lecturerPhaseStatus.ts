@@ -106,7 +106,6 @@ export const classifyPhaseReportStatus = (
   const submittedAt = report.submittedAt;
   const deadlineAt = report.deadlineAt;
   const hasRealSubmission = Boolean(submittedAt);
-  const submittedAtMs = toMs(submittedAt);
   const deadlineMs = toMs(deadlineAt);
 
   // ── Tier 1: Evaluated ─────────────────────────────────────────────────────

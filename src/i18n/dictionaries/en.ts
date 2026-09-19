@@ -2716,7 +2716,7 @@ export const dictionary: Dictionary = {
     'researcher.form.file.errorType': 'Only PDF files are allowed.',
     'researcher.form.file.errorSize': 'File size must be 10 MB or less.',
     'researcher.form.toast.submittedToAdmin': 'Paper submitted to Admin.',
-    'researcher.form.toast.draftSaved': null,
+    'researcher.form.toast.draftSaved': 'Draft saved.',
     'researcher.form.openalex.lookupCta': 'Look up metadata',
     'researcher.form.openalex.skip': 'Continue without importing',
     'researcher.form.openalex.invalidTitle': 'Invalid OpenAlex ID',
