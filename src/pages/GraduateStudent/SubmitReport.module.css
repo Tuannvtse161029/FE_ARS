@@ -209,9 +209,18 @@
   white-space: nowrap;
 }
 
+/* PhasedReport pill styles. These are kept for the SubmitReport "Research
+   groups & milestones" tab which still uses its own getStatusBadge()
+   helper rather than the shared <StatusBadge /> component. The shared
+   <StatusBadge /> used in StudentResearchGroups' Milestone Reports
+   table styles its Passed/Evaluated pill via
+   src/components/common/StatusBadge.module.css → .evaluated. */
 .statusPassed { background: var(--ars-success-bg); border-color: var(--ars-success); color: var(--ars-success); }
+/* Bug fix (Sep 2026): "Submitted" (post-upload timeliness) and "On time"
+   represent a successful submission awaiting evaluation — blue is the correct
+   semantic for "submitted / awaiting review" per the accepted design spec. */
 .statusOnTime { background: var(--ars-info-bg); border-color: var(--ars-info); color: var(--ars-info); }
-.statusSubmitted { background: var(--ars-warning-bg); border-color: var(--ars-warning); color: var(--ars-warning); }
+.statusSubmitted { background: var(--ars-info-bg); border-color: var(--ars-info); color: var(--ars-info); }
 .statusOverdue,
 .statusRejected { background: var(--ars-error-bg); border-color: var(--ars-error); color: var(--ars-error); }
 .statusPending { background: var(--status-draft-surface); border-color: var(--status-draft-text); color: var(--status-draft-text); }
@@ -532,6 +541,12 @@
   .actionExplanation {
     text-align: left;
   }
+
+  /* Bug fix (Sep 2026): on very narrow viewports the table already
+     scrolls horizontally inside `.tableResponsive`. We DON'T override
+     the column min-widths here because doing so caused the action
+     column to eat the whole viewport and the group/topic text to
+     collapse to unreadable widths. */
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -545,15 +560,19 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
+  padding: var(--space-1) var(--space-3);
   background: transparent;
   border: 1px solid var(--ars-accent, #facc15);
   color: var(--ars-accent, #facc15);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
   cursor: pointer;
   transition: all var(--transition-fast);
+  white-space: nowrap;
+  align-self: flex-start;
+  width: auto;
+  max-width: 100%;
 }
 
 .extendDeadlineButton:hover {
@@ -593,22 +612,57 @@
 .tableResponsive {
   width: 100%;
   overflow-x: auto;
+  /* Bug fix (Sep 2026): the previous "table-layout: fixed" + percentage
+     widths caused the per-group table to render as a narrow column on
+     viewports <= 640px — Action buttons consumed the entire viewport,
+     Group/Topic/Phase text wrapped mid-word, and the Action header sat
+     over an empty cell. We now let the browser size columns naturally
+     and just give the table a sane minimum width so the user gets a
+     horizontal scrollbar instead of a squashed layout on small screens. */
+  -webkit-overflow-scrolling: touch;
 }
 
 .table {
   width: 100%;
+  min-width: 920px;
   border-collapse: collapse;
   font-size: var(--font-size-sm);
   color: var(--ars-ink);
+  table-layout: auto;
 }
 
 .table th,
 .table td {
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-3) var(--space-3);
   text-align: left;
   border-bottom: 1px solid var(--ars-network);
   vertical-align: middle;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+  /* Bug fix (Sep 2026): give each cell its own minimum width so the
+     browser uses the largest of "content" vs "min-width" instead of
+     squeezing every column into the viewport. Combined with the
+     `min-width: 920px` on the table itself, this guarantees the table
+     always renders at a readable size and the page scrolls horizontally
+     when the viewport is too narrow. */
 }
+
+/* Per-cell minimum widths. These are tuned for the per-group milestone
+   table so each column has enough room to render one full text line. */
+.table th:nth-child(1),
+.table td:nth-child(1) { min-width: 150px; }   /* Research group */
+.table th:nth-child(2),
+.table td:nth-child(2) { min-width: 130px; }   /* Topic */
+.table th:nth-child(3),
+.table td:nth-child(3) { min-width: 170px; }   /* Phase */
+.table th:nth-child(4),
+.table td:nth-child(4) { min-width: 130px; }   /* Deadline */
+.table th:nth-child(5),
+.table td:nth-child(5) { min-width: 100px; }   /* Status */
+.table th:nth-child(6),
+.table td:nth-child(6) { min-width: 60px; }    /* Score */
+.table th:nth-child(7),
+.table td:nth-child(7) { min-width: 180px; width: 180px; }   /* Action */
 
 .table th {
   font-size: var(--font-size-xs);
@@ -633,6 +687,9 @@
   flex-direction: column;
   gap: var(--space-1);
   align-items: flex-start;
+  /* Bug fix (Sep 2026): keep the merged group cell narrow and the text
+     from wrapping mid-word for long group names. */
+  min-width: 0;
 }
 
 .groupName {
@@ -653,6 +710,7 @@
   font-size: 0.7rem;
   font-weight: var(--font-weight-semibold);
   white-space: nowrap;
+  align-self: flex-start;
 }
 
 .mutedCell,
@@ -661,11 +719,15 @@
   font-size: var(--font-size-xs);
 }
 
+.spannedCell {
+  vertical-align: middle;
+  background: rgba(96, 165, 250, 0.03);
+}
+
 .mutedNote {
-  display: inline-block;
+  display: block;
   font-style: italic;
   line-height: var(--line-height-normal);
-  margin-top: 2px;
 }
 
 .milestoneName {
@@ -701,9 +763,33 @@
 
 .rowActions {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  /* Bug fix (Sep 2026): stack actions vertically so a row's status note,
+     submit button, PDF link, and lecturer deadline update never run into
+     each other. Buttons inside the action cell stay aligned to the
+     start of the cell so a long action label doesn't push other rows'
+     content out of view. */
   gap: var(--space-2);
-  align-items: center;
+  align-items: flex-start;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Bug fix (Sep 2026): action buttons in the row must not stretch to
+   fill the entire action cell. Previously the button's `min-width`
+   from the .submitPhaseBtn / .extendDeadlineButton / .linkBtn rule
+   combined with the column-flex container to produce a giant pill
+   button that pushed every other column out of view on narrow
+   viewports. Each button only takes the width its label needs. */
+.rowActions > .submitPhaseBtn,
+.rowActions > .extendDeadlineButton,
+.rowActions > .linkBtn,
+.rowActions > .detailBtn {
+  align-self: flex-start;
+  width: auto;
+  max-width: 100%;
+  white-space: normal;
+  text-align: left;
 }
 
 .detailBtn,

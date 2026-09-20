@@ -49,6 +49,8 @@ const NORMALISE_TABLE: Record<string, StatusBadgeVariant> = {
   submitted: 'submitted',
   pending_review: 'submitted',
   evaluated: 'evaluated',
+  passed: 'evaluated',
+  pass: 'evaluated',
   approved: 'evaluated',
   graded: 'evaluated',
   complete: 'evaluated',

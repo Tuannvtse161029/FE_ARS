@@ -136,12 +136,33 @@ export const filterSeminarsForViewer = (
   if (role === 'Lecturer') return seminars;
 
   // Build the set of seminarIds where the current user is a participant.
+  //
+  // Privacy contract: the BE may return participant rows either from the
+  // global `GET /api/SeminarParticipant` (which DOES populate `userId` per
+  // row, used by Lecturer via `getAll()`) or from the participant-scoped
+  // `GET /api/SeminarParticipant/my-seminars` (which is scoped to the
+  // caller server-side and therefore does NOT echo `userId` back).
+  //
+  // Strict `p.userId === currentUserId` only matches the first case, so
+  // Reviewer / Graduate Student — who only ever hit `/my-seminars` — were
+  // silently dropped here and every seminar disappeared from the calendar
+  // even though `ParticipationTable` (which joins the same endpoints
+  // directly, without this filter) still showed them.
+  //
+  // The fix: accept a participant row as "mine" when EITHER (a) the
+  // `userId` matches the caller (global endpoint case), OR (b) the row
+  // has no `userId` but carries a `seminarId` (the scoped endpoint case
+  // — every row returned by `/my-seminars` is, by BE contract, the
+  // caller's own row).
   const invitedSeminarIds = new Set<number>();
-  if (currentUserId != null) {
-    for (const p of participants) {
-      if (p.userId === currentUserId && p.seminarId != null) {
-        invitedSeminarIds.add(p.seminarId);
-      }
+  for (const p of participants) {
+    if (p.seminarId == null) continue;
+    if (p.userId == null) {
+      // Scoped endpoint — every row belongs to the caller.
+      invitedSeminarIds.add(p.seminarId);
+    } else if (currentUserId != null && p.userId === currentUserId) {
+      // Global endpoint — narrow to the caller's rows.
+      invitedSeminarIds.add(p.seminarId);
     }
   }
 

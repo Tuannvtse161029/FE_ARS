@@ -50,10 +50,14 @@
   border-color: color-mix(in srgb, var(--ars-warning) 30%, transparent);
 }
 
+/* EVALUATED / Passed — solid green pill with white text for high-contrast
+   visibility in the Milestone Reports table inside StudentResearchGroups.
+   This was previously a faint tinted pill that didn't stand out enough from
+   Submitted (amber) and Pending (grey) at a glance. */
 .evaluated {
-  background-color: var(--ars-success-bg);
-  color: var(--ars-success);
-  border-color: color-mix(in srgb, var(--ars-success) 30%, transparent);
+  background-color: var(--ars-success);
+  color: #ffffff;
+  border-color: var(--ars-success);
 }
 
 .rejected {

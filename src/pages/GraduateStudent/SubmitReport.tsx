@@ -373,6 +373,16 @@ export const SubmitReport = (): JSX.Element => {
     }
   };
 
+  const topicTitleFor = (group: import('../../services/groupMembership.service').StudentGroupView): string => {
+    // The BE doesn't always populate `topicTitle` on the StudentGroupView.
+    // `primaryTopic` only represents the primary group's topic, so we
+    // fall back to a generic placeholder for non-primary groups.
+    if (primaryGroup && primaryTopic && group.id === primaryGroup.id) {
+      return primaryTopic.title ?? '';
+    }
+    return t('student.phaseReport.table.unassignedTopic', 'Unassigned topic');
+  };
+
   // Active submission phases: rows that the student can still upload a
   // report to (or that are already in flight). The per-group table hides
   // rows that are completely "Passed" so the table stays focused on
@@ -385,15 +395,88 @@ export const SubmitReport = (): JSX.Element => {
     });
   }, [groupMilestoneRows]);
 
-  const topicTitleFor = (group: import('../../services/groupMembership.service').StudentGroupView): string => {
-    // The BE doesn't always populate `topicTitle` on the StudentGroupView.
-    // `primaryTopic` only represents the primary group's topic, so we
-    // fall back to a generic placeholder for non-primary groups.
-    if (primaryGroup && primaryTopic && group.id === primaryGroup.id) {
-      return primaryTopic.title ?? '';
+  // Bug fix (Sep 2026): merge the Group and Topic cells for consecutive rows
+  // that belong to the same (groupId × topicTitle) pair. We compute the
+  // rowSpan for each cell so the HTML attribute is correct and screen readers
+  // understand the grouping. Rows already covered by a previous row's rowSpan
+  // simply omit the <td> so the layout is semantically valid.
+  interface MergedRow extends GroupMilestoneRow {
+    groupRowSpan: number;
+    topicRowSpan: number;
+  }
+  const mergedRows = useMemo<MergedRow[]>(() => {
+    // Bug fix (Sep 2026): merge consecutive rows that share the SAME
+    // (groupId, topicTitle) pair so the Group and Topic cells in the
+    // table render once with the appropriate rowSpan. The previous
+    // algorithm tried to also merge rows with the same groupId but
+    // different topics, but HTML tables cannot represent "Group spans
+    // rows N, Topic only spans rows N-M" because each <tr> needs its
+    // cells in the left-to-right order they appear — once Group renders
+    // in column 1 with rowspan=N, every subsequent row inside that span
+    // must NOT render its own column-1 <td> regardless of whether it
+    // shares the same topic.
+    //
+    // Concretely, for [G1/T1/P1, G1/T1/P2, G1/T2/P3] the algorithm emits:
+    //   Row 0 → groupRowSpan=1, topicRowSpan=2 (covers rows 0–1)
+    //   Row 1 → groupRowSpan=0, topicRowSpan=0 (placeholder, falls under
+    //           Row 0's rowSpan)
+    //   Row 2 → groupRowSpan=1, topicRowSpan=1 (new anchor — fresh
+    //           group + topic cells, even though it shares the same group
+    //           as the previous rows. This is the visible "boundary"
+    //           between two topics in the same group.)
+    //
+    // Trade-off: when a group contains multiple topics, the group cell
+    // is repeated for each topic. The user still sees a clean table with
+    // no broken alignment; the duplication is a small price for HTML
+    // correctness.
+    const result: MergedRow[] = [];
+    let i = 0;
+    while (i < rowsForTable.length) {
+      const anchor = rowsForTable[i];
+      const anchorGroupId = anchor.groupId;
+      const anchorTopic = topicTitleFor(anchor.group);
+
+      // Walk forward while (groupId, topicTitle) stays the same. The
+      // walk stops at either a new group OR a topic transition within
+      // the same group — both produce a fresh anchor in the next
+      // iteration. We peek past j as long as the (groupId, topic) pair
+      // matches the anchor; j ends up pointing one past the last match.
+      let j = i;
+      while (j < rowsForTable.length) {
+        const candidate = rowsForTable[j];
+        if (candidate.groupId !== anchorGroupId) break;
+        if (topicTitleFor(candidate.group) !== anchorTopic) break;
+        j++;
+      }
+      const span = j - i;
+
+      // Anchor row — carries the Group and Topic cells with rowSpan.
+      result.push({
+        ...anchor,
+        groupRowSpan: span,
+        topicRowSpan: span,
+      });
+
+      // Emit placeholder rows for every row the anchor covers. Each
+      // placeholder keeps the original row's data (so the React `key`
+      // remains unique per underlying row) but its `groupRowSpan` and
+      // `topicRowSpan` are both 0, which makes the renderer omit the
+      // Group and Topic <td> elements — they "fall through" the
+      // previous anchor's rowSpan. Without these placeholders, the
+      // covered rows would be missing from the table entirely, and the
+      // remaining cells would left-shift into the wrong columns.
+      for (let k = i + 1; k < j; k++) {
+        result.push({
+          ...rowsForTable[k],
+          groupRowSpan: 0,
+          topicRowSpan: 0,
+        });
+      }
+
+      i = j;
     }
-    return t('student.phaseReport.table.unassignedTopic', 'Unassigned topic');
-  };
+    return result;
+  }, [rowsForTable]);
 
   return (
     <div className={styles.page}>
@@ -482,7 +565,7 @@ export const SubmitReport = (): JSX.Element => {
               )}
             </span>
           </div>
-        ) : rowsForTable.length === 0 ? (
+        ) : mergedRows.length === 0 ? (
           <div className={styles.emptyState}>
             <Inbox size={18} />
             <span>
@@ -521,7 +604,7 @@ export const SubmitReport = (): JSX.Element => {
                 </tr>
               </thead>
               <tbody>
-                {rowsForTable.map((row) => {
+                {mergedRows.map((row) => {
                   const isLeaderForRow = isLeaderForGroup.has(row.groupId);
                   const rowActive = isGroupActiveById[row.groupId] !== false;
                   const report = row.report;
@@ -545,31 +628,35 @@ export const SubmitReport = (): JSX.Element => {
                   const hasFile = Boolean(report?.reportFileUrl);
                   return (
                     <tr key={row.key}>
-                      <td>
-                        <div className={styles.groupCell}>
-                          <span className={styles.groupName}>
-                            {row.group.name ??
-                              t(
-                                'student.phaseReport.table.unassignedGroup',
-                                'Unassigned group',
-                              )}
-                          </span>
-                          {isLeaderForRow ? (
-                            <span className={styles.leaderBadge}>
-                              <Crown size={11} aria-hidden />
-                              {t(
-                                'student.phaseReport.table.roleBadge',
-                                'Leader',
-                              )}
+                      {row.groupRowSpan > 0 ? (
+                        <td rowSpan={row.groupRowSpan} className={styles.spannedCell}>
+                          <div className={styles.groupCell}>
+                            <span className={styles.groupName}>
+                              {row.group.name ??
+                                t(
+                                  'student.phaseReport.table.unassignedGroup',
+                                  'Unassigned group',
+                                )}
                             </span>
-                          ) : null}
-                        </div>
-                      </td>
-                      <td>
-                        <span className={styles.mutedCell}>
-                          {topicTitleFor(row.group)}
-                        </span>
-                      </td>
+                            {isLeaderForRow ? (
+                              <span className={styles.leaderBadge}>
+                                <Crown size={11} aria-hidden />
+                                {t(
+                                  'student.phaseReport.table.roleBadge',
+                                  'Leader',
+                                )}
+                              </span>
+                            ) : null}
+                          </div>
+                        </td>
+                      ) : null}
+                      {row.topicRowSpan > 0 ? (
+                        <td rowSpan={row.topicRowSpan} className={styles.spannedCell}>
+                          <span className={styles.mutedCell}>
+                            {topicTitleFor(row.group)}
+                          </span>
+                        </td>
+                      ) : null}
                       <td>
                         <span className={styles.milestoneName}>
                           {report?.milestoneTitle || phaseLabel}

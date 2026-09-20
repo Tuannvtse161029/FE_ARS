@@ -105,13 +105,19 @@ export interface SeminarCalendarProps {
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Hours shown in the week/day view (07:00 – 22:00). */
-const CAL_START_HOUR = 7;
-const CAL_END_HOUR = 22;
-const TOTAL_HOURS = CAL_END_HOUR - CAL_START_HOUR; // 15
+/**
+ * Hours shown in the week/day view (00:00 – 24:00, full 24-hour day).
+ * Bug fix (Sep 2026): previous implementation only showed 07:00 – 22:00,
+ * so early-morning and late-night seminars were clamped to the edges and
+ * looked visually wrong. We now render a true 24-hour timeline so
+ * any hour a seminar can be scheduled is visible.
+ */
+const CAL_START_HOUR = 0;
+const CAL_END_HOUR = 24;
+const TOTAL_HOURS = CAL_END_HOUR - CAL_START_HOUR; // 24
 const SLOT_MINUTES = 30;
 const SLOTS_PER_HOUR = 60 / SLOT_MINUTES; // 2
-const SLOT_HEIGHT_PX = 52; // px per 30-min slot
+const SLOT_HEIGHT_PX = 28; // px per 30-min slot — tightened so 24 hours fit comfortably
 
 const MAX_DOTS_MONTH = 3;
 
@@ -131,10 +137,14 @@ function parseSeminarTime(iso: string | null | undefined): Date | null {
   return new Date(parsed);
 }
 
-/** Returns the top offset (px) for an event block within a day column. */
+/** Returns the top offset (px) for an event block within a day column.
+ *  Clamps to the visible window so events that straddle the boundary
+ *  still render inside the grid instead of disappearing off-screen. */
 function getEventTop(startHour: number, startMinute: number): number {
-  const hourOffset = Math.max(0, startHour - CAL_START_HOUR);
-  const minuteOffset = startMinute >= 30 ? 1 : 0;
+  const safeHour = Math.max(CAL_START_HOUR, Math.min(CAL_END_HOUR, startHour));
+  const safeMinute = Math.max(0, Math.min(59, startMinute));
+  const hourOffset = safeHour - CAL_START_HOUR;
+  const minuteOffset = safeMinute >= 30 ? 1 : 0;
   return (hourOffset * SLOTS_PER_HOUR + minuteOffset) * SLOT_HEIGHT_PX;
 }
 
@@ -148,11 +158,25 @@ function getEventHeight(
   const startSlot =
     (Math.max(0, startHour - CAL_START_HOUR) * SLOTS_PER_HOUR) +
     (startMinute >= 30 ? 1 : 0);
+  // Bug fix (Sep 2026): the end time represents the exclusive upper bound
+  // of the seminar window.  For example, a seminar ending at 18:00 occupies
+  // slots 18-21 (16:00 through 17:59), not slot 18 (the 17:00-17:30 half-
+  // hour).  The original code used the same slot mapping for both start and
+  // end, producing `endSlot === startSlot` and a zero (or near-zero) height
+  // for any event starting on the hour — causing it to render as invisible
+  // or below the visible grid.
+  //
+  // Treatment:
+  //   HH:00 → exclusive upper bound is the *next* half-hour slot
+  //   HH:30 → exclusive upper bound is the first half of the *next* hour
+  //
+  // This makes a 16:00-18:00 seminar span 4 slots (16 slots) = 208px,
+  // and a 16:00-18:30 seminar span 5 slots (260px) — correct durations.
   const endSlot =
     (Math.max(0, endHour - CAL_START_HOUR) * SLOTS_PER_HOUR) +
-    (endMinute >= 30 ? 1 : 0);
+    (endMinute >= 30 ? 2 : 1);
   const slotCount = Math.max(1, endSlot - startSlot);
-  return slotCount * SLOT_HEIGHT_PX - 2; // 2px margin
+  return slotCount * SLOT_HEIGHT_PX - 2; // 2px vertical margin
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -714,8 +738,12 @@ function DayView({
 
   return (
     <div className={styles.weekContainer} ref={containerRef}>
-      {/* Single day header */}
-      <div className={styles.weekHeader} role="row">
+      {/* Single day header — uses dayHeader layout so it lines up with
+          the 2-column grid body below (time gutter + single day column).
+          Without this, the header still used the 7-day `weekHeader` and
+          the day header cell only filled 1/7 of the width while the
+          body filled 100%. */}
+      <div className={styles.dayHeader} role="row">
         <div className={styles.weekTimeGutter} aria-hidden />
         <div
           className={`${styles.weekDayHeader} ${isTodayDay ? styles.weekDayHeaderIsToday : ''}`}
@@ -732,7 +760,7 @@ function DayView({
       </div>
 
       {/* Body */}
-      <div className={styles.weekBody} role="grid">
+      <div className={styles.dayBody} role="grid">
         <div className={styles.weekTimeColumn} aria-hidden>
           {timeLabels.map((label) => (
             <div key={label} className={styles.weekTimeLabel}>
@@ -744,7 +772,6 @@ function DayView({
         <div
           className={styles.weekDayColumn}
           role="gridcell"
-          style={{ gridColumn: '2' }}
         >
           {Array.from({ length: TOTAL_HOURS }, (_, i) => (
             <div key={i} className={styles.weekHourRow} aria-hidden />

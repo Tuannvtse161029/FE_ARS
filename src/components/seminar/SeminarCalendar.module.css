@@ -10,8 +10,9 @@
  *   --ars-paper-alt  = alternate surface
  *   --ars-network    = borders
  *
- * Calendar hours: 07:00 – 22:00 (15 hours, 30-min granularity)
- * Hour slot height: 52px → total day height = 52 × 30 = 1560px
+ * Calendar hours: 00:00 – 24:00 (full 24-hour day, 30-min granularity)
+ * Hour slot height: 56px (2 × 28px half-hour slots) → total day height
+ *                   = 56 × 24 = 1344px
  */
 
 .page {
@@ -521,6 +522,35 @@
   position: relative;
 }
 
+/* ── Day View Header ───────────────────────────────────────────────────────── */
+/* Bug fix (Sep 2026): DayView used to inherit the 7-day `weekHeader` grid,
+   leaving the single day header cell at 1/7 width while the body uses a
+   2-column grid (60px + 1fr). We now declare a dedicated dayHeader class
+   so the header and body line up exactly. */
+
+.dayHeader {
+  display: grid;
+  grid-template-columns: 60px 1fr;
+  border-bottom: 1px solid var(--ars-network, rgba(45, 53, 97, 0.08));
+  position: sticky;
+  top: 0;
+  background: var(--ars-paper-card, #fbf8f1);
+  z-index: 5;
+}
+
+/* ── Day View Body ─────────────────────────────────────────────────────────── */
+/* Bug fix (Sep 2026): DayView was reusing .weekBody which hard-codes 7 day
+   columns, making the single-day view span 1/7 of the available width.
+   The fix uses a 2-column grid (time gutter + event column) so the day
+   fills all available width. The grid-column: 2 on the event column
+   is removed since there is only one day column beside the time gutter. */
+
+.dayBody {
+  display: grid;
+  grid-template-columns: 60px 1fr;
+  position: relative;
+}
+
 .weekTimeColumn {
   display: flex;
   flex-direction: column;
@@ -528,7 +558,7 @@
 }
 
 .weekTimeLabel {
-  height: 52px; /* matches .hourSlot height */
+  height: 56px; /* matches .weekHourRow height: 2 slots × 28px = 56px */
   display: flex;
   align-items: flex-start;
   justify-content: flex-end;
@@ -543,7 +573,10 @@
 .weekDayColumn {
   position: relative;
   border-right: 1px solid var(--ars-network, rgba(45, 53, 97, 0.08));
-  min-height: 780px; /* 15 hours × 52px */
+  /* 24 hours × 2 slots × 28px each = 1344px. The hour rows below
+     contribute the actual rendered height, so this is just a defensive
+     floor for the empty case (no events on a given day). */
+  min-height: 1344px;
 }
 
 .weekDayColumn:last-child {
@@ -551,7 +584,7 @@
 }
 
 .weekHourRow {
-  height: 52px;
+  height: 56px; /* 2 × 30-min slots of 28px each */
   border-bottom: 1px solid var(--ars-network, rgba(45, 53, 97, 0.06));
   position: relative;
 }
@@ -752,13 +785,18 @@
     grid-template-columns: 48px repeat(7, minmax(80px, 1fr));
   }
 
+  .dayHeader,
+  .dayBody {
+    grid-template-columns: 48px 1fr;
+  }
+
   .weekTimeLabel {
     font-size: 9px;
     padding-right: 2px;
   }
 
   .weekDayColumn {
-    min-height: 600px;
+    min-height: 1344px;
   }
 
   .monthDayCell {

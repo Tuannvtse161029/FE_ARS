@@ -1002,16 +1002,27 @@ function WorkspaceView({
           />
         ) : (
           <ul className={styles.memberList}>
-            {members.map((m) => (
-              <li key={m.id ?? m.groupMemberId} className={styles.memberItem}>
-                <span className={styles.memberLabel}>
-                  {copy('Student', 'Sinh viên')} #{m.studentId ?? '?'}
-                </span>
-                <span className={styles.activityPill}>
-                  {m.activityStatus ?? 'ACTIVE'}
-                </span>
-              </li>
-            ))}
+            {members.map((m) => {
+              // Bug fix (Sep 2026): show the BE-provided studentName /
+              // studentEmail / studentAvatarUrl when available. Previously
+              // this card always rendered the synthetic "Student #N"
+              // placeholder even when the BE returned a real display name,
+              // which made the workspace feel broken for students.
+              const displayName =
+                m.studentName?.trim() ||
+                m.studentEmail?.trim() ||
+                (m.studentId != null ? `${copy('Student', 'Sinh viên')} #${m.studentId}` : copy('Unknown member', 'Thành viên ẩn danh'));
+              return (
+                <li key={m.id ?? m.groupMemberId} className={styles.memberItem}>
+                  <span className={styles.memberLabel}>
+                    {displayName}
+                  </span>
+                  <span className={styles.activityPill}>
+                    {m.activityStatus ?? 'ACTIVE'}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
@@ -1129,6 +1140,9 @@ function WorkspaceView({
                         align="right"
                       />
                     </th>
+                    <th>
+                      {copy('Lecturer note', 'Nhận xét của GV')}
+                    </th>
                     <th>{copy('Action', 'Thao tác')}</th>
                   </tr>
                 </thead>
@@ -1209,33 +1223,60 @@ function WorkspaceView({
                             <span className={styles.mutedText}>—</span>
                           )}
                         </td>
+                        <td className={styles.lecturerNoteCell}>
+                          {report.finalOutcomeEvaluation ||
+                          report.lecturerDescription ? (
+                            <p
+                              className={styles.lecturerNoteText}
+                              title={
+                                report.finalOutcomeEvaluation ||
+                                report.lecturerDescription ||
+                                ''
+                              }
+                            >
+                              {report.finalOutcomeEvaluation ||
+                                report.lecturerDescription}
+                            </p>
+                          ) : (
+                            <span className={styles.mutedText}>—</span>
+                          )}
+                        </td>
                         <td>
                           <div className={styles.rowActions}>
+                            {/* Bug fix (Sep 2026): add a per-row CTA that
+                                jumps the user straight to the Submit
+                                Report tab scoped to THIS group, so they
+                                don't have to use the header CTA and
+                                search. Non-leaders get the read-only
+                                "View-only" note instead. */}
+                            {isCurrentUserLeader && isGroupActive ? (
+                              <Link
+                                to={`${ROUTES.SUBMIT_REPORT}?groupId=${group.id}`}
+                                className={styles.submitCtaLinkCompact}
+                              >
+                                <FileText size={12} aria-hidden />
+                                {copy(
+                                  'Go to Submit Report tab',
+                                  'Mở tab Nộp báo cáo',
+                                )}
+                              </Link>
+                            ) : null}
                             {/* View PDF — only when an actual file is on
                                 file. The detail-with-feedback flow has
                                 moved to the Submit Report tab so the
                                 leader can resubmit from the same
                                 context; this page stays read-only. */}
                             {report.reportFileUrl && safeHref(report.reportFileUrl) ? (
-<a
-                              href={safeHref(report.reportFileUrl) ?? '#'}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className={styles.linkBtn}
-                            >
-                              <FileText size={12} aria-hidden />
-                              {copy('Open PDF', 'Xem PDF')}
-                            </a>
-                          ) : null}
-                            {/* Submission flow moved to the dedicated
-                                Submit Report tab. The Group Workspace is
-                                strictly view-only — leaders and members
-                                both read the row state here and click
-                                "Go to Submit Report tab" in the page
-                                header to upload. When the lecturer
-                                deactivates the group the status badge
-                                alone tells the student submissions are
-                                paused. */}
+                              <a
+                                href={safeHref(report.reportFileUrl) ?? '#'}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={styles.linkBtn}
+                              >
+                                <FileText size={12} aria-hidden />
+                                {copy('Open PDF', 'Xem PDF')}
+                              </a>
+                            ) : null}
                           </div>
                         </td>
                       </tr>
