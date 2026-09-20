@@ -39,6 +39,19 @@ interface SeminarDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   seminar: SeminarCard | null;
+  /**
+   * Whether the current viewer is the seminar host (organizerId matches
+   * AND the role can mutate seminars). When false, the "Invited
+   * participants" section is hidden — the attendee list is host-only
+   * information and MUST NOT leak to participants who only joined. The
+   * participant count chip in the section header is also suppressed so
+   * the existence of the section is not advertised to non-hosts.
+   *
+   * Defaults to true to preserve the existing Lecturer / Researcher
+   * surface — only `SeminarParticipationsPage` and the calendar click
+   * on non-host cards need to pass `false`.
+   */
+  isHost?: boolean;
 }
 
 const STATUS_LABELS: Record<string, { en: string; vi: string; tone: string }> = {
@@ -68,6 +81,7 @@ export const SeminarDetailModal = ({
   isOpen,
   onClose,
   seminar,
+  isHost = true,
 }: SeminarDetailModalProps) => {
   const locale = useLocale();
   const isVi = locale === 'vi';
@@ -133,10 +147,19 @@ export const SeminarDetailModal = ({
     };
   }, [isOpen]);
 
-  const participants = useMemo(
+  const rawParticipants = useMemo(
     () => seminar?.participants ?? [],
     [seminar?.participants],
   );
+  // Bug fix (Sep 2026): the participants list is host-only data. We gate
+  // this on `isHost` in TWO places — (1) the JSX below omits the section
+  // for non-hosts, AND (2) here we wipe `participants` to `[]` for non-
+  // hosts. Belt-and-braces: even if some HMR boundary or stale prop
+  // temporarily shows the section's JSX, the rows would render with no
+  // data and the section header's count chip would read `(0)` — neither
+  // exposes attendee PII. This second layer is cheap (just a length
+  // check) and prevents accidental leaks from a stale browser tab.
+  const participants = isHost ? rawParticipants : [];
 
   const startDate = seminar ? parseApiDateTimeAsUtc(seminar.startTime) : null;
   const endDate = seminar ? parseApiDateTimeAsUtc(seminar.endTime) : null;
@@ -180,9 +203,13 @@ export const SeminarDetailModal = ({
                 {seminar.title}
               </h2>
               <p className={styles.subtitle}>
-                {isVi
-                  ? 'Thông tin chi tiết và danh sách người đã được mời.'
-                  : 'Full seminar information and the list of invited participants.'}
+                {isHost
+                  ? isVi
+                    ? 'Thông tin chi tiết và danh sách người đã được mời.'
+                    : 'Full seminar information and the list of invited participants.'
+                  : isVi
+                    ? 'Thông tin chi tiết về buổi hội thảo.'
+                    : 'Full seminar information.'}
               </p>
             </div>
           </div>
@@ -246,15 +273,23 @@ export const SeminarDetailModal = ({
             </div>
           </section>
 
-          {/* Participants */}
-          <section className={styles.section}>
-            <h3 className={styles.sectionTitle}>
-              <Users size={14} aria-hidden />
-              {isVi ? 'Người đã được mời' : 'Invited participants'}
-              <span className={styles.participantCount}>
-                {' '}({participants.length})
-              </span>
-            </h3>
+          {/* Participants — HOST-ONLY data.
+              The attendee list (names, emails, invitation statuses) is
+              information that belongs to the organizer, not to other
+              participants. A non-host viewing this modal must NOT see
+              who else has been invited, who accepted, who declined, or
+              any of the per-row PII. Hide the entire section for non-
+              hosts so neither the list nor a participant-count chip is
+              rendered. See `isHost` prop docstring above. */}
+          {isHost ? (
+            <section className={styles.section}>
+              <h3 className={styles.sectionTitle}>
+                <Users size={14} aria-hidden />
+                {isVi ? 'Người đã được mời' : 'Invited participants'}
+                <span className={styles.participantCount}>
+                  {' '}({participants.length})
+                </span>
+              </h3>
             {participants.length === 0 ? (
               <div className={styles.emptyParticipants}>
                 <AlertTriangle size={14} aria-hidden />
@@ -310,6 +345,7 @@ export const SeminarDetailModal = ({
               </ul>
             )}
           </section>
+          ) : null}
         </div>
 
         <footer className={styles.footer}>

@@ -1398,18 +1398,26 @@ export const SeminarWorkspace = () => {
                               {copy('Setup Feedback', 'Cấu hình Feedback')}
                             </button>
                           )}
-                          <button
-                            type="button"
-                            className={styles.actionBtnGhost}
-                            onClick={() => {
-                              setDetailSeminar(sem);
-                              setShowDetailModal(true);
-                            }}
-                            aria-label={`View seminar details for ${sem.title}`}
-                          >
-                            <Eye size={14} aria-hidden />
-                            {copy('Seminar Detail', 'Chi tiết hội thảo')}
-                          </button>
+                          {/* Bug fix (Sep 2026): the modal opened by this
+                              button shows the full invited-participants
+                              list (host-only data). Gate the button on
+                              `canModify && owns` so participants who
+                              browse the workspace don't see who else has
+                              been invited / accepted / declined. */}
+                          {canModify && owns && (
+                            <button
+                              type="button"
+                              className={styles.actionBtnGhost}
+                              onClick={() => {
+                                setDetailSeminar(sem);
+                                setShowDetailModal(true);
+                              }}
+                              aria-label={`View seminar details for ${sem.title}`}
+                            >
+                              <Eye size={14} aria-hidden />
+                              {copy('Seminar Detail', 'Chi tiết hội thảo')}
+                            </button>
+                          )}
                         </>
                       ) : (
                         <>
@@ -1520,18 +1528,26 @@ export const SeminarWorkspace = () => {
                               {copy('Reactivate', 'Kích hoạt lại')}
                             </button>
                           )}
-                          <button
-                            type="button"
-                            className={styles.actionBtnGhost}
-                            onClick={() => {
-                              setDetailSeminar(sem);
-                              setShowDetailModal(true);
-                            }}
-                            aria-label={`View seminar details for ${sem.title}`}
-                          >
-                            <Eye size={14} aria-hidden />
-                            {copy('Seminar Detail', 'Chi tiết hội thảo')}
-                          </button>
+                          {/* Bug fix (Sep 2026): the modal opened by this
+                              button shows the full invited-participants
+                              list (host-only data). Gate the button on
+                              `canModify && owns` so participants who
+                              browse the workspace don't see who else has
+                              been invited / accepted / declined. */}
+                          {canModify && owns && (
+                            <button
+                              type="button"
+                              className={styles.actionBtnGhost}
+                              onClick={() => {
+                                setDetailSeminar(sem);
+                                setShowDetailModal(true);
+                              }}
+                              aria-label={`View seminar details for ${sem.title}`}
+                            >
+                              <Eye size={14} aria-hidden />
+                              {copy('Seminar Detail', 'Chi tiết hội thảo')}
+                            </button>
+                          )}
                         </>
                       )}
                     </div>
@@ -2439,6 +2455,16 @@ export const SeminarWorkspace = () => {
           setDetailSeminar(null);
         }}
         seminar={detailSeminar}
+        // Bug fix (Sep 2026): the participants list inside this modal
+        // is host-only data (names, emails, invitation statuses of every
+        // invitee). Gate it on `ownsSeminar()` so a participant who
+        // clicks into their own seminar from the calendar does not see
+        // who else has been invited / accepted / declined. The default
+        // (true) keeps the existing Lecturer / Researcher flow working.
+        isHost={
+          detailSeminar != null &&
+          ownsSeminar(detailSeminar, currentUserId, currentRole)
+        }
       />
 
       {/* LIFECYCLE CONFIRM MODAL — owner-only Suspend confirmation.
