@@ -130,6 +130,15 @@ export const SeminarParticipationsPage= () => {
         <SeminarDetailModal
           isOpen={showDetailModal}
           seminar={detailSeminar}
+          // Bug fix (Sep 2026): the Seminar Participations surface is
+          // for participants (Reviewer / Graduate Student / Researcher
+          // / Lecturer when invited to someone else's seminar). The
+          // "Invited participants" list is host-only data — a participant
+          // MUST NOT see who else has been invited / accepted / declined
+          // along with their own PII. The participations page never opens
+          // the modal in host context, so we hard-code `isHost=false` and
+          // drop the participant section entirely.
+          isHost={false}
           onClose={() => {
             setShowDetailModal(false);
             setDetailSeminar(null);
