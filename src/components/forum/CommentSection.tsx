@@ -116,8 +116,6 @@ export const CommentSection = ({
   const { canInteract, reason: interactDisabledReason } = useCanInteractInForum();
   const stored = storage.getUser();
   const currentUserId = user?.userId ?? stored?.id ?? null;
-  const currentUserName =
-    stored?.fullName ?? user?.username ?? stored?.username ?? 'You';
 
   const [resolvedNames, setResolvedNames] = useState<Record<number, string>>({});
 
@@ -135,7 +133,10 @@ export const CommentSection = ({
           }
           setResolvedNames((prev) => ({ ...map, ...prev }));
         }
-      } catch {}
+      } catch {
+        // Silent failure — name resolution is best-effort and the UI
+        // falls back to userId-based placeholders gracefully.
+      }
     }
     loadNames();
     return () => {
@@ -532,15 +533,22 @@ export const CommentSection = ({
     }
   };
 
+  // Bug fix (Sep 2026): check ownership FIRST so the current user's own
+  // comments/replies always show "Me" regardless of whether the BE also
+  // returns their fullName. Previously the function checked fullName first,
+  // causing `currentUserName` (full name) to appear twice — once as the
+  // author label and once as the redundant owner badge that was already
+  // there.  Now both are unified: the author label is "Me" and the
+  // owner badge is removed.
   const renderAuthorLabel = (comment: ForumComment): string => {
+    if (currentUserId != null && comment.userId === currentUserId) {
+      return t('forum.comment.me', 'Me');
+    }
     if (typeof comment.fullName === 'string' && comment.fullName.trim()) {
       return comment.fullName.trim();
     }
     if (typeof comment.author === 'string' && comment.author.trim()) {
       return comment.author.trim();
-    }
-    if (currentUserId != null && comment.userId === currentUserId) {
-      return currentUserName;
     }
     if (comment.userId != null && authorDisplayByUserId?.[comment.userId]) {
       return authorDisplayByUserId[comment.userId];
@@ -651,9 +659,6 @@ export const CommentSection = ({
                       >
                         {renderAuthorLabel(comment)}
                       </button>
-                      {isOwner && (
-                        <span className={styles.commentOwnerBadge}>{currentUserName}</span>
-                      )}
                       {parentComment && (
                         <div className={styles.replyToMeta}>
                           <Reply size={12} className={styles.replyToIcon} aria-hidden="true" />

@@ -529,6 +529,7 @@ export const dictionary: Dictionary = {
     'forum.post.moreOptions': 'Tùy chọn khác',
     'forum.comment.report': 'Báo cáo',
     'forum.comment.actions': 'Hành động với bình luận',
+    'forum.comment.me': 'Tôi',
     'forum.comment.reply': 'Trả lời',
     'forum.comment.replyingTo': 'Đang trả lời {name}',
     'forum.comment.replyPlaceholder': 'Viết câu trả lời…',

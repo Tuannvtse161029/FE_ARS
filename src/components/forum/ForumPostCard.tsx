@@ -32,7 +32,6 @@ export const ForumPostCard = ({
   post,
   isVerified,
   currentUserId,
-  currentUserName,
 }: ForumPostCardProps) => {
   const navigate = useNavigate();
   const { t } = useI18n();
@@ -72,13 +71,17 @@ export const ForumPostCard = ({
   } = useForumComments(post.id);
 
   const authorLabel =
-    (typeof post.fullName === 'string' && post.fullName.trim()) ||
-    (typeof post.author === 'string' && post.author.trim()) ||
+    // Bug fix (Sep 2026): check ownership FIRST so the current user's own
+    // posts always show "Me" regardless of whether the BE returns fullName.
     (post.authorId != null && currentUserId != null && post.authorId === currentUserId
-      ? currentUserName
-      : post.authorId != null
-        ? `Author #${post.authorId}`
-        : 'Unknown author');
+      ? t('forum.comment.me', 'Me')
+      : typeof post.fullName === 'string' && post.fullName.trim()
+        ? post.fullName.trim()
+        : typeof post.author === 'string' && post.author.trim()
+          ? post.author.trim()
+          : post.authorId != null
+            ? `Author #${post.authorId}`
+            : 'Unknown author');
 
   const authorInitials = initialsFromName(authorLabel);
 

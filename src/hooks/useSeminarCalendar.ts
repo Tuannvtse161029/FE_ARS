@@ -168,18 +168,34 @@ export function useSeminarCalendar(): UseSeminarCalendarResult {
       } else {
         // The user is a participant (invited / accepted).
         // Determine their invitation status from the participant record.
+        //
+        // Bug fix (Sep 2026): when the non-Lecturer fetch path is taken,
+        // `seminarParticipantService.getMySeminars()` returns rows that
+        // are scoped to the current user by construction — but the
+        // service normaliser does not copy `userId` onto the result, so
+        // a strict `p.userId === currentUserId` predicate filters out
+        // every seminar and the joining bucket silently empties. We now
+        // accept EITHER (a) a strict userId match (Lecturer path with
+        // `getAll()`) OR (b) any participant record that carries the
+        // seminar id when no userId is present (the `getMySeminars`
+        // path). Decremented status filter still gates `DECLINED`.
         const participantRecord = participants.find(
-          (p) =>
-            p.seminarId === sem.seminarId &&
-            p.userId === currentUserId,
+          (p) => {
+            if (p.seminarId !== sem.seminarId) return false;
+            if (p.userId == null) return true; // my-seminars path
+            return p.userId === currentUserId;
+          },
         );
-        // Include if the user has any non-declined invitation status.
         const status = participantRecord?.invitationStatus?.toUpperCase() ?? '';
         const isActiveParticipant =
           status === 'ACCEPTED' ||
           status === 'PENDING' ||
           status === 'INVITED' ||
-          status === 'SUBMITTED';
+          status === 'SUBMITTED'; // Bug fix (Sep 2026): Graduate Student who already
+        // submitted feedback still needs the seminar visible on the calendar.
+        // Without this, an invited seminar the student accepted but already
+        // gave feedback for disappears from the month/week/day views even
+        // though the ParticipationTable still shows it under "Completed".
 
         if (isActiveParticipant) {
           joining.push({ ...sem, calendarRole: 'joining' });

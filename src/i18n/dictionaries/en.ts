@@ -524,6 +524,7 @@ export const dictionary: Dictionary = {
     'forum.post.moreOptions': 'More options',
     'forum.comment.report': 'Report',
     'forum.comment.actions': 'Comment actions',
+    'forum.comment.me': 'Me',
     'forum.comment.reply': 'Reply',
     'forum.comment.replyingTo': 'Replying to {name}',
     'forum.comment.replyPlaceholder': 'Write a reply…',

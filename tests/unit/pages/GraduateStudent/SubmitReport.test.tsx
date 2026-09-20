@@ -22,24 +22,24 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { SubmitReport } from '../../../src/pages/GraduateStudent/SubmitReport';
-import { buildMockAuth } from '../../../src/utils/mockAuth';
+import { SubmitReport } from '../../../../src/pages/GraduateStudent/SubmitReport';
+import { buildMockAuth } from '../../../../src/utils/mockAuth';
 
 const mockUseAuth = vi.fn();
 const mockUseStudentGroups = vi.fn();
 const mockUsePhasedReports = vi.fn();
 const mockListReportsForGroup = vi.fn();
 
-vi.mock('../../../src/hooks/useAuth', () => ({
+vi.mock('../../../../src/hooks/useAuth', () => ({
   useAuth: () => mockUseAuth(),
 }));
-vi.mock('../../../src/hooks/useStudentGroups', () => ({
+vi.mock('../../../../src/hooks/useStudentGroups', () => ({
   useStudentGroups: () => mockUseStudentGroups(),
 }));
-vi.mock('../../../src/hooks/usePhasedReports', () => ({
+vi.mock('../../../../src/hooks/usePhasedReports', () => ({
   usePhasedReports: () => mockUsePhasedReports(),
 }));
-vi.mock('../../../src/services/phasedReport.service', () => ({
+vi.mock('../../../../src/services/phasedReport.service', () => ({
   listReportsForGroup: (...args: unknown[]) =>
     mockListReportsForGroup(...args),
   phasedReportService: {
@@ -49,7 +49,7 @@ vi.mock('../../../src/services/phasedReport.service', () => ({
   },
   normalizePhasedReportStatus: (s: string | null | undefined) => s,
 }));
-vi.mock('../../../src/components/gradstudent/SubmitReportModal', () => ({
+vi.mock('../../../../src/components/gradstudent/SubmitReportModal', () => ({
   default: ({
     isOpen,
     onSubmitted,
