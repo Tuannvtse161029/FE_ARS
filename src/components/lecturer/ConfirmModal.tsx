@@ -26,6 +26,7 @@
  */
 
 import React from 'react';
+import ReactDOM from 'react-dom';
 import { AlertTriangle, Info, X } from 'lucide-react';
 import styles from './ConfirmModal.module.css';
 
@@ -76,7 +77,7 @@ export const ConfirmModal = ({
     if (e.target === e.currentTarget) onClose();
   };
 
-  return (
+  const modal = (
     <div
       className={styles.overlay}
       role="dialog"
@@ -131,6 +132,8 @@ export const ConfirmModal = ({
       </div>
     </div>
   );
-};
 
-export default ConfirmModal;
+  // Render via portal to ensure fixed positioning is relative to viewport
+  const root = document.getElementById('root');
+  return root ? ReactDOM.createPortal(modal, root) : modal;
+};

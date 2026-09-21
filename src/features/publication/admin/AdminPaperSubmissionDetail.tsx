@@ -8,7 +8,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import {
   AlertCircle,
   CheckCircle2,
@@ -43,7 +43,6 @@ import {
   canRequestRevision,
   canWithdraw,
   doiHref,
-  isPrivateReview,
   resolveIdentifiers,
   statusBadgeClass,
   verificationBadgeClass,
@@ -77,6 +76,19 @@ export const AdminPaperSubmissionDetail = () => {
   useAdminGuard();
 
   const { id } = useParams();
+  const location = useLocation();
+  // When the user lands here from a sibling list (e.g. "Reviewer
+  // Assignments") we want the page chrome — the back button and the
+  // page copy — to refer back to that list, not to "Paper Submissions".
+  const cameFromReviewerAssignments = location.pathname.startsWith(
+    '/admin/reviewer-assignments/',
+  );
+  const backLinkTarget = cameFromReviewerAssignments
+    ? '/admin/reviewer-assignments'
+    : '/admin/paper-submissions';
+  const backLinkLabel = cameFromReviewerAssignments
+    ? 'All reviewer assignments'
+    : 'All submissions';
   const [paper, setPaper] = useState<PublicationPaper | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -291,9 +303,9 @@ export const AdminPaperSubmissionDetail = () => {
           <p>No paper matches id <code>{id}</code>.</p>
           <Link
             className={shared.buttonGhost}
-            to="/admin/paper-submissions"
+            to={backLinkTarget}
           >
-            <ChevronLeft size={14} aria-hidden="true" /> Back to submissions
+            <ChevronLeft size={14} aria-hidden="true" /> {cameFromReviewerAssignments ? 'Back to reviewer assignments' : 'Back to submissions'}
           </Link>
         </div>
       </section>
@@ -339,7 +351,14 @@ export const AdminPaperSubmissionDetail = () => {
   }
 
   const identifiers = resolveIdentifiers(paper);
-  const showPrivateReview = isPrivateReview(paper) || paper.status !== 'PUBLISHED';
+  // The Private Reviewer Record MUST render whenever a reviewer has
+  // actually submitted an evaluation — including for *published* papers.
+  // The historic `isPrivateReview` helper guarded against leaking private
+  // content onto non-Admin surfaces (Researcher / Reviewer / public
+  // catalog) by returning false once the paper went to PUBLISHED, which
+  // is exactly the state in which Admins most need to see the
+  // recommendation that justified publishing it.
+  const showPrivateReview = paper.reviewer != null;
   const hasActions = actions.length > 0;
   const fileHref = paper.fileUrl?.trim();
 
@@ -350,8 +369,8 @@ export const AdminPaperSubmissionDetail = () => {
         description="Admin paper review record. Private review material is only rendered here."
         accent={ROLE_ACCENT}
         actions={
-          <Link className={shared.buttonGhost} to="/admin/paper-submissions">
-            <ChevronLeft size={14} aria-hidden="true" /> All submissions
+          <Link className={shared.buttonGhost} to={backLinkTarget}>
+            <ChevronLeft size={14} aria-hidden="true" /> {backLinkLabel}
           </Link>
         }
       />
@@ -516,8 +535,8 @@ export const AdminPaperSubmissionDetail = () => {
             <dd>{paper.reviewer.privateComments || '—'}</dd>
           </dl>
           {Object.keys(paper.reviewer.privateScores).length > 0 && (
-            <div style={{ marginTop: 14 }}>
-              <h4 style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 700, color: '#334155' }}>
+            <div className={adminStyles.scoresSection}>
+              <h4 className={adminStyles.scoresSectionTitle}>
                 Core criteria scores
               </h4>
               <table className={adminStyles.reviewScoresTable}>
@@ -533,7 +552,7 @@ export const AdminPaperSubmissionDetail = () => {
                     <tr key={criterion}>
                       <td><strong style={{ textTransform: 'capitalize' }}>{criterion}</strong></td>
                       <td align="right"><strong>{score}</strong> / 10</td>
-                      <td style={{ color: '#64748b', fontSize: 12 }}>
+                      <td style={{ color: 'var(--ars-ink-muted)', fontSize: 'var(--font-size-xs)' }}>
                         {paper.reviewer?.privateNotes?.[criterion] || '—'}
                       </td>
                     </tr>
@@ -543,64 +562,37 @@ export const AdminPaperSubmissionDetail = () => {
             </div>
           )}
 
-          {(paper.reviewer.criteria1 || paper.reviewer.criteria2 || paper.reviewer.criteria3) && (
-            <div style={{ marginTop: 16 }}>
-              <h4 style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: '#334155' }}>
-                Specialized and expanded criteria
+          {paper.reviewer.specializedEvaluations && paper.reviewer.specializedEvaluations.length > 0 && (
+            <div className={adminStyles.scoresSection}>
+              <h4 className={adminStyles.scoresSectionTitle}>
+                Specialized criteria scores
               </h4>
-              <div style={{ display: 'grid', gap: 10 }}>
-                {paper.reviewer.criteria1 && (
-                  <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: 6, border: '1px solid #e2e8f0' }}>
-                    <div style={{ fontWeight: 600, color: '#1e293b', fontSize: 13 }}>
-                      1. {paper.reviewer.criteria1}
-                    </div>
-                    {paper.reviewer.expandedCriteria1 && (
-                      <div style={{ color: '#475569', fontSize: 12, margin: '2px 0' }}>
-                        {paper.reviewer.expandedCriteria1}
-                      </div>
-                    )}
-                    {paper.reviewer.evaluationCriteria1 && (
-                      <div style={{ color: '#64748b', fontSize: 11, fontStyle: 'italic' }}>
-                        {paper.reviewer.evaluationCriteria1}
-                      </div>
-                    )}
-                  </div>
-                )}
-                {paper.reviewer.criteria2 && (
-                  <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: 6, border: '1px solid #e2e8f0' }}>
-                    <div style={{ fontWeight: 600, color: '#1e293b', fontSize: 13 }}>
-                      2. {paper.reviewer.criteria2}
-                    </div>
-                    {paper.reviewer.expandedCriteria2 && (
-                      <div style={{ color: '#475569', fontSize: 12, margin: '2px 0' }}>
-                        {paper.reviewer.expandedCriteria2}
-                      </div>
-                    )}
-                    {paper.reviewer.evaluationCriteria2 && (
-                      <div style={{ color: '#64748b', fontSize: 11, fontStyle: 'italic' }}>
-                        {paper.reviewer.evaluationCriteria2}
-                      </div>
-                    )}
-                  </div>
-                )}
-                {paper.reviewer.criteria3 && (
-                  <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: 6, border: '1px solid #e2e8f0' }}>
-                    <div style={{ fontWeight: 600, color: '#1e293b', fontSize: 13 }}>
-                      3. {paper.reviewer.criteria3}
-                    </div>
-                    {paper.reviewer.expandedCriteria3 && (
-                      <div style={{ color: '#475569', fontSize: 12, margin: '2px 0' }}>
-                        {paper.reviewer.expandedCriteria3}
-                      </div>
-                    )}
-                    {paper.reviewer.evaluationCriteria3 && (
-                      <div style={{ color: '#64748b', fontSize: 11, fontStyle: 'italic' }}>
-                        {paper.reviewer.evaluationCriteria3}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+              <table className={adminStyles.reviewScoresTable}>
+                <thead>
+                  <tr>
+                    <th>Criterion</th>
+                    <th align="right">Score</th>
+                    <th>Private Note</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paper.reviewer.specializedEvaluations.map((spec, idx) => (
+                    <tr key={spec.criterionCode ?? idx}>
+                      <td><strong>{spec.criterionTitle}</strong></td>
+                      <td align="right">
+                        {spec.score != null ? (
+                          <strong>{spec.score}{spec.maxScore ? ` / ${spec.maxScore}` : ''}</strong>
+                        ) : (
+                          <span className={shared.fieldHint}>—</span>
+                        )}
+                      </td>
+                      <td style={{ color: 'var(--ars-ink-muted)', fontSize: 'var(--font-size-xs)' }}>
+                        {spec.notes || '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>

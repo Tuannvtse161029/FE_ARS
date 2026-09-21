@@ -99,7 +99,6 @@
 
 .modeToggle:hover:not(:disabled) {
   border-color: var(--accent-primary);
-  color: var(--accent-primary);
 }
 
 .modeToggle:focus-visible {
@@ -112,11 +111,16 @@
   opacity: 0.6;
 }
 
-.modeToggleActive,
-.modeToggleActive:hover {
+.modeToggleActive {
   background: var(--accent-primary);
   border-color: var(--accent-primary);
-  color: var(--button-primary-ink);
+  color: var(--ars-ink);
+}
+
+.modeToggleActive:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: var(--ars-ink);
 }
 
 .batchBar {
@@ -147,13 +151,14 @@
   border: 1px solid var(--accent-primary);
   border-radius: var(--radius-md);
   background: var(--accent-primary);
-  color: var(--button-primary-ink);
+  color: var(--ars-ink);
   font-family: var(--font-family-ui);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
   cursor: pointer;
   transition:
     background-color var(--transition-fast),
+    border-color var(--transition-fast),
     transform 100ms ease;
 }
 
@@ -276,7 +281,7 @@
   border-radius: 999px;
   background: var(--accent-primary);
   display: grid;
-  color: var(--button-primary-ink);
+  color: var(--ars-ink);
   place-items: center;
   font-family: var(--font-family-ui);
   font-weight: var(--font-weight-bold);
@@ -507,10 +512,11 @@
 }
 
 /* ── Assign button + current badge ────────────────────────────────── */
-.assignButton {  border: 1px solid var(--accent-primary);
+.assignButton {
+  border: 1px solid var(--accent-primary);
   background: var(--accent-primary);
   font: var(--font-weight-semibold) var(--font-size-sm) var(--font-family-ui);
-  color: var(--button-primary-ink);
+  color: var(--ars-ink);
   padding: 8px 14px;
   border-radius: var(--radius-md);
   cursor: pointer;
@@ -539,11 +545,10 @@
   box-shadow: none;
 }
 
-.assignButtonSelected,
-.assignButtonSelected:hover {
+.assignButtonSelected {
   background: var(--accent-primary);
   border-color: var(--accent-primary);
-  color: var(--button-primary-ink);
+  color: var(--ars-ink);
 }
 
 /* ── Multi-select card states ─────────────────────────────────────── */
@@ -573,7 +578,7 @@
 .selectCircleOn {
   border-color: var(--accent-primary);
   background: var(--accent-primary);
-  color: var(--button-primary-ink);
+  color: var(--ars-ink);
 }
 
 .cardSelectable {
@@ -791,6 +796,35 @@
   color: var(--status-danger-text);
 }
 
+/* ── Clear search button (shown in empty state when search has text) ─ */
+.clearSearch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--ink-primary);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.clearSearch:hover {
+  background: var(--ars-blue-light);
+  border-color: var(--accent-hover);
+  color: var(--ink-primary);
+}
+
+.clearSearch:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
 /* ── Modal shell (shared by confirm + feedback) ───────────────────── */
 .backdrop {
   position: fixed;
@@ -914,12 +948,13 @@
   gap: 6px;
   border: 1px solid var(--accent-primary);
   background: var(--accent-primary);
-  color: var(--button-primary-ink);
+  color: var(--ars-ink);
 }
 
 .confirmButton:hover:not(:disabled) {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
+  color: var(--ars-ink);
 }
 
 .cancelButton:focus-visible,

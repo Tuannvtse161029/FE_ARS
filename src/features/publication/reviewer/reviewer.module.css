@@ -70,15 +70,14 @@
 
 .tabActive {
   background: var(--accent-primary);
-  color: var(--button-primary-ink);
   border-color: var(--accent-primary);
-  color: var(--ink-primary);
+  color: var(--ars-ink);
 }
 
 .tabActive:hover {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
-  color: var(--ink-primary);
+  color: var(--ars-ink);
 }
 
 .tabCount {
@@ -575,7 +574,30 @@
 .formHeader { display: flex; justify-content: space-between; gap: var(--space-4); align-items: start; padding-bottom: var(--space-4); border-bottom: 1px solid var(--border-subtle); }
 .formHeader h2 { margin: 0 0 var(--space-2); color: var(--ink-primary); font-family: var(--font-family-serif); font-size: var(--font-size-xl); }
 .formHeader p { margin: 0; max-width: 70ch; color: var(--ink-secondary); font-size: var(--font-size-sm); line-height: var(--line-height-normal); }
+.formHeaderActions { display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-2); }
 .requiredLegend { flex: 0 0 180px; padding: var(--space-2) var(--space-3); background: var(--surface-paper); color: var(--ink-secondary); font-size: var(--font-size-xs); line-height: var(--line-height-normal); }
+
+/* ── Jump-to-field button ───────────────────────────────────── */
+.jumpButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-paper);
+  color: var(--ink-primary);
+  cursor: pointer;
+  min-height: 32px;
+  padding: 6px 10px;
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.01em;
+  transition: background var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.jumpButton:hover:not(:disabled) { background: var(--ars-blue-light); border-color: var(--accent-hover); }
+.jumpButton:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.jumpButton:disabled { cursor: not-allowed; opacity: 0.5; }
 /* ── Criterion rubric — structured grid layout ────────────────── */
 .criteriaList {
   display: grid;

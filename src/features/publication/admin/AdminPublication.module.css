@@ -537,14 +537,10 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: var(--ars-admin-light);
-  border: 1px solid transparent;
+  background: var(--ars-info-bg);
+  color: var(--ars-info);
+  border: 1px solid var(--ars-info);
   border-radius: var(--radius-sm);
-  /* Near-black text on the warm-yellow chip surface so the button label
-     reads clearly in BOTH light and dark mode. In dark mode the
-     translucent yellow surface can wash out amber text, so we use the
-     shared --button-primary-ink token (dark) instead. */
-  color: var(--button-primary-ink, #1d1c19);
   padding: 4px 10px;
   font: inherit;
   font-size: var(--font-size-xs);
@@ -558,12 +554,12 @@
 }
 
 .previewButton:hover {
-  background: #92400e;
-  color: #fff7e0;
+  background: var(--ars-info);
+  color: #ffffff;
 }
 
 .previewButton:focus-visible {
-  outline: 2px solid var(--ars-admin-mid);
+  outline: 2px solid var(--ars-info);
   outline-offset: 2px;
 }
 
@@ -1114,4 +1110,62 @@
   background: var(--status-danger-surface);
   border: 1px solid var(--status-danger-text);
   color: var(--status-danger-text);
+}
+
+/* ── Admin reviewer specialized criteria section ───────────────────── */
+.criteriaSection {
+  margin-top: var(--space-4);
+}
+
+.criteriaSectionTitle {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink);
+}
+
+.criteriaCards {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.criteriaCard {
+  padding: var(--space-3) var(--space-4);
+  background: var(--ars-paper-alt);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.criteriaCardTitle {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ars-ink);
+}
+
+.criteriaCardExpanded {
+  margin: var(--space-1) 0;
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-secondary);
+  line-height: var(--line-height-normal);
+}
+
+.criteriaCardReference {
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  font-style: italic;
+  line-height: var(--line-height-normal);
+}
+
+/* ── Core criteria scores section ──────────────────────────────── */
+.scoresSection {
+  margin-top: var(--space-4);
+}
+
+.scoresSectionTitle {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink);
 }

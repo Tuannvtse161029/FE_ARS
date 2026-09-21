@@ -2737,8 +2737,10 @@ export const dictionary: Dictionary = {
       'OpenAlex imports manuscript metadata. You must still select a Major Field and Subfield before submitting your paper.',
     'researcher.form.openalex.chooseClassification': 'Choose research classification',
     'researcher.form.openalex.label.brand': 'OpenAlex',
-    'researcher.form.openalex.label.workId': 'Work ID',
-    'researcher.form.openalex.emptyHint': 'Enter a W-prefixed work ID, then review the preview before any metadata is copied.',
+    'researcher.form.openalex.label.workId': 'OpenAlex Work ID',
+    'researcher.form.openalex.label.workIdDescription':
+      'A unique identifier (e.g. W2741809807) for the scholarly record on OpenAlex. Paste it here to auto-fill the title, abstract, authors, and other metadata.',
+    'researcher.form.openalex.emptyHint': 'Paste the OpenAlex Work ID (starts with "W") found on the OpenAlex page for this paper. ARS will fetch the public metadata so you don\'t need to retype it by hand.',
     'researcher.form.openalex.manualHint': 'ARS major field and subfield must be selected manually.',
     'researcher.form.openalex.invalid.example': 'Enter an OpenAlex work ID (e.g. W2741809807) or use manual entry.',
     'researcher.form.footer.hint': 'Submitting routes the manuscript to Admin screening for review.',

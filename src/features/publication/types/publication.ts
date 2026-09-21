@@ -51,6 +51,19 @@ export interface PublicationReview {
   expandedCriteria3?: string | null;
   evaluationCriteria3?: string | null;
   submittedAt?: string;
+  /**
+   * The structured array of specialized-criterion responses the reviewer
+   * submitted.  Each entry carries the rubric criterion title, the
+   * reviewer-supplied score (out of the rubric's maxScore), and an
+   * optional private note.
+   */
+  specializedEvaluations?: Array<{
+    criterionCode: string;
+    criterionTitle: string;
+    score?: number | null;
+    maxScore?: number | null;
+    notes?: string | null;
+  }>;
 }
 
 export interface PublicationPaper {

@@ -56,6 +56,15 @@ interface AdminListConfig {
   customLabels?: Partial<Record<string, string>>;
   scopeFilter?: (paper: PublicationPaper) => boolean;
   getBucket?: (paper: PublicationPaper) => string;
+  /**
+   * Path prefix for the detail page this list links to. When undefined the
+   * list falls back to `/admin/paper-submissions/:id` so the
+   * `Paper Submissions` sidebar item stays highlighted. Lists whose
+   * sidebar item is *not* `Paper Submissions` (e.g. Reviewer
+   * Assignments) override this so the user is taken to a sibling
+   * detail route whose own sidebar item remains highlighted.
+   */
+  detailPathBase?: string;
 }
 
 type AdminListSortColumn =
@@ -116,6 +125,10 @@ const REVIEWER_ASSIGNMENTS_CONFIG: AdminListConfig = {
   itemLabel: 'assignments',
   scopeFilter: isReviewerAssignedPaper,
   getBucket: getReviewerAssignmentBucket,
+  // Reviewer Assignments list links to a sibling detail route so the
+  // "Reviewer Assignments" sidebar item remains highlighted in the
+  // nav after the click.
+  detailPathBase: '/admin/reviewer-assignments',
   customLabels: {
     UNDER_REVIEW: 'Under Review',
     REVIEWER_ASSIGNED: 'Assigned',
@@ -644,7 +657,7 @@ const AdminList = ({
                           {/* Review record */}
                           <Link
                             className={adminStyles.previewButton}
-                            to={`/admin/paper-submissions/${paper.id}`}
+                            to={`${config.detailPathBase ?? '/admin/paper-submissions'}/${paper.id}`}
                             title={t('admin.publicationLists.recordTooltip', 'Open the submission and reviewer record')}
                           >
                             <FileText size={13} aria-hidden="true" /> {t('admin.publicationLists.viewEvaluation', 'View evaluation')}

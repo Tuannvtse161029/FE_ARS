@@ -104,11 +104,18 @@ export const ResearcherSubmissions = () => {
         if (data && typeof data === 'object') {
           const rawId = (data as { paperId?: unknown; id?: unknown }).paperId ?? (data as { id?: unknown }).id;
           const nextStatus = (data as { status?: unknown }).status;
-          if (rawId !== undefined && typeof nextStatus === 'string') {
+          const nextAuthStatus = (data as { authorshipVerificationStatus?: unknown }).authorshipVerificationStatus;
+          if (rawId !== undefined && (typeof nextStatus === 'string' || typeof nextAuthStatus === 'string')) {
             setPapers((prev) =>
               prev.map((p) => {
                 if (String(p.id) === String(rawId)) {
-                  return { ...p, status: nextStatus as PublicationStatus };
+                  return {
+                    ...p,
+                    ...(typeof nextStatus === 'string' ? { status: nextStatus as PublicationStatus } : {}),
+                    ...(typeof nextAuthStatus === 'string'
+                      ? { researcherVerificationStatus: nextAuthStatus as PublicationPaper['researcherVerificationStatus'] }
+                      : {}),
+                  };
                 }
                 return p;
               }),

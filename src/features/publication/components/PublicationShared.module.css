@@ -183,6 +183,7 @@
   background: var(--accent-hover);
   border-color: var(--accent-hover);
   box-shadow: var(--shadow-sm);
+  color: var(--ars-ink);
 }
 
 .button:active:not(:disabled) {
@@ -289,8 +290,8 @@
   transition: background var(--transition-fast), color var(--transition-fast);
 }
 
-.buttonGhost:hover { background: var(--ars-blue-light); color: var(--ars-blue); }
-.buttonGhost:focus-visible { outline: 2px solid var(--ars-blue-mid); outline-offset: 2px; }
+.buttonGhost:hover:not(:disabled) { background: var(--ars-blue-light); color: var(--ink-primary); }
+.buttonGhost:focus-visible { outline: 2px solid var(--accent-hover); outline-offset: 2px; }
 
 .buttonDanger {
   display: inline-flex;
@@ -366,7 +367,7 @@
   white-space: nowrap;
 }
 
-.citationOption:hover { background: var(--ars-blue-light); }
+.citationOption:hover { background: var(--ars-blue-light); color: var(--ink-primary); }
 .citationOption:focus-visible { outline: 2px solid var(--ars-blue-mid); outline-offset: -2px; }
 .citationStatus { padding: 4px 10px 6px; color: var(--ars-success); font-size: var(--font-size-xs); }
 

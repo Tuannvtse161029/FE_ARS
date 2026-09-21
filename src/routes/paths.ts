@@ -44,6 +44,7 @@ export const ROUTES = {
   ADMIN_PAPER_SUBMISSIONS: '/admin/paper-submissions',
   ADMIN_PAPER_SUBMISSION_DETAIL: '/admin/paper-submissions/:id',
   ADMIN_REVIEWER_ASSIGNMENTS: '/admin/reviewer-assignments',
+  ADMIN_REVIEWER_ASSIGNMENT_DETAIL: '/admin/reviewer-assignments/:id',
   ADMIN_PUBLISHED_PAPERS: '/admin/published-papers',
   PROFILE: '/profile',
   PROFESSIONAL_PROFILE: '/reviewer/professional-profile',

@@ -158,11 +158,11 @@
   border-color: color-mix(in srgb, var(--status-accent-text) 30%, transparent);
 }
 
-/* Verified — blue (admin verified successfully) */
+/* Verified — green (admin verified successfully) */
 .pubBucketVerified {
-  background-color: var(--ars-blue-light);
-  color: var(--ars-blue);
-  border-color: color-mix(in srgb, var(--ars-blue) 30%, transparent);
+  background-color: var(--status-success-surface);
+  color: var(--status-success-text);
+  border-color: color-mix(in srgb, var(--status-success-text) 30%, transparent);
 }
 
 /* Invalid — red (admin rejected: missing info / can't prove authorship) */
@@ -182,9 +182,9 @@
 /* Need Revision — purple (reviewer recommended reject + admin decided
    not to publish) */
 .pubBucketNeedRevision {
-  background-color: #e9d5ff;
-  color: #7c3aed;
-  border-color: color-mix(in srgb, #7c3aed 30%, transparent);
+  background-color: var(--status-accent-surface);
+  color: var(--status-accent-text);
+  border-color: color-mix(in srgb, var(--status-accent-text) 30%, transparent);
 }
 
 /* Other / catch-all (DRAFT, WITHDRAWN, INACTIVE, RECOMMENDED_ACCEPT) */
