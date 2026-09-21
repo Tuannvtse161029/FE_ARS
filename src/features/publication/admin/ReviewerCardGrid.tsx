@@ -276,51 +276,9 @@ export const ReviewerCardGrid = ({
     [reviewers, selectedIds],
   );
 
-  if (loading) {
-    return (
-      <div className={styles.shell} aria-busy="true" aria-live="polite">
-        <div className={styles.skeletonGrid}>
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className={styles.skeletonCard} aria-hidden="true" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className={styles.shell}>
-        <div className={styles.errorState} role="alert">
-          <AlertCircle size={20} aria-hidden="true" />
-          <p>Could not load the reviewer directory.</p>
-          <small>{error}</small>
-        </div>
-      </div>
-    );
-  }
-
-  if (sorted.length === 0) {
-    return (
-      <div className={styles.shell}>
-        <div className={styles.emptyState} role="status">
-          <Users size={20} aria-hidden="true" />
-          <p>
-            {reviewers.length === 0
-              ? 'No reviewers are registered in the system yet.'
-              : 'No reviewers match your search.'}
-          </p>
-          <small>
-            {reviewers.length === 0
-              ? 'Ask Admin to invite reviewers, or use Auto-assign once a profile exists.'
-              : 'Try a different name, email, or field keyword.'}
-          </small>
-        </div>
-      </div>
-    );
-  }
-
-  return (
+  // Always render the toolbar so the search input is never unmounted.
+  // Empty/no-match states are shown inside the main shell below the toolbar.
+  const renderShell = () => (
     <div className={styles.shell}>
       <div className={styles.toolbar}>
         <div className={styles.toolbarLabel}>
@@ -345,6 +303,7 @@ export const ReviewerCardGrid = ({
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             aria-label="Search reviewers"
+            data-testid="reviewer-search-input"
           />
           {supportsBatchAssign ? (
             <button
@@ -397,187 +356,213 @@ export const ReviewerCardGrid = ({
         </div>
       ) : null}
 
-      <div className={styles.grid}>
-        {pageItems.map((row) => {
-          const isMatch =
-            paperSubFieldId != null && row.profile?.subFieldId === paperSubFieldId;
-          const isCurrent = currentReviewerId != null && row.user.id === currentReviewerId;
-          const isSelected = selectedIds.has(row.user.id);
-          return (
-            <article
-              key={row.user.id}
-              className={[
-                styles.card,
-                isMatch ? styles.cardMatch : '',
-                isCurrent ? styles.cardCurrent : '',
-                isSelected ? styles.cardSelected : '',
-                multiSelect ? styles.cardSelectable : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
-              aria-label={`Reviewer ${row.user.fullName ?? row.user.id}`}
-              data-testid={`reviewer-card-${row.user.id}`}
-              onClick={
-                multiSelect
-                  ? () => {
-                      if (!isAssigning) toggleSelect(row);
-                    }
-                  : undefined
-              }
-              role={multiSelect ? 'button' : undefined}
-              aria-pressed={multiSelect ? isSelected : undefined}
-              tabIndex={multiSelect ? 0 : undefined}
-              onKeyDown={
-                multiSelect
-                  ? (event) => {
-                      if (event.key === ' ' || event.key === 'Enter') {
-                        event.preventDefault();
+      {sorted.length === 0 ? (
+        <div className={styles.emptyState} role="status" aria-live="polite">
+          <Users size={20} aria-hidden="true" />
+          <p>
+            {reviewers.length === 0
+              ? 'No reviewers are registered in the system yet.'
+              : 'No reviewers match your search.'}
+          </p>
+          <small>
+            {reviewers.length === 0
+              ? 'Ask Admin to invite reviewers, or use Auto-assign once a profile exists.'
+              : 'Try a different name, email, or field keyword.'}
+          </small>
+          {search.trim() && reviewers.length > 0 ? (
+            <button
+              type="button"
+              className={styles.clearSearch}
+              onClick={() => setSearch('')}
+              data-testid="reviewer-clear-search"
+            >
+              Clear search
+            </button>
+          ) : null}
+        </div>
+      ) : (
+        <div className={styles.grid}>
+          {pageItems.map((row) => {
+            const isMatch =
+              paperSubFieldId != null && row.profile?.subFieldId === paperSubFieldId;
+            const isCurrent = currentReviewerId != null && row.user.id === currentReviewerId;
+            const isSelected = selectedIds.has(row.user.id);
+            return (
+              <article
+                key={row.user.id}
+                className={[
+                  styles.card,
+                  isMatch ? styles.cardMatch : '',
+                  isCurrent ? styles.cardCurrent : '',
+                  isSelected ? styles.cardSelected : '',
+                  multiSelect ? styles.cardSelectable : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                aria-label={`Reviewer ${row.user.fullName ?? row.user.id}`}
+                data-testid={`reviewer-card-${row.user.id}`}
+                onClick={
+                  multiSelect
+                    ? () => {
                         if (!isAssigning) toggleSelect(row);
                       }
-                    }
-                  : undefined
-              }
-            >
-              <div className={styles.cardTopRow}>
-                <div className={styles.identity}>
-                  {row.user.avatarUrl ? (
-                    <img
-                      className={styles.avatar}
-                      src={row.user.avatarUrl}
-                      alt=""
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className={styles.avatarFallback} aria-hidden="true">
-                      {initials(row.user.fullName ?? row.user.email)}
-                    </div>
-                  )}
-                  <div className={styles.identityText}>
-                    <h4 className={styles.name}>
-                      {row.user.fullName?.trim() || `Reviewer #${row.user.id}`}
-                    </h4>
-                    <p className={styles.email} title={row.user.email}>
-                      {row.user.email}
-                    </p>
-                  </div>
-                </div>
-                <div className={styles.cardTopBadges}>
-                  {multiSelect ? (
-                    <span
-                      className={`${styles.selectCircle} ${isSelected ? styles.selectCircleOn : ''}`}
-                      aria-hidden="true"
-                    >
-                      {isSelected ? <CircleCheck size={14} /> : <Circle size={14} />}
-                    </span>
-                  ) : null}
-                  {isMatch ? (
-                    <span
-                      className={styles.matchBadge}
-                      title={`Matches the paper's subfield${paperSubFieldName ? `: ${paperSubFieldName}` : ''}`}
-                    >
-                      <Star size={11} aria-hidden="true" /> Best match
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-
-              <div className={styles.section}>
-                <div className={styles.sectionLabel}>Professional profile</div>
-                <div className={styles.statRow}>
-                  <div className={styles.stat}>
-                    <span className={styles.statValue}>
-                      {formatNumber(row.profile?.hindex)}
-                    </span>
-                    <span className={styles.statLabel}>H-Index</span>
-                  </div>
-                  <div className={styles.stat}>
-                    <span className={styles.statValue}>
-                      {formatNumber(row.profile?.totalCitations)}
-                    </span>
-                    <span className={styles.statLabel}>Citations</span>
-                  </div>
-                  <div className={styles.stat}>
-                    <span className={styles.statValue}>
-                      {formatNumber(row.profile?.publicationCount)}
-                    </span>
-                    <span className={styles.statLabel}>Publications</span>
-                  </div>
-                </div>
-              </div>
-
-              <dl className={styles.fields}>
-                <div>
-                  <dt>Major field</dt>
-                  <dd>{row.profile?.majorFieldName?.trim() || '—'}</dd>
-                </div>
-                <div>
-                  <dt>Sub field</dt>
-                  <dd>
-                    <span className={isMatch ? styles.subFieldMatch : ''}>
-                      {row.profile?.subFieldName?.trim() || '—'}
-                    </span>
-                    {isMatch ? (
-                      <CheckCircle2
-                        size={12}
-                        aria-hidden="true"
-                        className={styles.matchCheck}
+                    : undefined
+                }
+                role={multiSelect ? 'button' : undefined}
+                aria-pressed={multiSelect ? isSelected : undefined}
+                tabIndex={multiSelect ? 0 : undefined}
+                onKeyDown={
+                  multiSelect
+                    ? (event) => {
+                        if (event.key === ' ' || event.key === 'Enter') {
+                          event.preventDefault();
+                          if (!isAssigning) toggleSelect(row);
+                        }
+                      }
+                    : undefined
+                }
+              >
+                <div className={styles.cardTopRow}>
+                  <div className={styles.identity}>
+                    {row.user.avatarUrl ? (
+                      <img
+                        className={styles.avatar}
+                        src={row.user.avatarUrl}
+                        alt=""
+                        loading="lazy"
                       />
+                    ) : (
+                      <div className={styles.avatarFallback} aria-hidden="true">
+                        {initials(row.user.fullName ?? row.user.email)}
+                      </div>
+                    )}
+                    <div className={styles.identityText}>
+                      <h4 className={styles.name}>
+                        {row.user.fullName?.trim() || `Reviewer #${row.user.id}`}
+                      </h4>
+                      <p className={styles.email} title={row.user.email}>
+                        {row.user.email}
+                      </p>
+                    </div>
+                  </div>
+                  <div className={styles.cardTopBadges}>
+                    {multiSelect ? (
+                      <span
+                        className={`${styles.selectCircle} ${isSelected ? styles.selectCircleOn : ''}`}
+                        aria-hidden="true"
+                      >
+                        {isSelected ? <CircleCheck size={14} /> : <Circle size={14} />}
+                      </span>
                     ) : null}
-                  </dd>
+                    {isMatch ? (
+                      <span
+                        className={styles.matchBadge}
+                        title={`Matches the paper's subfield${paperSubFieldName ? `: ${paperSubFieldName}` : ''}`}
+                      >
+                        <Star size={11} aria-hidden="true" /> Best match
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
-              </dl>
 
-              <div className={styles.workload}>
-                <span className={styles.workloadLabel}>Pending reviews</span>
-                <WorkloadPill count={row.pendingCount} />
-              </div>
+                <div className={styles.section}>
+                  <div className={styles.sectionLabel}>Professional profile</div>
+                  <div className={styles.statRow}>
+                    <div className={styles.stat}>
+                      <span className={styles.statValue}>
+                        {formatNumber(row.profile?.hindex)}
+                      </span>
+                      <span className={styles.statLabel}>H-Index</span>
+                    </div>
+                    <div className={styles.stat}>
+                      <span className={styles.statValue}>
+                        {formatNumber(row.profile?.totalCitations)}
+                      </span>
+                      <span className={styles.statLabel}>Citations</span>
+                    </div>
+                    <div className={styles.stat}>
+                      <span className={styles.statValue}>
+                        {formatNumber(row.profile?.publicationCount)}
+                      </span>
+                      <span className={styles.statLabel}>Publications</span>
+                    </div>
+                  </div>
+                </div>
 
-              {multiSelect ? (
-                <button
-                  type="button"
-                  className={`${styles.assignButton} ${isSelected ? styles.assignButtonSelected : ''}`}
-                  disabled={isAssigning}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    toggleSelect(row);
-                  }}
-                  aria-pressed={isSelected}
-                  aria-label={
-                    isSelected
-                      ? `Remove ${row.user.fullName ?? 'this reviewer'} from the batch`
-                      : `Add ${row.user.fullName ?? 'this reviewer'} to the batch`
-                  }
-                  data-testid={`reviewer-toggle-${row.user.id}`}
-                >
-                  {isSelected ? (
-                    <>
-                      <CircleCheck size={13} aria-hidden="true" /> Selected
-                    </>
-                  ) : (
-                    <>
-                      <Circle size={13} aria-hidden="true" /> Select
-                    </>
-                  )}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className={styles.assignButton}
-                  disabled={isAssigning}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setConfirm({ kind: 'single', reviewer: row });
-                  }}
-                  aria-label={`Assign ${row.user.fullName ?? 'this reviewer'} to this paper`}
-                >
-                  {isCurrent ? 'Reassign Reviewer' : 'Assign Reviewer'}
-                </button>
-              )}
-              {!multiSelect && isCurrent ? <small className={styles.currentNote}>Currently assigned</small> : null}
-            </article>
-          );
-        })}
-      </div>
+                <dl className={styles.fields}>
+                  <div>
+                    <dt>Major field</dt>
+                    <dd>{row.profile?.majorFieldName?.trim() || '—'}</dd>
+                  </div>
+                  <div>
+                    <dt>Sub field</dt>
+                    <dd>
+                      <span className={isMatch ? styles.subFieldMatch : ''}>
+                        {row.profile?.subFieldName?.trim() || '—'}
+                      </span>
+                      {isMatch ? (
+                        <CheckCircle2
+                          size={12}
+                          aria-hidden="true"
+                          className={styles.matchCheck}
+                        />
+                      ) : null}
+                    </dd>
+                  </div>
+                </dl>
+
+                <div className={styles.workload}>
+                  <span className={styles.workloadLabel}>Pending reviews</span>
+                  <WorkloadPill count={row.pendingCount} />
+                </div>
+
+                {multiSelect ? (
+                  <button
+                    type="button"
+                    className={`${styles.assignButton} ${isSelected ? styles.assignButtonSelected : ''}`}
+                    disabled={isAssigning}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      toggleSelect(row);
+                    }}
+                    aria-pressed={isSelected}
+                    aria-label={
+                      isSelected
+                        ? `Remove ${row.user.fullName ?? 'this reviewer'} from the batch`
+                        : `Add ${row.user.fullName ?? 'this reviewer'} to the batch`
+                    }
+                    data-testid={`reviewer-toggle-${row.user.id}`}
+                  >
+                    {isSelected ? (
+                      <>
+                        <CircleCheck size={13} aria-hidden="true" /> Selected
+                      </>
+                    ) : (
+                      <>
+                        <Circle size={13} aria-hidden="true" /> Select
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className={styles.assignButton}
+                    disabled={isAssigning}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setConfirm({ kind: 'single', reviewer: row });
+                    }}
+                    aria-label={`Assign ${row.user.fullName ?? 'this reviewer'} to this paper`}
+                  >
+                    {isCurrent ? 'Reassign Reviewer' : 'Assign Reviewer'}
+                  </button>
+                )}
+                {!multiSelect && isCurrent ? <small className={styles.currentNote}>Currently assigned</small> : null}
+              </article>
+            );
+          })}
+        </div>
+      )}
 
       <nav className={styles.pagination} aria-label="Reviewer pages">
         <div className={styles.paginationControls}>
@@ -585,7 +570,7 @@ export const ReviewerCardGrid = ({
             type="button"
             className={styles.pageButton}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={safePage <= 1}
+            disabled={safePage <= 1 || sorted.length === 0}
             aria-label="Previous page"
           >
             <ChevronLeft size={14} aria-hidden="true" /> Prev
@@ -594,7 +579,7 @@ export const ReviewerCardGrid = ({
             type="button"
             className={styles.pageButton}
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={safePage >= totalPages}
+            disabled={safePage >= totalPages || sorted.length === 0}
             aria-label="Next page"
           >
             Next <ChevronRight size={14} aria-hidden="true" />
@@ -645,6 +630,32 @@ export const ReviewerCardGrid = ({
       ) : null}
     </div>
   );
+
+  if (loading) {
+    return (
+      <div className={styles.shell} aria-busy="true" aria-live="polite">
+        <div className={styles.skeletonGrid}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className={styles.skeletonCard} aria-hidden="true" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className={styles.shell}>
+        <div className={styles.errorState} role="alert">
+          <AlertCircle size={20} aria-hidden="true" />
+          <p>Could not load the reviewer directory.</p>
+          <small>{error}</small>
+        </div>
+      </div>
+    );
+  }
+
+  return renderShell();
 };
 
 const workloadTone = (count: number): 'low' | 'med' | 'high' => {

@@ -309,6 +309,7 @@ const App = () => {
                   <Route path={ROUTES.ADMIN_PAPER_SUBMISSIONS} element={<AdminPaperSubmissions />} />
                   <Route path={ROUTES.ADMIN_PAPER_SUBMISSION_DETAIL} element={<AdminPaperSubmissionDetail />} />
                   <Route path={ROUTES.ADMIN_REVIEWER_ASSIGNMENTS} element={<AdminReviewerAssignments />} />
+                  <Route path={ROUTES.ADMIN_REVIEWER_ASSIGNMENT_DETAIL} element={<AdminPaperSubmissionDetail />} />
                   <Route path={ROUTES.ADMIN_PUBLISHED_PAPERS} element={<AdminPublishedPapers />} />
                 </Route>
 

@@ -2238,8 +2238,10 @@ export const dictionary: Dictionary = {
       'OpenAlex nhập dữ liệu bài báo. Bạn vẫn phải chọn Lĩnh vực và Chuyên ngành trước khi nộp bài.',
     'researcher.form.openalex.chooseClassification': 'Chọn phân loại nghiên cứu',
     'researcher.form.openalex.label.brand': 'OpenAlex',
-    'researcher.form.openalex.label.workId': 'Mã công trình',
-    'researcher.form.openalex.emptyHint': 'Nhập ID bắt đầu bằng W rồi xem trước trước khi siêu dữ liệu được sao chép.',
+    'researcher.form.openalex.label.workId': 'Mã công trình OpenAlex',
+    'researcher.form.openalex.label.workIdDescription':
+      'Mã định danh duy nhất (ví dụ W2741809807) của bản ghi học thuật trên OpenAlex. Dán mã này để hệ thống tự động điền tiêu đề, tóm tắt, tác giả và các siêu dữ liệu khác.',
+    'researcher.form.openalex.emptyHint': 'Dán Mã công trình OpenAlex (bắt đầu bằng "W") lấy từ trang OpenAlex của bài báo. ARS sẽ tải siêu dữ liệu công khai để bạn không cần nhập lại thủ công.',
     'researcher.form.openalex.manualHint': 'Lĩnh vực lớn và chuyên ngành phụ của ARS phải chọn thủ công.',
     'researcher.form.openalex.invalid.example': 'Nhập OpenAlex Work ID (ví dụ: W2741809807) hoặc dùng nhập thủ công.',
     'researcher.form.footer.hint': 'Nộp sẽ chuyển bản thảo cho Quản trị viên sàng lọc để phản biện.',

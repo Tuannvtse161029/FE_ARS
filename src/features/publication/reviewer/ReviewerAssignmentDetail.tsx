@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, AlertTriangle, CheckCircle2, RefreshCcw, ClipboardCheck } from 'lucide-react';
+import { ArrowLeft, ArrowUp, AlertTriangle, CheckCircle2, RefreshCcw, ClipboardCheck } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
 import { publicationToast } from '../utils/publicationToast';
 import { statusLabel, reviewTypeLabel, paperTypeLabel, type PublicationPaper } from '../types/publication';
@@ -173,6 +173,61 @@ export const ReviewerAssignmentDetail = () => {
     }
     return true;
   }, [draft, specializedCriteria.items, specializedScores, specializedNotes]);
+
+  /**
+   * findFirstIncompleteField — returns the DOM id of the first empty required field
+   * in evaluation order, or null when all fields are complete.
+   * Used by the "jump to next incomplete" shortcut button.
+   *
+   * Field traversal order mirrors the visual layout:
+   *   1. Criterion scores (score-*) + per-criterion notes (note-*) — 5 pairs
+   *   2. Specialized rubric items (spec-score-*, spec-note-*) — variable count
+   *   3. Private comments (private-comments)
+   */
+  const findFirstIncompleteField = useCallback((): string | null => {
+    // Standard criteria
+    for (const criterion of REVIEWER_CRITERIA) {
+      if (!isCriterionScoreValid(criterion, draft.scores[criterion.key])) {
+        return `score-${criterion.key}`;
+      }
+      if (!draft.perCriterionNotes[criterion.key].trim()) {
+        return `note-${criterion.key}`;
+      }
+    }
+    // Discipline-specific items
+    for (const item of specializedCriteria.items) {
+      const score = specializedScores[item.code];
+      if (typeof score !== 'number' || !Number.isFinite(score) || score < 1 || score > item.maxScore) {
+        return `spec-score-${item.code}`;
+      }
+      if (!(specializedNotes[item.code] ?? '').trim()) {
+        return `spec-note-${item.code}`;
+      }
+    }
+    // Final review
+    if (!draft.privateComments.trim()) return 'private-comments';
+    return null;
+  }, [draft, specializedCriteria.items, specializedScores, specializedNotes]);
+
+  const scrollToField = useCallback((fieldId: string) => {
+    const el = document.getElementById(fieldId);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.focus({ preventScroll: true });
+    }
+  }, []);
+
+  const handleJumpToNextIncomplete = useCallback(() => {
+    const fieldId = findFirstIncompleteField();
+    if (fieldId) {
+      scrollToField(fieldId);
+    } else {
+      publicationToast.success(
+        t('reviewer.detail.jump.allComplete', 'All fields are complete!'),
+        'all-fields-complete',
+      );
+    }
+  }, [findFirstIncompleteField, scrollToField, t]);
 
   /**
    * completion — live progress used by the sticky form footer.
@@ -727,6 +782,17 @@ export const ReviewerAssignmentDetail = () => {
           />
         </div>
       </div>
+      {!requiredFieldsComplete && (
+        <button
+          type="button"
+          className={reviewer.jumpButton}
+          onClick={handleJumpToNextIncomplete}
+          aria-label={t('reviewer.detail.jump.buttonLabel', 'Go to next incomplete field')}
+        >
+          <ArrowUp size={14} aria-hidden />
+          {t('reviewer.detail.jump.buttonText', 'Jump to next incomplete')}
+        </button>
+      )}
       <div className={reviewer.submitBar}>
         <Button
           variant="primary"
@@ -758,9 +824,11 @@ export const ReviewerAssignmentDetail = () => {
             <h2>{t('reviewer.detail.evaluate.heading')}</h2>
             <p>{t('reviewer.detail.evaluate.subtitle')}</p>
           </div>
-          <span className={reviewer.requiredLegend}>
-            {t('reviewer.detail.evaluate.requiredLegend')}
-          </span>
+          <div className={reviewer.formHeaderActions}>
+            <span className={reviewer.requiredLegend}>
+              {t('reviewer.detail.evaluate.requiredLegend')}
+            </span>
+          </div>
         </header>
 
         {/* ── Section: Criterion rubric ───────────────────────────── */}

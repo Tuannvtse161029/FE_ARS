@@ -632,20 +632,9 @@ export const ResearcherSubmissionForm = () => {
           </header>
 
           <div className={styles.openAlexLookupSurface}>
-            <div className={styles.openAlexBrandLockup} aria-label={t('researcher.form.openalex.label.brand')}>
-              <OpenAlexBrandLogo
-                variant="mark"
-                ariaLabel={t('researcher.form.openalex.label.brand')}
-                className={styles.openAlexBrandMark}
-              />
-              <div>
-                <p className={styles.openAlexBrandName}>{t('researcher.form.openalex.label.brand')}</p>
-                <p className={styles.openAlexBrandLabel}>{t('researcher.form.openalex.label.workId')}</p>
-              </div>
-            </div>
-
             <div className={styles.openAlexEntry}>
               <label htmlFor="submission-openalex">{t('researcher.form.openalex.label.workId')}</label>
+              <p className={styles.fieldHint}>{t('researcher.form.openalex.label.workIdDescription')}</p>
               <div className={styles.openAlexInputRow}>
                 <input
                   id="submission-openalex"

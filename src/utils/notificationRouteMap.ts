@@ -396,6 +396,22 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     },
   },
   {
+    kind: 'topic-assigned',
+    prefix: '(Nhóm nghiên cứu) Chủ đề được phân công',
+    spec: {
+      path: ROUTES.STUDENT_RESEARCH_GROUPS,
+      roles: ['Graduate Student', 'Admin'],
+    },
+  },
+  {
+    kind: 'membership-result',
+    prefix: '[Group] membership result',
+    spec: {
+      path: ROUTES.STUDENT_RESEARCH_GROUPS,
+      roles: ['Graduate Student', 'Admin'],
+    },
+  },
+  {
     kind: 'group-invitation',
     prefix: '[Student] group invitation',
     spec: {

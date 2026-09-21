@@ -42,7 +42,7 @@ const stringifyRubricReference = (ref: FormattedRubricReference | undefined | nu
     parts.push(ref.standardReferences.join('; '));
   }
   if (typeof ref.maxScore === 'number') {
-    parts.push(`max=${ref.maxScore}`);
+    parts.push(`Max score: ${ref.maxScore}`);
   }
   return parts.length > 0 ? parts.join(' | ') : null;
 };
@@ -271,6 +271,14 @@ const toPublicationPaper = async (
           expandedCriteria3: evaluation?.expandedCriteria3 ?? null,
           evaluationCriteria3: evaluation?.evaluationCriteria3 ?? null,
           submittedAt: evaluation?.createdAt,
+          specializedEvaluations:
+            evaluation?.specializedEvaluation?.map((item) => ({
+              criterionCode: item.criterionCode,
+              criterionTitle: item.criterionTitle,
+              score: item.score ?? null,
+              maxScore: item.maxScore ?? null,
+              notes: item.notes ?? null,
+            })) ?? undefined,
         }
       : undefined,
     reviewerIdentityPublic: false,
@@ -615,27 +623,7 @@ class ApiPublicationAdapter implements PublicationAdapter {
       throw new PublicationBackendContractError('The backend did not confirm the assignment response.');
     }
     const paper = await paperService.getById(String(current.paperId));
-    const result = toPublicationPaper(paper, refreshed);
-    // Defensive FE notification — notify the paper's author that a
-    // reviewer accepted or rejected the assignment. Best-effort.
-    const paperIdNum = Number(id);
-    if (Number.isInteger(paperIdNum) && paperIdNum > 0) {
-      try {
-        const authorPaper = await paperService.getById(id);
-        if (typeof authorPaper.authorId === 'number' && authorPaper.authorId > 0) {
-          const title = authorPaper.title ?? `Paper #${id}`;
-          await notificationService.create({
-            userId: authorPaper.authorId,
-            message: accepted
-              ? `[Review] accepted: "${title}" — một reviewer đã chấp nhận yêu cầu phản biện.`
-              : `[Review] rejected: "${title}" — một reviewer đã từ chối yêu cầu phản biện.`,
-          });
-        }
-      } catch (notifyErr) {
-        console.warn('Failed to send review-respond notification:', notifyErr);
-      }
-    }
-    return result;
+    return toPublicationPaper(paper, refreshed);
   }
 
   async submitReview(
@@ -710,17 +698,6 @@ class ApiPublicationAdapter implements PublicationAdapter {
       status: 'Completed',
     });
     const currentPaper = await paperService.getById(String(request.paperId));
-    const authorId = currentPaper.authorId ?? (currentPaper as unknown as { userId?: number }).userId;
-    if (authorId) {
-      try {
-        await notificationService.create({
-          userId: authorId,
-          message: `The review of your paper "${currentPaper.title}" has been submitted for editorial consideration.`,
-        });
-      } catch (err) {
-        console.warn('Failed to send reviewer submission notification:', err);
-      }
-    }
     // Always re-fetch the canonical review request after the BE mutations so
     // we never carry a stale snapshot through to the returned PublicationPaper.
     const refreshedRequest = await this.findCurrentReviewerRequest(id);
@@ -742,17 +719,10 @@ class ApiPublicationAdapter implements PublicationAdapter {
       airecommended: false,
       type: 'Editorial',
     });
-    // Defensive FE notification — notify the newly assigned reviewer.
-    // Best-effort: never block the assignment on a notification failure.
-    try {
-      const paper = await paperService.getById(id);
-      await notificationService.create({
-        userId: reviewerId,
-        message: `[Review] new request: "${paper.title ?? `Paper #${id}`}" — bạn vừa được chỉ định phản biện một bài báo mới.`,
-      });
-    } catch (notifyErr) {
-      console.warn('Failed to send review-assignment notification:', notifyErr);
-    }
+    // NOTE: The BE sends the `[Review] new request` notification via SignalR
+    // `ReviewRequestAssigned` and persists a DB row. The FE does NOT send a
+    // duplicate notification here — doing so would create two entries in the
+    // reviewer's notification bell for the same assignment.
     return toPublicationPaper(await paperService.getById(id), request);
   }
 
@@ -775,57 +745,17 @@ class ApiPublicationAdapter implements PublicationAdapter {
       paperId: Number(id),
       reviewerIds: normalizedIds,
     });
-    // Defensive FE notification fan-out — one `[Review] new request` per
-    // assigned reviewer. Best-effort.
-    try {
-      const paper = await paperService.getById(id);
-      const title = paper.title ?? `Paper #${id}`;
-      for (const reviewerId of normalizedIds) {
-        try {
-          await notificationService.create({
-            userId: reviewerId,
-            message: `[Review] new request: "${title}" — bạn vừa được chỉ định phản biện một bài báo mới.`,
-          });
-        } catch (notifyErr) {
-          console.warn('Failed to send review-assignment notification:', notifyErr);
-        }
-      }
-    } catch (notifyFanoutErr) {
-      console.warn('Failed to fan out review-assignment notifications:', notifyFanoutErr);
-    }
+    // NOTE: The BE sends the `[Review] new request` notification via SignalR
+    // `ReviewRequestAssigned` for each assigned reviewer. The FE does NOT send
+    // duplicate notifications here.
     return this.getPaperById(id);
   }
 
   async assignReviewersAuto(id: string, reviewerCount = 3): Promise<unknown> {
     const result = await paperService.assignReviewers(id, reviewerCount);
-    // Defensive FE notification fan-out — the BE may return the
-    // assigned reviewer list inside `result` (typically
-    // `{ paperId, assignedReviewerIds: [...] }`). When present we
-    // notify each newly assigned reviewer; otherwise we silently skip
-    // since the BE contract doesn't expose them here.
-    try {
-      const assigned: number[] = Array.isArray(
-        (result as { assignedReviewerIds?: number[] })?.assignedReviewerIds,
-      )
-        ? (result as { assignedReviewerIds: number[] }).assignedReviewerIds
-        : [];
-      if (assigned.length > 0) {
-        const paper = await paperService.getById(id);
-        const title = paper.title ?? `Paper #${id}`;
-        for (const reviewerId of assigned) {
-          try {
-            await notificationService.create({
-              userId: reviewerId,
-              message: `[Review] new request: "${title}" — bạn vừa được chỉ định phản biện một bài báo mới.`,
-            });
-          } catch (notifyErr) {
-            console.warn('Failed to send review-assignment notification:', notifyErr);
-          }
-        }
-      }
-    } catch (notifyFanoutErr) {
-      console.warn('Failed to fan out auto-assignment notifications:', notifyFanoutErr);
-    }
+    // NOTE: The BE sends the `[Review] new request` notification via SignalR
+    // `ReviewRequestAssigned` for each auto-assigned reviewer. The FE does NOT
+    // send duplicate notifications here.
     return result;
   }
 

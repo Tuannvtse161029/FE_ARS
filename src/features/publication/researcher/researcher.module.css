@@ -657,9 +657,10 @@
 }
 
 .openAlexBrandMark {
-  width: 120px !important;
-  height: 50px !important;
+  width: 24px !important;
+  height: 24px !important;
   flex: 0 0 auto;
+  display: block;
 }
 
 .openAlexBrandName,
@@ -935,9 +936,9 @@
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-4);
-  background: var(--ars-info, #facc15);
-  color: var(--button-primary-ink, #1d1c19);
-  border: 1px solid var(--ars-info, #facc15);
+  background: var(--status-info-surface);
+  color: var(--status-info-text);
+  border: 1px solid color-mix(in srgb, var(--status-info-text) 30%, transparent);
   border-radius: var(--radius-md);
   font-family: var(--font-family-ui);
   font-size: var(--font-size-sm);
@@ -949,8 +950,8 @@
 }
 
 .openAlexReminderAction:hover {
-  background: var(--ars-researcher-mid);
-  border-color: var(--ars-researcher-mid);
+  background: color-mix(in srgb, var(--status-info-surface) 80%, #000000);
+  border-color: var(--status-info-text);
 }
 
 .openAlexReminderAction:focus-visible {
