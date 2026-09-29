@@ -1259,7 +1259,7 @@ export const ResearchGroup = () => {
             >
               <div className={styles.formGroup}>
                 <label className={styles.formLabel} htmlFor="groupName">
-                  {t('lecturer.researchGroups.groupNameLabel')}
+                  {t('lecturer.researchGroups.groupNameLabel')} <span className={styles.requiredStar} aria-hidden="true">*</span>
                 </label>
                 <input
                   id="groupName"

@@ -352,7 +352,7 @@ export const ResearcherSubmissionForm = () => {
 
           <div className={styles.formGrid}>
             <div className={`${styles.field} ${styles.full}`}>
-              <label htmlFor="submission-title">{t('researcher.form.field.title')}</label>
+              <label htmlFor="submission-title">{t('researcher.form.field.title')} <span className={styles.fieldRequired}>*</span></label>
               <input
                 id="submission-title"
                 value={title}
@@ -362,7 +362,7 @@ export const ResearcherSubmissionForm = () => {
             </div>
 
             <div className={`${styles.field} ${styles.full}`}>
-              <label htmlFor="submission-abstract">{t('researcher.form.field.abstract')}</label>
+              <label htmlFor="submission-abstract">{t('researcher.form.field.abstract')} <span className={styles.fieldRequired}>*</span></label>
               <textarea
                 id="submission-abstract"
                 rows={6}
@@ -385,7 +385,7 @@ export const ResearcherSubmissionForm = () => {
 
           <div className={styles.formGrid}>
             <div className={styles.field}>
-              <label htmlFor="submission-author">{t('researcher.form.field.firstAuthor')}</label>
+              <label htmlFor="submission-author">{t('researcher.form.field.firstAuthor')} <span className={styles.fieldRequired}>*</span></label>
               <input
                 id="submission-author"
                 value={authorName}
@@ -395,7 +395,7 @@ export const ResearcherSubmissionForm = () => {
             </div>
 
             <div className={styles.field}>
-              <label htmlFor="submission-institution">{t('researcher.form.field.institution')}</label>
+              <label htmlFor="submission-institution">{t('researcher.form.field.institution')} <span className={styles.fieldRequired}>*</span></label>
               <input
                 id="submission-institution"
                 value={institution}
@@ -535,7 +535,7 @@ export const ResearcherSubmissionForm = () => {
 
           <div className={`${styles.field} ${styles.full}`}>
             <div className={styles.fieldFile}>
-              <label htmlFor="submission-file">{t('researcher.form.file.uploadLabel')}</label>
+              <label htmlFor="submission-file">{t('researcher.form.file.uploadLabel')} <span className={styles.fieldRequired}>*</span></label>
               <input
                 id="submission-file"
                 ref={fileInputRef}

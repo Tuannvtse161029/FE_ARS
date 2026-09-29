@@ -538,7 +538,7 @@ export const CompleteGoogleRegistration = () => {
 
           <div className={styles.fieldGroup}>
             <label htmlFor="role" className={styles.fieldLabel}>
-              Platform Role
+              Platform Role <span aria-hidden="true">*</span>
             </label>
             <select
               id="role"

@@ -6,7 +6,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  /* Match --z-index-modal so portalled nested modals (e.g. SamplePdfModal)
+     stack above this overlay via DOM source order rather than being hidden
+     behind it by a higher z-index. */
+  z-index: var(--z-index-modal, 500);
   padding: var(--space-4);
   animation: fadeIn 0.2s ease-out;
 }
@@ -155,6 +158,54 @@
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+/* Proof document section header (title + view-sample button on one row) */
+.proofSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 0 0 6px 0;
+}
+
+.proofSectionHeader .sectionTitle {
+  margin: 0;
+}
+
+.proofSectionHint {
+  margin: 0 0 10px 0;
+  font-size: 0.78rem;
+  color: var(--ars-ink-muted, #64748b);
+  line-height: 1.45;
+}
+
+.viewSampleBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #1d4ed8;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.viewSampleBtn:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1e3a8a;
+}
+
+.viewSampleBtn:focus-visible {
+  outline: 2px solid #d9a200;
+  outline-offset: 2px;
 }
 
 /* Role Selector Grid */

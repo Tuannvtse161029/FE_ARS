@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   UserPlus,
@@ -21,6 +22,7 @@ import {
   roleRequestService,
   type UserPendingRoleRequest,
 } from '../../services/roleRequest.service';
+import { SamplePdfModal } from '../../pages/Register/components/SamplePdfModal';
 import type { AuthResponse } from '../../types/auth';
 import styles from './RequestAdditionalRoleModal.module.css';
 
@@ -45,6 +47,17 @@ const ELIGIBLE_ADDITIONAL_ROLES_MAP: Record<string, RequestableRole[]> = {
   Researcher: ['Lecturer', 'Reviewer'],
   Reviewer: ['Lecturer', 'Researcher'],
 };
+
+// Graduate Student is the base tier — no one can self-promote into it via
+// the additional-role flow (per the eligibility matrix above and per the
+// academic-governance rules in `ELIGIBLE_ADDITIONAL_ROLES_MAP`). The sample
+// PDF viewer therefore omits that role's tab so users don't see a "request
+// format" for a role they cannot actually request from this dialog.
+const SAMPLE_PDF_ROLES: ReadonlyArray<RequestableRole> = [
+  'Researcher',
+  'Reviewer',
+  'Lecturer',
+];
 
 export const RequestAdditionalRoleModal: React.FC<RequestAdditionalRoleModalProps> = ({
   isOpen,
@@ -113,6 +126,7 @@ export const RequestAdditionalRoleModal: React.FC<RequestAdditionalRoleModalProp
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pendingRequest, setPendingRequest] = useState<UserPendingRoleRequest | null>(null);
+  const [isSampleOpen, setIsSampleOpen] = useState(false);
 
   // Initialize fields from profile on open
   useEffect(() => {
@@ -122,6 +136,7 @@ export const RequestAdditionalRoleModal: React.FC<RequestAdditionalRoleModalProp
     setProofDocumentUrl('');
     setUploadedFile(null);
     setError(null);
+    setIsSampleOpen(false);
 
     if (currentUser?.userId) {
       const existing = roleRequestService.getPendingRequest(currentUser.userId);
@@ -245,7 +260,7 @@ export const RequestAdditionalRoleModal: React.FC<RequestAdditionalRoleModalProp
     setPendingRequest(null);
   };
 
-  return (
+  return createPortal(
     <div
       className={styles.overlay}
       role="presentation"
@@ -474,9 +489,25 @@ export const RequestAdditionalRoleModal: React.FC<RequestAdditionalRoleModalProp
 
           {/* Proof Document Upload */}
           <div>
-            <h3 className={styles.sectionTitle}>
-              {isVi ? '3. Hồ sơ minh chứng năng lực (PDF / Chứng chỉ)' : '3. Proof Document (PDF / CV)'}
-            </h3>
+            <div className={styles.proofSectionHeader}>
+              <h3 className={styles.sectionTitle}>
+                {isVi ? '3. Hồ sơ minh chứng năng lực (PDF / Chứng chỉ)' : '3. Proof Document (PDF / CV)'}
+              </h3>
+              <button
+                type="button"
+                className={styles.viewSampleBtn}
+                onClick={() => setIsSampleOpen(true)}
+                aria-label={isVi ? 'Xem mẫu định dạng PDF' : 'View sample PDF format'}
+              >
+                <ExternalLink size={13} aria-hidden />
+                {isVi ? 'Xem mẫu định dạng PDF' : 'View Sample PDF Format'}
+              </button>
+            </div>
+            <p className={styles.proofSectionHint}>
+              {isVi
+                ? 'Tải lên tài liệu phù hợp với vai trò đang yêu cầu. Bấm "Xem mẫu định dạng PDF" để xem hồ sơ mẫu cho từng vai trò.'
+                : 'Upload a document that matches the role you are requesting. Click "View Sample PDF Format" to see a sample document for each role.'}
+            </p>
 
             {uploadedFile && proofDocumentUrl ? (
               <div className={styles.filePreview}>
@@ -609,7 +640,15 @@ export const RequestAdditionalRoleModal: React.FC<RequestAdditionalRoleModalProp
           </div>
         </form>
       </div>
-    </div>
+
+      <SamplePdfModal
+        isOpen={isSampleOpen}
+        onClose={() => setIsSampleOpen(false)}
+        initialRole={selectedRole}
+        roles={SAMPLE_PDF_ROLES}
+      />
+    </div>,
+    document.body,
   );
 };
 

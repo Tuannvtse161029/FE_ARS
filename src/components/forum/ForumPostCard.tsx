@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import {
   FileText,
@@ -6,12 +7,14 @@ import {
   MoreHorizontal,
   Flag,
   CheckCircle2,
+  X,
 } from 'lucide-react';
 import { CommentSection } from './CommentSection';
 import { FollowButton } from './FollowButton';
 import { ReportModal } from './ReportModal';
 import { ForumPostEngagementRow } from './ForumPostEngagementRow';
 import { UserFlairBadge } from '../../components/medals/UserFlairBadge';
+import { ImageViewer } from '../../components/ImageViewer';
 import { useForumComments } from '../../hooks/useForumComments';
 import { useCanInteractInForum } from '../../hooks/useCanInteractInForum';
 import { useI18n } from '../../i18n/I18nContext';
@@ -20,6 +23,23 @@ import { buildForumPostViewModel } from '../../types/forumPostViewModel';
 import type { ForumPost } from '../../types/forum.types';
 import { initialsFromName, formatRelativeTime } from '../../pages/Forum/forum.utils';
 import styles from './ForumPostCard.module.css';
+
+// `LazyPdfViewer` dynamically imports `pdfjs-dist` (≈ 1.7 MB raw) so it does
+// not bloat the forum feed chunk. The Suspense boundary keeps the surrounding
+// card markup stable while the viewer chunk is fetched on demand.
+const LazyPdfViewer = lazy(() =>
+  import('../../components/PdfViewer/LazyPdfViewer').then((m) => ({ default: m.default }))
+);
+
+const PdfViewerFallback = () => (
+  <div
+    className={styles.pdfViewerFallback}
+    role="status"
+    aria-live="polite"
+  >
+    Loading PDF viewer…
+  </div>
+);
 
 export interface ForumPostCardProps {
   post: ForumPost;
@@ -57,6 +77,31 @@ export const ForumPostCard = ({
   const [isLiked, setIsLiked] = useState<boolean>(initialLiked);
   const [likesCount, setLikesCount] = useState<number>(initialCount);
   const [likeInFlight, setLikeInFlight] = useState<boolean>(false);
+
+  // Attachment viewer state — `null` means no viewer is open. The PDF
+  // viewer keeps the URL string; the image viewer accepts either a URL or
+  // a File/Blob, so we share the same value but pass it through to the
+  // appropriate viewer component.
+  const [pdfViewerUrl, setPdfViewerUrl] = useState<string | null>(null);
+  const [imageViewerSrc, setImageViewerSrc] = useState<string | null>(null);
+
+  // Escape closes the PDF viewer overlay (the ImageViewer already handles
+  // its own Escape internally). We attach the listener only while the
+  // overlay is open and we lock body scroll so background content can't
+  // shift under the modal.
+  useEffect(() => {
+    if (!pdfViewerUrl) return undefined;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setPdfViewerUrl(null);
+    };
+    window.addEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [pdfViewerUrl]);
 
   useEffect(() => {
     setIsLiked(Boolean(post.isLiked ?? post.isLikedByCurrentUser));
@@ -232,26 +277,37 @@ export const ForumPostCard = ({
       {(post.attachedImageUrl || post.attachedPdfUrl) && (
         <div className={styles.attachmentRow}>
           {post.attachedImageUrl && (
-            <a
-              href={post.attachedImageUrl}
-              target="_blank"
-              rel="noreferrer noopener"
-              className={styles.attachmentLink}
+            <button
+              type="button"
+              className={styles.attachmentThumbnailBtn}
+              onClick={() => setImageViewerSrc(post.attachedImageUrl ?? null)}
+              aria-label={t('forum.post.openAttachmentImage', 'View attached image')}
             >
-              <ImageIcon size={14} />
-              Attached image
-            </a>
+              <img
+                src={post.attachedImageUrl}
+                alt={t('forum.post.attachmentImageAlt', 'Attached image preview')}
+                className={styles.attachmentThumbnail}
+                loading="lazy"
+              />
+              <span className={styles.attachmentThumbnailOverlay}>
+                <ImageIcon size={14} aria-hidden="true" />
+                {t('forum.post.viewImage', 'View image')}
+              </span>
+            </button>
           )}
           {post.attachedPdfUrl && (
-            <a
-              href={post.attachedPdfUrl}
-              target="_blank"
-              rel="noreferrer noopener"
-              className={styles.attachmentLink}
+            <button
+              type="button"
+              className={styles.attachmentPdfBtn}
+              onClick={() => setPdfViewerUrl(post.attachedPdfUrl ?? null)}
+              aria-label={t('forum.post.openAttachmentPdf', 'Open attached PDF paper')}
             >
-              <FileText size={14} />
-              Attached PDF
-            </a>
+              <FileText size={14} aria-hidden="true" />
+              {t('forum.post.attachmentPdf', 'Attached PDF')}
+              <span className={styles.attachmentPdfSublabel}>
+                {t('forum.post.attachmentPdfOpen', 'Open viewer')}
+              </span>
+            </button>
           )}
         </div>
       )}
@@ -304,6 +360,42 @@ export const ForumPostCard = ({
           reporterId={currentUserId}
         />
       )}
+
+      {/* In-app PDF viewer for attached PDF paper. Wrapped in a portal
+          overlay + close button because the bare PdfViewer is just the
+          viewer block — it doesn't ship its own modal chrome. */}
+      {pdfViewerUrl &&
+        createPortal(
+          <div
+            className={styles.pdfViewerOverlay}
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('forum.post.attachmentPdfViewerTitle', 'Attached PDF viewer')}
+          >
+            <button
+              type="button"
+              className={styles.pdfViewerCloseBtn}
+              onClick={() => setPdfViewerUrl(null)}
+              aria-label={t('common.close', 'Close')}
+            >
+              <X size={18} aria-hidden="true" />
+            </button>
+            <div className={styles.pdfViewerContainer}>
+              <Suspense fallback={<PdfViewerFallback />}>
+                <LazyPdfViewer url={pdfViewerUrl} />
+              </Suspense>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* In-app image viewer for attached cover image */}
+      <ImageViewer
+        isOpen={imageViewerSrc !== null}
+        src={imageViewerSrc}
+        onClose={() => setImageViewerSrc(null)}
+        title={t('forum.post.attachmentImageViewerTitle', 'Attached image')}
+      />
     </article>
   );
 };

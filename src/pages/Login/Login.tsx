@@ -279,6 +279,7 @@ const Login = () => {
               label={t('auth.email', 'Email address')}
               placeholder=" "
               floatLabel
+              required
               error={errors.email?.message}
               autoComplete="email"
               disabled={isLoading || googlePending}
@@ -299,6 +300,7 @@ const Login = () => {
                 label={t('auth.password', 'Password')}
                 placeholder=" "
                 floatLabel
+                required
                 error={errors.password?.message}
                 autoComplete="current-password"
                 disabled={isLoading || googlePending}

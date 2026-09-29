@@ -11,6 +11,14 @@ interface SamplePdfModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialRole?: RequestableRole;
+  /**
+   * Optional subset of roles to display as tabs. Defaults to all
+   * `REGISTRATION_ROLES`. Use this to hide roles that aren't requestable
+   * in the surrounding flow (e.g. the "Request Additional Role" modal
+   * excludes "Graduate Student" since users cannot self-promote into
+   * that tier — see `RequestAdditionalRoleModal`).
+   */
+  roles?: ReadonlyArray<RequestableRole>;
 }
 
 interface EvidenceRow {
@@ -87,13 +95,21 @@ const PROFILES: Record<RequestableRole, DocumentProfile> = {
   },
 };
 
-export const SamplePdfModal = ({ isOpen, onClose, initialRole = 'Researcher' }: SamplePdfModalProps) => {
+export const SamplePdfModal = ({ isOpen, onClose, initialRole = 'Researcher', roles }: SamplePdfModalProps) => {
   const { t } = useI18n();
+  const visibleRoles = roles ?? REGISTRATION_ROLES;
   const [activeRole, setActiveRole] = useState<RequestableRole>(initialRole);
 
   useEffect(() => {
-    if (isOpen) setActiveRole(initialRole);
-  }, [isOpen, initialRole]);
+    if (!isOpen) return;
+    // If the caller passed a restricted `roles` list and the previous
+    // `activeRole` is no longer on it, snap to the first visible role so
+    // the document area always renders a valid profile.
+    const fallback = visibleRoles.includes(initialRole)
+      ? initialRole
+      : visibleRoles[0];
+    if (fallback) setActiveRole(fallback);
+  }, [isOpen, initialRole, visibleRoles]);
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -109,7 +125,10 @@ export const SamplePdfModal = ({ isOpen, onClose, initialRole = 'Researcher' }: 
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
-  const profile = PROFILES[activeRole];
+  // `activeRole` is always reconciled to `visibleRoles[0]` on open, so
+  // `PROFILES[activeRole]` is guaranteed to be defined. The non-null
+  // assertion keeps the JSX below readable without a redundant fallback.
+  const profile = PROFILES[activeRole]!;
 
   return createPortal(
     <div className={styles.overlay} onClick={(event) => event.target === event.currentTarget && onClose()} role="dialog" aria-modal="true" aria-labelledby="sample-pdf-title">
@@ -119,7 +138,7 @@ export const SamplePdfModal = ({ isOpen, onClose, initialRole = 'Researcher' }: 
           <button type="button" className={styles.closeBtn} onClick={onClose} aria-label={t('common.close', 'Close')}><X size={20} /></button>
         </div>
         <div className={styles.tabs} role="tablist">
-          {REGISTRATION_ROLES.map((role) => (
+          {visibleRoles.map((role) => (
             <button key={role} type="button" role="tab" aria-selected={activeRole === role} className={`${styles.tab} ${activeRole === role ? styles['tab--active'] : ''}`} onClick={() => setActiveRole(role)}>
               {t(`role.${role}`, role)}
             </button>

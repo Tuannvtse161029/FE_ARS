@@ -17,6 +17,7 @@ import {
   TrendingUp,
   BarChart3,
   Users as UsersIcon,
+  Eye,
 } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nContext';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -37,6 +38,8 @@ import { ErrorBanner } from '../../components/ErrorBanner';
 import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/Button/Button';
 import { Input } from '../../components/Input/Input';
+import { ImageViewer } from '../../components/ImageViewer';
+import { LazyPdfViewer } from '../../components/PdfViewer/LazyPdfViewer';
 import { storage } from '../../utils/storage';
 import { PALETTE, initialsFromName } from './forum.utils';
 import styles from './Forum.module.css';
@@ -589,6 +592,13 @@ const CreatePostModal = ({
   const [attachedImage, setAttachedImage] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Local previews — let users verify their PDF/image before the upload
+  // even kicks off. The viewer components accept `File | Blob | string`,
+  // so we can hand them the `File` directly without round-tripping through
+  // Firebase.
+  const [pdfPreviewFile, setPdfPreviewFile] = useState<File | null>(null);
+  const [imagePreviewFile, setImagePreviewFile] = useState<File | null>(null);
+
   // Part 4 — Ctrl/Cmd+Enter publishes the post. The handler runs against
   // a ref so the latest `handlePublish` is always invoked regardless of
   // when the keyboard listener fires.
@@ -614,6 +624,23 @@ const CreatePostModal = ({
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
+  // Escape closes the local PDF preview overlay (the ImageViewer already
+  // closes itself on Escape). Lock body scroll while the PDF overlay is
+  // open so background content can't shift under the modal.
+  useEffect(() => {
+    if (!pdfPreviewFile) return undefined;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setPdfPreviewFile(null);
+    };
+    window.addEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [pdfPreviewFile]);
+
   // Reset both upload hooks when the modal closes so stale URLs don't bleed
   // into the next open session.
   const reset = useCallback(() => {
@@ -624,6 +651,8 @@ const CreatePostModal = ({
     setPostTags('');
     setAttachedPdf(null);
     setAttachedImage(null);
+    setPdfPreviewFile(null);
+    setImagePreviewFile(null);
     setSubmitError(null);
     setSubmitting(false);
     pdfUpload.resetUpload();
@@ -737,6 +766,7 @@ const CreatePostModal = ({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             maxLength={140}
+            required
           />
 
           {/* Category (optional, free-text until BE ships category list) */}
@@ -766,7 +796,7 @@ const CreatePostModal = ({
           {/* Plain Textarea - content */}
           <div className={styles.fieldGroup}>
             <label className={styles.fieldLabel} htmlFor="post-content">
-              {t('forum.createPost.content', 'Content')} <span className={styles.fieldHint}>({t('common.required')})</span>
+              {t('forum.createPost.content', 'Content')} <span className={styles.requiredStar} aria-hidden="true">*</span>
             </label>
             <textarea
               id="post-content"
@@ -796,45 +826,81 @@ const CreatePostModal = ({
             </div>
           </div>
 
-          {/* Attachment Buttons — UI only for now, see report */}
-          <div className={styles.attachmentRow}>
-            <button
-              type="button"
-              className={styles.attachPdfBtn}
-              onClick={() => pdfInputRef.current?.click()}
-            >
-              <FileText size={16} />
-              Attach PDF Paper
-            </button>
-            <input
-              type="file"
-              ref={pdfInputRef}
-              accept=".pdf"
-              className={styles.hiddenInput}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) setAttachedPdf(file);
-              }}
-            />
+          {/* Attachments — PDF paper + cover image, presented as paired
+              drop-tile buttons rather than bare icon+text buttons. Each
+              tile shows the file type, an upload icon, and (once a file
+              is attached) the file name + a small remove control. */}
+          <div className={styles.fieldGroup}>
+            <label className={styles.fieldLabel}>
+              {t('forum.createPost.attachments', 'Attachments')}
+              <span className={styles.fieldHint}>
+                ({t('common.optional')}, {t('forum.createPost.attachmentsHint', 'PDF + image')})
+              </span>
+            </label>
 
-            <button
-              type="button"
-              className={styles.uploadImgBtn}
-              onClick={() => imageInputRef.current?.click()}
-            >
-              <ImageIcon size={16} />
-              Upload Image
-            </button>
-            <input
-              type="file"
-              ref={imageInputRef}
-              accept="image/*"
-              className={styles.hiddenInput}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) setAttachedImage(file);
-              }}
-            />
+            <div className={styles.attachmentRow}>
+              <button
+                type="button"
+                className={styles.attachmentTile}
+                data-kind="pdf"
+                onClick={() => pdfInputRef.current?.click()}
+                disabled={submitting || pdfUpload.isUploading}
+                aria-label={t('forum.createPost.attachPdfAria', 'Attach PDF paper')}
+              >
+                <span className={styles.attachmentTileIcon} aria-hidden="true">
+                  <FileText size={18} />
+                </span>
+                <span className={styles.attachmentTileBody}>
+                  <span className={styles.attachmentTileTitle}>
+                    {t('forum.createPost.attachPdf', 'Attach PDF Paper')}
+                  </span>
+                  <span className={styles.attachmentTileSub}>
+                    {t('forum.createPost.attachPdfHint', '.pdf · up to 20 MB')}
+                  </span>
+                </span>
+              </button>
+              <input
+                type="file"
+                ref={pdfInputRef}
+                accept=".pdf"
+                className={styles.hiddenInput}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) setAttachedPdf(file);
+                }}
+              />
+
+              <button
+                type="button"
+                className={styles.attachmentTile}
+                data-kind="image"
+                onClick={() => imageInputRef.current?.click()}
+                disabled={submitting || imageUpload.isUploading}
+                aria-label={t('forum.createPost.attachImageAria', 'Upload cover image')}
+              >
+                <span className={styles.attachmentTileIcon} aria-hidden="true">
+                  <ImageIcon size={18} />
+                </span>
+                <span className={styles.attachmentTileBody}>
+                  <span className={styles.attachmentTileTitle}>
+                    {t('forum.createPost.attachImage', 'Upload Image')}
+                  </span>
+                  <span className={styles.attachmentTileSub}>
+                    {t('forum.createPost.attachImageHint', 'JPG / PNG · optional cover')}
+                  </span>
+                </span>
+              </button>
+              <input
+                type="file"
+                ref={imageInputRef}
+                accept="image/*"
+                className={styles.hiddenInput}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) setAttachedImage(file);
+                }}
+              />
+            </div>
           </div>
 
           {/* Show attached files (UI-only preview; not yet uploaded) */}
@@ -842,12 +908,29 @@ const CreatePostModal = ({
             <div className={styles.attachedFilesList}>
               {attachedPdf && (
                 <div className={styles.attachedFile}>
-                  <FileText size={14} />
-                  <span className={styles.attachedFileName}>{attachedPdf.name}</span>
+                  <span className={styles.attachedFileIcon} data-kind="pdf" aria-hidden="true">
+                    <FileText size={14} />
+                  </span>
+                  <span className={styles.attachedFileMeta}>
+                    <span className={styles.attachedFileName}>{attachedPdf.name}</span>
+                    <span className={styles.attachedFileSize}>
+                      {(attachedPdf.size / 1024 / 1024).toFixed(2)} MB · PDF
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    className={styles.previewFileBtn}
+                    onClick={() => setPdfPreviewFile(attachedPdf)}
+                    aria-label={t('forum.createPost.previewPdfAria', 'Preview attached PDF')}
+                  >
+                    <Eye size={14} aria-hidden="true" />
+                    {t('forum.createPost.preview', 'Preview')}
+                  </button>
                   <button
                     type="button"
                     className={styles.removeFileBtn}
                     onClick={() => setAttachedPdf(null)}
+                    aria-label={t('forum.createPost.removePdfAria', 'Remove attached PDF')}
                   >
                     <X size={12} />
                   </button>
@@ -855,12 +938,29 @@ const CreatePostModal = ({
               )}
               {attachedImage && (
                 <div className={styles.attachedFile}>
-                  <ImageIcon size={14} />
-                  <span className={styles.attachedFileName}>{attachedImage.name}</span>
+                  <span className={styles.attachedFileIcon} data-kind="image" aria-hidden="true">
+                    <ImageIcon size={14} />
+                  </span>
+                  <span className={styles.attachedFileMeta}>
+                    <span className={styles.attachedFileName}>{attachedImage.name}</span>
+                    <span className={styles.attachedFileSize}>
+                      {(attachedImage.size / 1024 / 1024).toFixed(2)} MB · Image
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    className={styles.previewFileBtn}
+                    onClick={() => setImagePreviewFile(attachedImage)}
+                    aria-label={t('forum.createPost.previewImageAria', 'Preview attached image')}
+                  >
+                    <Eye size={14} aria-hidden="true" />
+                    {t('forum.createPost.preview', 'Preview')}
+                  </button>
                   <button
                     type="button"
                     className={styles.removeFileBtn}
                     onClick={() => setAttachedImage(null)}
+                    aria-label={t('forum.createPost.removeImageAria', 'Remove attached image')}
                   >
                     <X size={12} />
                   </button>
@@ -931,7 +1031,7 @@ const CreatePostModal = ({
         </div>
 
         <div className={styles.modalFooter}>
-          <Button variant="secondary" onClick={onClose} disabled={submitting}>
+          <Button variant="danger" onClick={onClose} disabled={submitting}>
             Cancel
           </Button>
           <Button
@@ -948,6 +1048,39 @@ const CreatePostModal = ({
             Publish post
           </Button>
         </div>
+
+        {/* Local previews — opened from the "Preview" buttons on the
+            attached-files list. They use the same viewer components
+            that the post card uses, so users get a consistent preview
+            UX before publish and after. */}
+        <ImageViewer
+          isOpen={imagePreviewFile !== null}
+          src={imagePreviewFile}
+          onClose={() => setImagePreviewFile(null)}
+          title={imagePreviewFile?.name ?? t('forum.createPost.previewImageTitle', 'Image preview')}
+        />
+        {pdfPreviewFile &&
+          createPortal(
+            <div
+              className={styles.pdfPreviewOverlay}
+              role="dialog"
+              aria-modal="true"
+              aria-label={t('forum.createPost.previewPdfTitle', 'PDF preview')}
+            >
+              <button
+                type="button"
+                className={styles.pdfPreviewCloseBtn}
+                onClick={() => setPdfPreviewFile(null)}
+                aria-label={t('common.close', 'Close')}
+              >
+                <X size={18} aria-hidden="true" />
+              </button>
+              <div className={styles.pdfPreviewContainer}>
+                <LazyPdfViewer url={pdfPreviewFile} />
+              </div>
+            </div>,
+            document.body
+          )}
       </div>
     </div>,
     document.body

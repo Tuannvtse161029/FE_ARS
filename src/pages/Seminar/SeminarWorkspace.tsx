@@ -1631,7 +1631,7 @@ export const SeminarWorkspace = () => {
 
               <div className={styles.formGroup}>
                 <label className={styles.formLabel} htmlFor="seminar-name">
-                  {copy('Seminar Name', 'Tên buổi hội thảo')}
+                  {copy('Seminar Name', 'Tên buổi hội thảo')} <span className={styles.requiredStar} aria-hidden="true">*</span>
                 </label>
                 <input
                   id="seminar-name"
@@ -1699,7 +1699,7 @@ export const SeminarWorkspace = () => {
 
               <div className={styles.formGroup}>
                 <label className={styles.formLabel} htmlFor="seminar-date">
-                  {copy('Date & Time', 'Ngày & Giờ')}
+                  {copy('Date & Time', 'Ngày & Giờ')} <span className={styles.requiredStar} aria-hidden="true">*</span>
                 </label>
                 <input
                   id="seminar-date"
@@ -1714,7 +1714,7 @@ export const SeminarWorkspace = () => {
 
               <div className={styles.formGroup}>
                 <label className={styles.formLabel} htmlFor="seminar-details">
-                  {copy('Seminar Details', 'Nội dung chi tiết')}
+                  {copy('Seminar Details', 'Nội dung chi tiết')} <span className={styles.requiredStar} aria-hidden="true">*</span>
                 </label>
                 <textarea
                   id="seminar-details"

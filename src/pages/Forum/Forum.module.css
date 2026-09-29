@@ -802,6 +802,108 @@
   display: none;
 }
 
+/* ─── Attachment tile buttons (PDF paper + cover image) ─── */
+/* The tiles are styled as paired drop-zone cards sitting side-by-side
+   inside the attachments field group. They behave as clickable surfaces
+   (hover lift, dashed idle border, icon chip) instead of inline text
+   buttons — the previous styling looked unpolished and offered no
+   affordance for "drop a file here" semantics. */
+.attachmentRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+@media (max-width: 520px) {
+  .attachmentRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.attachmentTile {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  background-color: var(--surface-raised);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    transform var(--transition-fast);
+  color: var(--ink-primary);
+  font-family: inherit;
+}
+
+.attachmentTile:hover:not(:disabled) {
+  border-color: var(--accent-primary);
+  background-color: var(--surface-selected);
+  box-shadow: var(--shadow-sm);
+}
+
+.attachmentTile:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-color: var(--accent-primary);
+}
+
+.attachmentTile:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.attachmentTile:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* Slight tint on the icon chip based on kind, keeping PDF and image
+   visually distinct without committing to two unrelated palettes. */
+.attachmentTile[data-kind='pdf'] .attachmentTileIcon {
+  background-color: color-mix(in srgb, var(--ars-error) 12%, var(--surface-sunken));
+  color: var(--ars-error);
+}
+
+.attachmentTile[data-kind='image'] .attachmentTileIcon {
+  background-color: color-mix(in srgb, var(--accent-primary) 14%, var(--surface-sunken));
+  color: var(--accent-primary);
+}
+
+.attachmentTileIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  background-color: var(--surface-sunken);
+  color: var(--ink-secondary);
+}
+
+.attachmentTileBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0; /* allow truncation of long filenames */
+}
+
+.attachmentTileTitle {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ink-primary);
+  line-height: 1.2;
+}
+
+.attachmentTileSub {
+  font-size: var(--font-size-xs);
+  color: var(--ink-muted);
+  line-height: 1.2;
+}
+
 .attachedFilesList {
   display: flex;
   flex-direction: column;
@@ -811,7 +913,7 @@
 .attachedFile {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-3);
   padding: var(--space-2) var(--space-3);
   background-color: var(--ars-paper-alt);
   border: 1px solid var(--ars-network);
@@ -820,34 +922,166 @@
   color: var(--ars-ink-soft);
 }
 
-.attachedFileName {
+.attachedFileIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  background-color: var(--surface-sunken);
+}
+
+.attachedFileIcon[data-kind='pdf'] {
+  color: var(--ars-error);
+  background-color: color-mix(in srgb, var(--ars-error) 12%, var(--surface-sunken));
+}
+
+.attachedFileIcon[data-kind='image'] {
+  color: var(--accent-primary);
+  background-color: color-mix(in srgb, var(--accent-primary) 14%, var(--surface-sunken));
+}
+
+.attachedFileMeta {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.attachedFileName {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-weight: var(--font-weight-medium);
+  color: var(--ink-primary);
+}
+
+.attachedFileSize {
+  font-size: var(--font-size-xs);
+  color: var(--ink-muted);
 }
 
 .removeFileBtn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
-  border: none;
+  width: 26px;
+  height: 26px;
+  border: 1px solid transparent;
   border-radius: 999px;
   background-color: var(--ars-error-bg);
   color: var(--ars-error);
   cursor: pointer;
-  transition: background-color var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    transform var(--transition-fast);
   flex-shrink: 0;
 }
 
 .removeFileBtn:hover {
-  background-color: rgba(153, 27, 27, 0.18);
+  background-color: var(--status-danger-surface);
+  border-color: var(--status-danger-text);
+  transform: scale(1.05);
 }
 
 .removeFileBtn:focus-visible {
   outline: 2px solid var(--ars-error);
+  outline-offset: 2px;
+}
+
+/* ─── Preview button on attached-files list ───────────────── */
+/* Inline "Preview" affordance so users can verify their pick before
+   publish. Opens the same viewer components the post card uses. */
+.previewFileBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background-color: var(--surface-raised);
+  color: var(--ink-primary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  font-family: inherit;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.previewFileBtn:hover {
+  background-color: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: var(--button-primary-ink);
+}
+
+.previewFileBtn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* ─── Local PDF preview overlay (Create-Post modal) ──────── */
+/* Mirrors the post-card viewer overlay so the create flow and the
+   read flow agree on the same modal chrome. */
+.pdfPreviewOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100; /* above the create-post modal (z-index 1000) */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  background-color: rgba(15, 18, 32, 0.78);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.pdfPreviewContainer {
+  position: relative;
+  width: min(96vw, 1100px);
+  height: min(94vh, 820px);
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+}
+
+.pdfPreviewCloseBtn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--surface-raised);
+  color: var(--ink-primary);
+  cursor: pointer;
+  z-index: 2;
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast);
+  transform: translate(40%, -40%);
+}
+
+.pdfPreviewCloseBtn:hover {
+  background: var(--status-danger-surface);
+  color: var(--status-danger-text);
+  border-color: var(--status-danger-text);
+}
+
+.pdfPreviewCloseBtn:focus-visible {
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -926,6 +1160,12 @@
   color: var(--ink-muted);
   letter-spacing: 0;
   text-transform: none;
+}
+
+.requiredStar {
+  color: var(--ars-error);
+  margin-left: 2px;
+  font-weight: var(--font-weight-bold);
 }
 
 .modalFooter {

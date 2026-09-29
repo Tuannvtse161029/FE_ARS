@@ -309,6 +309,12 @@ button.avatar:focus-visible { outline: 3px solid var(--ars-yellow, #f2c94c); out
   letter-spacing: 0;
 }
 
+.requiredStar {
+  color: var(--ars-error);
+  margin-left: 2px;
+  font-weight: var(--font-weight-bold);
+}
+
 .input,
 .textarea {
   width: 100%;
@@ -741,4 +747,49 @@ button.avatar:focus-visible { outline: 3px solid var(--ars-yellow, #f2c94c); out
   gap: var(--space-5);
   max-width: 1100px;
   margin: 0 auto;
+}
+
+/* ── Locked profile fields (admin approval required) ─────── */
+/* `fullName`, `academicTitle`, and `institution` cannot be edited from
+ * the Profile form — they require admin approval to change. The input
+ * is rendered read-only with a muted, sunken surface so the user can
+ * still see and copy the value, but cannot type into it. The companion
+ * `.lockedFieldHint` and `.lockedFieldBadge` provide the textual cue
+ * that explains *why* the field is locked. */
+.inputLocked {
+  background: var(--surface-sunken, var(--ars-paper-inset, #f1f5f9));
+  color: var(--ink-muted, var(--ars-ink-muted, #64748b));
+  cursor: not-allowed;
+  border-style: dashed;
+}
+
+.inputLocked:focus,
+.inputLocked:focus-visible {
+  outline: none;
+  border-color: var(--ars-ink-muted);
+  box-shadow: none;
+}
+
+.lockedFieldHint {
+  font-size: 0.6875rem;
+  color: var(--ink-muted, var(--ars-ink-muted, #64748b));
+  font-style: italic;
+  margin-top: 2px;
+}
+
+.lockedFieldBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.625rem;
+  font-weight: var(--font-weight-semibold);
+  font-style: normal;
+  text-transform: none;
+  letter-spacing: 0;
+  margin-left: var(--space-2);
+  padding: 2px var(--space-2);
+  background: var(--surface-paper, var(--ars-paper, #ffffff));
+  border: 1px solid var(--border-subtle, var(--ars-network, #e2e8f0));
+  border-radius: var(--radius-sm, 4px);
+  color: var(--ink-muted, var(--ars-ink-muted, #64748b));
 }
