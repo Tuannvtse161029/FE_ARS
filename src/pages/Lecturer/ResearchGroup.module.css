@@ -635,6 +635,12 @@
   letter-spacing: 0.06em;
 }
 
+.requiredStar {
+  color: var(--ars-error);
+  margin-left: 2px;
+  font-weight: var(--font-weight-bold);
+}
+
 .formInput,
 .formTextarea {
   width: 100%;

@@ -238,6 +238,12 @@
   font-weight: var(--font-weight-semibold);
 }
 
+.requiredStar {
+  color: var(--ars-error);
+  margin-left: 2px;
+  font-weight: var(--font-weight-bold);
+}
+
 .textarea {
   width: 100%;
   resize: vertical;

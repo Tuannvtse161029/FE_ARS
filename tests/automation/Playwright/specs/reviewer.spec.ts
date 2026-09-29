@@ -86,33 +86,36 @@ test('Review Assignments page is reachable', async ({ page }) => {
 
 /**
  * @annotation role: Reviewer
- * @annotation feature: Professional Profile tab
- * @annotation expected: /profile opens the Professional Profile tab for a reviewer
+ * @annotation feature: Profile tab consolidation
+ * @annotation expected: /profile merges the Professional Profile content
+ *                      (research expertise + academic metrics) into the
+ *                      Profile & Expertise tab so reviewers only see two
+ *                      tabs: account (editable, owner-only) and public.
  * @annotation owner: Frontend
  * @annotation confidence: High
  */
-test('Professional Profile tab is reachable from Profile', async ({ page }) => {
+test('Profile & Expertise tab exposes the merged expertise + metrics surface', async ({ page }) => {
   await authenticate(page, 'reviewer');
 
   await test.step('Navigate to the Profile page', async () => {
     await page.goto(ROUTES.PROFILE);
   });
 
-  await test.step('Open the Professional Profile tab', async () => {
+  await test.step('Verify the account tab is the default and shows the merged expertise surface', async () => {
     await expect(page).toHaveURL(/\/profile/, { timeout: 15_000 });
-    await page.getByTestId('profile-tab-professional').click();
-  });
-
-  await test.step('Verify the professional tab panel renders', async () => {
-    await expect(page.getByTestId('profile-tab-professional')).toHaveAttribute(
+    await expect(page.getByTestId('profile-tab-account')).toHaveAttribute(
       'aria-selected',
       'true',
     );
-    await expect(page.getByTestId('profile-tabpanel-professional')).toBeVisible();
+    // The merged tab no longer needs a click — the expertise + metrics
+    // blocks live directly inside the account panel.
+    await expect(page.getByTestId('profile-tabpanel-account')).toBeVisible();
+    await expect(page.getByTestId('research-expertise-section')).toBeVisible();
+    await expect(page.getByTestId('academic-metrics-section')).toBeVisible();
   });
 
   await test.step('Capture evidence', async () => {
-    await page.screenshot({ path: `${process.env.PW_RUN_DIR}/04-professional-profile.png` });
+    await page.screenshot({ path: `${process.env.PW_RUN_DIR}/04-profile-and-expertise.png` });
   });
 });
 

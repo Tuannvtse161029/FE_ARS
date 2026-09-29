@@ -56,7 +56,12 @@ import { FollowListModal } from '../../components/profile/FollowListModal';
 import { ProfilePublicationsSection } from '../../components/profile/ProfilePublicationsSection';
 import { ProfileForumSection } from '../../components/profile/ProfileForumSection';
 import { ProfileSectionTabs, type ProfileTabId } from '../../components/profile/ProfileSectionTabs';
-import { ProfessionalProfileTab } from '../../components/profile/ProfessionalProfileTab';
+import { useReviewerAvailability, useReviewerProfiles } from '../../hooks/useReviewerProfiles';
+import { reviewerService, type ReviewerProfile } from '../../services/reviewer.service';
+import { useMajorFields, useSubFields } from '../../hooks/useMajorFields';
+import type { MajorField, SubField } from '../../types/domain';
+import { parseEntityId } from '../../utils/entityId';
+import professionalStyles from '../../components/profile/ProfessionalProfileTab.module.css';
 import { ProfileBadgesSection } from '../../components/profile/ProfileBadgesSection';
 import { useSearchParams } from 'react-router-dom';
 import { FeaturedFlairPicker } from '../../components/profile/FeaturedFlairPicker';
@@ -68,6 +73,7 @@ import { Button } from '../../components/Button';
 import { SkeletonRow } from '../../components/SkeletonRow';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import { EmptyState } from '../../components/EmptyState';
+import { InlineNotice } from '../../components/InlineNotice/InlineNotice';
 import { OrcidIdentityPanel } from '../../components/orcid/OrcidIdentityPanel';
 import { OrcidIdentityMarker } from '../../components/identity/OrcidIdentityMarker';
 import { isOrcidEligibleRole } from '../../utils/registrationRoles';
@@ -540,16 +546,12 @@ export const Profile = () => {
   // tab strip falls back to the first visible tab automatically.
   const [searchParams] = useSearchParams();
   const requestedTab = searchParams.get('tab');
-  const isEligibleProfessionalRole = roleName === 'Researcher'
-    || roleName === 'Reviewer'
-    || roleName === 'Lecturer';
-  // Owners get all eligible tabs; visitors only get `public`.
-  const visibleTabs: ProfileTabId[] = isOwner
-    ? (isEligibleProfessionalRole ? ['account', 'professional', 'public'] : ['account', 'public'])
-    : ['public'];
+  // After the Profile + Professional Profile merge, every owner sees the
+  // same two-tab strip: `account` (editable) and `public` (read-only).
+  // Visitors still only see `public`.
+  const visibleTabs: ProfileTabId[] = isOwner ? ['account', 'public'] : ['public'];
   const resolveInitialTab = (): ProfileTabId => {
     if (requestedTab === 'account' && visibleTabs.includes('account')) return 'account';
-    if (requestedTab === 'professional' && visibleTabs.includes('professional')) return 'professional';
     if (requestedTab === 'public' && visibleTabs.includes('public')) return 'public';
     return visibleTabs[0];
   };
@@ -561,6 +563,139 @@ export const Profile = () => {
     () => unlockedMedals.filter((m) => m && m.isUnlocked).length,
     [unlockedMedals],
   );
+
+  // ── Merged Professional Profile surface ──────────────────
+  // After folding the Professional tab into the Profile (account) tab,
+  // the same data hooks the old ProfessionalProfileTab used now power the
+  // expertise + metrics blocks rendered inside `tabpanel-account`. We keep
+  // the data flow here (instead of in the inline sub-component) so the
+  // 14-day auto-refresh interval can survive tab switches and edit-mode
+  // toggles without bouncing refetches.
+  const isEligibleProfessionalRole = roleName === 'Researcher'
+    || roleName === 'Reviewer'
+    || roleName === 'Lecturer';
+  const professionalUserId = targetUserId ?? authenticatedUserId ?? undefined;
+  const {
+    profiles: reviewerProfiles,
+    isLoading: isProfLoading,
+    error: profError,
+    refetch: refetchReviewerProfiles,
+  } = useReviewerProfiles();
+  const professionalProfile = useMemo(
+    () => (professionalUserId
+      ? reviewerProfiles.find((p) => p.userId === professionalUserId) ?? null
+      : null),
+    [reviewerProfiles, professionalUserId],
+  );
+  const {
+    isAvailable: reviewerIsAvailable,
+    isLoading: isAvailLoading,
+  } = useReviewerAvailability(professionalUserId);
+
+  // 14-day auto-refresh of academic metrics. The interval fires while the
+  // tab is mounted; cleanup on unmount avoids leaking the timer when the
+  // user signs out or navigates away.
+  const METRICS_REFRESH_MS = 14 * 24 * 60 * 60 * 1000;
+  const [lastMetricsRefresh, setLastMetricsRefresh] = useState<Date | null>(() => new Date());
+  const triggerMetricsRefresh = useCallback(async () => {
+    await refetchReviewerProfiles();
+    setLastMetricsRefresh(new Date());
+  }, [refetchReviewerProfiles]);
+  useEffect(() => {
+    if (!isEligibleProfessionalRole) return undefined;
+    const id = window.setInterval(() => {
+      void triggerMetricsRefresh();
+    }, METRICS_REFRESH_MS);
+    return () => window.clearInterval(id);
+  }, [isEligibleProfessionalRole, triggerMetricsRefresh]);
+
+  // Research Expertise local state — lifted from the old
+  // ProfessionalProfileTab so it can live alongside the merged account tab.
+  const [selectedMajorId, setSelectedMajorId] = useState<number | null>(null);
+  const [selectedSubId, setSelectedSubId] = useState<number | null>(null);
+  const [expertiseFeedback, setExpertiseFeedback] = useState<
+    { type: 'success' | 'error'; message: string } | null
+  >(null);
+  const [isSubmittingExpertise, setIsSubmittingExpertise] = useState(false);
+  const [isExpertiseRetrying, setIsExpertiseRetrying] = useState(false);
+
+  // Load Major Fields + Sub Fields for the expertise selectors.
+  const { fields: majorFields, isLoading: isMajorsLoading } = useMajorFields();
+  const { subFields, isLoading: isSubsLoading } = useSubFields(selectedMajorId);
+
+  // Seed expertise from the current professional profile whenever it
+  // resolves. Mirrors the behaviour of the old ProfessionalProfileTab.
+  useEffect(() => {
+    if (professionalProfile) {
+      setSelectedMajorId(professionalProfile.majorFieldId ?? null);
+      setSelectedSubId(professionalProfile.subFieldId ?? null);
+    }
+  }, [professionalProfile?.userId, professionalProfile?.majorFieldId, professionalProfile?.subFieldId]);
+
+  const isExpertiseValid = selectedMajorId !== null && selectedSubId !== null;
+  const hasExpertiseChanged =
+    selectedMajorId !== (professionalProfile?.majorFieldId ?? null) ||
+    selectedSubId !== (professionalProfile?.subFieldId ?? null);
+
+  const handleMajorChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedMajorId(parseEntityId(event.target.value));
+    setSelectedSubId(null);
+    setExpertiseFeedback(null);
+  };
+  const handleSubChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedSubId(parseEntityId(event.target.value));
+    setExpertiseFeedback(null);
+  };
+  const handleExpertiseRetry = async () => {
+    setIsExpertiseRetrying(true);
+    try {
+      await triggerMetricsRefresh();
+    } finally {
+      setIsExpertiseRetrying(false);
+    }
+  };
+  const handleSaveExpertise = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (
+      !professionalProfile
+      || professionalUserId === undefined
+      || !isExpertiseValid
+      || !hasExpertiseChanged
+      || isSubmittingExpertise
+    ) {
+      if (!isExpertiseValid) {
+        setExpertiseFeedback({
+          type: 'error',
+          message: t('profile.professional.expertise.validation.required'),
+        });
+      }
+      return;
+    }
+    const previousMajor = professionalProfile.majorFieldId;
+    const previousSub = professionalProfile.subFieldId;
+    setIsSubmittingExpertise(true);
+    setExpertiseFeedback(null);
+    try {
+      await reviewerService.update(professionalUserId, {
+        userId: professionalUserId,
+        majorFieldId: selectedMajorId,
+        subFieldId: selectedSubId,
+      });
+      await triggerMetricsRefresh();
+      setExpertiseFeedback({ type: 'success', message: t('profile.professional.expertise.saved') });
+    } catch (saveError) {
+      setSelectedMajorId(previousMajor ?? null);
+      setSelectedSubId(previousSub ?? null);
+      setExpertiseFeedback({
+        type: 'error',
+        message: saveError instanceof Error && saveError.message
+          ? saveError.message
+          : t('profile.professional.expertise.saveFailed'),
+      });
+    } finally {
+      setIsSubmittingExpertise(false);
+    }
+  };
 
   // ── Gender — localStorage-backed override ────────────────
   // The BE's `ProfileUpdateRequest` accepts `gender` (free-form string)
@@ -1156,32 +1291,33 @@ export const Profile = () => {
         />
       ) : null}
 
-      {/* Phase 3 — Three-tab profile strip (Account / Professional /
-          Public). The identity card / banners / ORCID panel / trial
-          countdown stay mounted above the tabs so they read as the
-          profile's "masthead"; the tabs swap the body content below.
-          Edit mode above replaces the tabs entirely so the owner can't
-          navigate away mid-edit.
+      {/* Phase 3 — Two-tab profile strip (Account / Public). The identity
+          card / banners / ORCID panel / trial countdown stay mounted
+          above the tabs so they read as the profile's "masthead"; the tabs
+          swap the body content below. Edit mode above replaces the tabs
+          entirely so the owner can't navigate away mid-edit.
 
-          The public tab is visible to both owner and visitor; the
-          account and professional tabs are owner-only and the strip
-          hides them automatically when `!isOwner` or when the role
-          doesn't own a professional profile. */}
+          The public tab is visible to both owner and visitor; the account
+          tab is owner-only and the strip hides it automatically when
+          `!isOwner`. The merged Profile + Professional Profile content
+          (research expertise + academic metrics) now lives inside the
+          account panel so the owner never has to switch tabs to manage
+          their full identity. */}
       {targetUserId && mode === 'view' ? (
         <>
           <ProfileSectionTabs
             activeTab={activeTab}
             onChange={setActiveTab}
-            showProfessional={isOwner && isEligibleProfessionalRole}
             badgeCount={unlockedBadgeCount}
           />
 
           {/* ── Account tab (owner only) ─────────────────────────
               Owner's private surface: account contact strip + the
               full ProfileView (which includes the owner-only phone /
-              address / DOB / gender columns). The Edit button on the
-              page header flips `mode` to 'edit' and replaces this panel
-              with the ProfileEditForm above. */}
+              address / DOB / gender columns) + research expertise +
+              academic metrics for role-eligible owners. The Edit
+              button on the page header flips `mode` to 'edit' and
+              replaces this panel with the ProfileEditForm above. */}
           <section
             id="profile-tabpanel-account"
             role="tabpanel"
@@ -1202,23 +1338,38 @@ export const Profile = () => {
                   profile={profile}
                   isOwner={isOwner}
                 />
+                <InlineNotice
+                  tone="info"
+                  title={t('profile.edit.lockedFieldsTitle', 'Edit access')}
+                  description={t('profile.edit.lockedFieldsHint')}
+                />
+                {isEligibleProfessionalRole ? (
+                  <ProfessionalExcellenceSection
+                    professionalProfile={professionalProfile}
+                    isProfLoading={isProfLoading}
+                    profError={profError}
+                    onRetry={handleExpertiseRetry}
+                    isRetrying={isExpertiseRetrying}
+                    reviewerIsAvailable={reviewerIsAvailable}
+                    isAvailLoading={isAvailLoading}
+                    roleKey={roleName === 'Researcher' || roleName === 'Reviewer' || roleName === 'Lecturer' ? roleName : 'Reviewer'}
+                    majorFields={majorFields}
+                    isMajorsLoading={isMajorsLoading}
+                    subFields={subFields}
+                    isSubsLoading={isSubsLoading}
+                    selectedMajorId={selectedMajorId}
+                    selectedSubId={selectedSubId}
+                    onMajorChange={handleMajorChange}
+                    onSubChange={handleSubChange}
+                    onSaveExpertise={handleSaveExpertise}
+                    isExpertiseValid={isExpertiseValid}
+                    hasExpertiseChanged={hasExpertiseChanged}
+                    isSubmittingExpertise={isSubmittingExpertise}
+                    expertiseFeedback={expertiseFeedback}
+                    lastMetricsRefresh={lastMetricsRefresh}
+                  />
+                ) : null}
               </>
-            ) : null}
-          </section>
-
-          {/* ── Professional tab (owner + role-eligible only) ────
-              Mounts the ProfessionalProfileTab body which owns its own
-              loading / error / empty states. The strip hides this tab
-              entirely for visitors and for owners whose role doesn't
-              own a professional profile (Graduate Student, Admin). */}
-          <section
-            id="profile-tabpanel-professional"
-            role="tabpanel"
-            hidden={activeTab !== 'professional'}
-            data-testid="profile-tabpanel-professional"
-          >
-            {activeTab === 'professional' && isOwner && isEligibleProfessionalRole ? (
-              <ProfessionalProfileTab userIdOverride={targetUserId} />
             ) : null}
           </section>
 
@@ -1637,18 +1788,27 @@ const ProfileEditForm = ({
       <div className={styles.formGrid}>
         <div className={`${styles.field} ${styles.formGridFull}`}>
           <label className={styles.label} htmlFor="full-name-input">
-            {t('profile.view.fullName', 'Full name')} <span className={styles.labelHint}>{t('profile.edit.requiredTag', '(required)')}</span>
+            {t('profile.view.fullName', 'Full name')} <span className={styles.requiredStar} aria-hidden="true">*</span>
+            <span className={styles.lockedFieldBadge} aria-hidden="true">
+              {t('profile.edit.lockedFieldHint', 'Requires admin approval')}
+            </span>
           </label>
           <input
             id="full-name-input"
             data-testid="profile-input-full-name"
-            className={styles.input}
+            className={`${styles.input} ${styles.inputLocked}`}
             type="text"
             value={draft.fullName}
+            readOnly
+            aria-readonly="true"
             onChange={(event) => onChange('fullName', event.target.value)}
             maxLength={PROFILE_VALIDATION.fullName.maxLength}
+            title={t('profile.edit.lockedFieldTitle', 'This field requires admin approval to change.')}
             {...fieldProps('fullName')}
           />
+          <span className={styles.lockedFieldHint}>
+            {t('profile.edit.lockedFieldHint', 'Requires admin approval')}
+          </span>
           {fieldError('fullName') ? (
             <span className={styles.fieldError} id="full-name-error" data-testid="profile-error-full-name">
               {fieldError('fullName')}
@@ -1659,17 +1819,26 @@ const ProfileEditForm = ({
         <div className={styles.field}>
           <label className={styles.label} htmlFor="academic-title-input">
             {t('profile.view.academicTitle', 'Academic title')}
+            <span className={styles.lockedFieldBadge} aria-hidden="true">
+              {t('profile.edit.lockedFieldHint', 'Requires admin approval')}
+            </span>
           </label>
           <input
             id="academic-title-input"
             data-testid="profile-input-academic-title"
-            className={styles.input}
+            className={`${styles.input} ${styles.inputLocked}`}
             type="text"
             value={draft.academicTitle}
+            readOnly
+            aria-readonly="true"
             onChange={(event) => onChange('academicTitle', event.target.value)}
             maxLength={PROFILE_VALIDATION.academicTitle.maxLength}
+            title={t('profile.edit.lockedFieldTitle', 'This field requires admin approval to change.')}
             {...fieldProps('academicTitle')}
           />
+          <span className={styles.lockedFieldHint}>
+            {t('profile.edit.lockedFieldHint', 'Requires admin approval')}
+          </span>
           {fieldError('academicTitle') ? (
             <span className={styles.fieldError} id="academic-title-error">
               {fieldError('academicTitle')}
@@ -1702,17 +1871,26 @@ const ProfileEditForm = ({
         <div className={styles.field}>
           <label className={styles.label} htmlFor="institution-input">
             {t('profile.edit.institutionLabel', 'Institution / University')}
+            <span className={styles.lockedFieldBadge} aria-hidden="true">
+              {t('profile.edit.lockedFieldHint', 'Requires admin approval')}
+            </span>
           </label>
           <input
             id="institution-input"
             data-testid="profile-input-institution"
-            className={styles.input}
+            className={`${styles.input} ${styles.inputLocked}`}
             type="text"
             value={draft.institution}
+            readOnly
+            aria-readonly="true"
             onChange={(event) => onChange('institution', event.target.value)}
             maxLength={PROFILE_VALIDATION.institution.maxLength}
+            title={t('profile.edit.lockedFieldTitle', 'This field requires admin approval to change.')}
             {...fieldProps('institution')}
           />
+          <span className={styles.lockedFieldHint}>
+            {t('profile.edit.lockedFieldHint', 'Requires admin approval')}
+          </span>
           {fieldError('institution') ? (
             <span className={styles.fieldError} id="institution-error">
               {fieldError('institution')}
@@ -1948,4 +2126,319 @@ const ProfileEditForm = ({
 // Design tokens: Paper Day warm surfaces, near-black ink, accent primary
 // for the day-count and progress bar fill. The card keeps `--profile-accent`
 // as a fallback so the visual links back to the role-accent bar above.
+// ── Professional Excellence (merged tab body) ───────────────────────────────
+//
+// Renders the Research Expertise form + Academic Metrics grid that used to
+// live behind the dedicated "Professional Profile" tab. After the merge,
+// this section lives inside the Account tab so the owner sees the same
+// personal details, research expertise, and metrics in a single unified
+// surface.
+//
+// State is fully controlled by the parent Profile page — the 14-day
+// auto-refresh timer is wired there so the metrics don't refetch on every
+// render and the timer survives tab / edit-mode toggles.
+
+type ExcellenceRoleKey = 'Researcher' | 'Reviewer' | 'Lecturer';
+
+interface ExcellenceRoleSurfaceConfig {
+  eyebrow: string;
+  badgeLabel: string;
+  accentVar: string;
+  accentMidVar: string;
+  accentLightVar: string;
+  showAvailability: boolean;
+  showAcademicMetrics: boolean;
+  expertiseHeading: string;
+  expertiseSubheading: string;
+  saveButtonLabel: string;
+}
+
+const buildExcellenceRoleConfig = (
+  t: (key: string, fallback?: string) => string,
+): Record<ExcellenceRoleKey, ExcellenceRoleSurfaceConfig> => ({
+  Reviewer: {
+    eyebrow: t('profile.professional.eyebrow.reviewer'),
+    badgeLabel: t('common.role.Reviewer'),
+    accentVar: 'var(--ars-reviewer, #065f46)',
+    accentMidVar: 'var(--ars-reviewer-mid, #047857)',
+    accentLightVar: 'var(--ars-reviewer-light, #d1fae5)',
+    showAvailability: true,
+    showAcademicMetrics: true,
+    expertiseHeading: t('profile.professional.expertise.heading'),
+    expertiseSubheading: t('profile.professional.expertise.subheading.reviewer'),
+    saveButtonLabel: t('profile.professional.saveExpertise'),
+  },
+  Researcher: {
+    eyebrow: t('profile.professional.eyebrow.researcher'),
+    badgeLabel: t('common.role.Researcher'),
+    accentVar: 'var(--ars-researcher, #b45309)',
+    accentMidVar: 'var(--ars-researcher-mid, #d97706)',
+    accentLightVar: 'var(--ars-researcher-light, #fef3c7)',
+    showAvailability: false,
+    showAcademicMetrics: true,
+    expertiseHeading: t('profile.professional.expertise.heading'),
+    expertiseSubheading: t('profile.professional.expertise.subheading.researcher'),
+    saveButtonLabel: t('profile.professional.saveExpertise'),
+  },
+  Lecturer: {
+    eyebrow: t('profile.professional.eyebrow.lecturer'),
+    badgeLabel: t('common.role.Lecturer'),
+    accentVar: 'var(--ars-lecturer, #7c2d12)',
+    accentMidVar: 'var(--ars-lecturer-mid, #9a3412)',
+    accentLightVar: 'var(--ars-lecturer-light, #fef2f2)',
+    showAvailability: false,
+    showAcademicMetrics: false,
+    expertiseHeading: t('profile.professional.expertise.heading'),
+    expertiseSubheading: t('profile.professional.expertise.subheading.lecturer'),
+    saveButtonLabel: t('profile.professional.saveExpertise'),
+  },
+});
+
+interface ProfessionalExcellenceSectionProps {
+  professionalProfile: ReviewerProfile | null;
+  isProfLoading: boolean;
+  profError: Error | null;
+  onRetry: () => Promise<void> | void;
+  isRetrying: boolean;
+  reviewerIsAvailable: boolean | null;
+  isAvailLoading: boolean;
+  roleKey: ExcellenceRoleKey;
+  majorFields: MajorField[];
+  isMajorsLoading: boolean;
+  subFields: SubField[];
+  isSubsLoading: boolean;
+  selectedMajorId: number | null;
+  selectedSubId: number | null;
+  onMajorChange: (event: React.ChangeEvent<HTMLSelectElement>) => void;
+  onSubChange: (event: React.ChangeEvent<HTMLSelectElement>) => void;
+  onSaveExpertise: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
+  isExpertiseValid: boolean;
+  hasExpertiseChanged: boolean;
+  isSubmittingExpertise: boolean;
+  expertiseFeedback: { type: 'success' | 'error'; message: string } | null;
+  lastMetricsRefresh: Date | null;
+}
+
+const formatDateSafe = (value: Date | null, locale: string): string => {
+  if (!value) return '—';
+  try {
+    return value.toLocaleString(locale);
+  } catch {
+    return value.toLocaleString();
+  }
+};
+
+const ProfessionalExcellenceSection = ({
+  professionalProfile,
+  isProfLoading,
+  profError,
+  onRetry,
+  isRetrying,
+  reviewerIsAvailable,
+  isAvailLoading,
+  roleKey,
+  majorFields,
+  isMajorsLoading,
+  subFields,
+  isSubsLoading,
+  selectedMajorId,
+  selectedSubId,
+  onMajorChange,
+  onSubChange,
+  onSaveExpertise,
+  isExpertiseValid,
+  hasExpertiseChanged,
+  isSubmittingExpertise,
+  expertiseFeedback,
+  lastMetricsRefresh,
+}: ProfessionalExcellenceSectionProps) => {
+  const { t, locale } = useI18n();
+  const ROLE_CONFIG = useMemo(() => buildExcellenceRoleConfig(t), [t]);
+  const roleConfig = ROLE_CONFIG[roleKey];
+
+  const accentStyle = useMemo<CSSProperties>(
+    () => ({
+      ['--profile-accent' as string]: roleConfig.accentVar,
+      ['--profile-accent-mid' as string]: roleConfig.accentMidVar,
+      ['--profile-accent-light' as string]: roleConfig.accentLightVar,
+    }),
+    [roleConfig.accentVar, roleConfig.accentMidVar, roleConfig.accentLightVar],
+  );
+
+  if (isProfLoading) {
+    return (
+      <div className={professionalStyles.state} role="status" style={accentStyle}>
+        {t('profile.professional.loading')}
+      </div>
+    );
+  }
+
+  if (profError || !professionalProfile) {
+    return (
+      <div className={professionalStyles.state} role="alert" style={accentStyle}>
+        <p>{profError?.message ?? t('profile.professional.loadError')}</p>
+        <button
+          className={professionalStyles.primaryButton}
+          onClick={() => {
+            void onRetry();
+          }}
+          disabled={isRetrying}
+          data-testid="profile-retry"
+        >
+          {isRetrying ? t('profile.professional.retrying') : t('profile.professional.retry')}
+        </button>
+      </div>
+    );
+  }
+
+  const displayAvailability = !roleConfig.showAvailability
+    ? '—'
+    : isAvailLoading
+      ? t('profile.professional.availability.checking')
+      : reviewerIsAvailable === null
+        ? t('profile.professional.availability.unavailable')
+        : reviewerIsAvailable
+          ? t('profile.professional.availability.available')
+          : t('profile.professional.availability.unavailable');
+
+  const detailRows: Array<{ label: string; value: React.ReactNode }> = [
+    { label: t('profile.professional.detail.orcid'), value: professionalProfile.orcidId ?? t('common.notSet') },
+    { label: t('profile.professional.detail.sync'), value: professionalProfile.syncStatus ?? t('profile.professional.detail.notAvailable') },
+  ];
+  if (roleConfig.showAvailability) {
+    detailRows.push({
+      label: t('profile.professional.detail.availability'),
+      value: (
+        <span className={reviewerIsAvailable ? professionalStyles.statusAvailable : professionalStyles.statusUnavailable}>
+          {displayAvailability}
+        </span>
+      ),
+    });
+  }
+
+  return (
+    <div className={professionalStyles.tabBody} style={accentStyle} data-role={roleKey}>
+      <section className={professionalStyles.profileDetailsSection} aria-label={t('profile.professional.title')}>
+        <dl className={professionalStyles.profileDetails}>
+          {detailRows.map((row) => (
+            <div key={row.label}>
+              <dt>{row.label}</dt>
+              <dd>{row.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+
+      <section
+        className={professionalStyles.expertiseSection}
+        data-testid="research-expertise-section"
+        aria-labelledby="research-expertise-title"
+      >
+        <div className={professionalStyles.sectionHeading}>
+          <div>
+            <p className={professionalStyles.eyebrow}>{t('profile.professional.expertise.eyebrow')}</p>
+            <h2 id="research-expertise-title">{roleConfig.expertiseHeading}</h2>
+            <p>{roleConfig.expertiseSubheading}</p>
+          </div>
+        </div>
+        <form className={professionalStyles.expertiseForm} onSubmit={onSaveExpertise}>
+          <div className={professionalStyles.formRow}>
+            <div className={professionalStyles.formField}>
+              <label htmlFor="major-field">{t('profile.professional.expertise.majorField')}</label>
+              <select
+                id="major-field"
+                data-testid="major-field-select"
+                value={selectedMajorId ?? ''}
+                onChange={onMajorChange}
+                disabled={isMajorsLoading}
+              >
+                <option value="">{t('profile.professional.expertise.selectMajor')}</option>
+                {majorFields.map((field) => (
+                  <option key={field.id} value={field.id}>
+                    {field.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className={professionalStyles.formField}>
+              <label htmlFor="sub-field">{t('profile.professional.expertise.subfield')}</label>
+              <select
+                id="sub-field"
+                data-testid="sub-field-select"
+                value={selectedSubId ?? ''}
+                onChange={onSubChange}
+                disabled={selectedMajorId === null || isMajorsLoading || isSubsLoading}
+              >
+                <option value="">{t('profile.professional.expertise.selectSubfield')}</option>
+                {subFields.map((field) => (
+                  <option key={field.id} value={field.id}>
+                    {field.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <button
+            className={professionalStyles.primaryButton}
+            type="submit"
+            data-testid="save-expertise-button"
+            disabled={!isExpertiseValid || !hasExpertiseChanged || isSubmittingExpertise}
+          >
+            {isSubmittingExpertise ? t('profile.professional.expertise.saving') : roleConfig.saveButtonLabel}
+          </button>
+          {expertiseFeedback ? (
+            <div
+              className={expertiseFeedback.type === 'success' ? professionalStyles.successFeedback : professionalStyles.errorFeedback}
+              role={expertiseFeedback.type === 'error' ? 'alert' : 'status'}
+            >
+              {expertiseFeedback.message}
+            </div>
+          ) : null}
+        </form>
+      </section>
+
+      {roleConfig.showAcademicMetrics ? (
+        <section
+          className={professionalStyles.metricSection}
+          data-testid="academic-metrics-section"
+          aria-labelledby="academic-metrics-title"
+        >
+          <div className={professionalStyles.sectionHeading}>
+            <div>
+              <p className={professionalStyles.eyebrow}>{t('profile.professional.metrics.eyebrow')}</p>
+              <h2 id="academic-metrics-title">{t('profile.professional.metrics.title')}</h2>
+              <p>{t('profile.professional.metrics.refreshHint')}</p>
+            </div>
+            <span className={professionalStyles.lockLabel}>
+              {t(
+                'profile.professional.metrics.lastRefreshed',
+                'Last refreshed: {time}',
+                { time: formatDateSafe(lastMetricsRefresh, locale) },
+              )}
+            </span>
+          </div>
+          <div className={professionalStyles.metricGrid}>
+            <article className={professionalStyles.metricCard} data-testid="metric-hindex">
+              <span>{t('profile.professional.metrics.hindex')}</span>
+              <strong>{professionalProfile.hindex ?? t('common.notSet')}</strong>
+            </article>
+            <article className={professionalStyles.metricCard} data-testid="metric-total-citations">
+              <span>{t('profile.professional.metrics.totalCitations')}</span>
+              <strong>{professionalProfile.totalCitations ?? t('common.notSet')}</strong>
+            </article>
+            <article className={professionalStyles.metricCard} data-testid="metric-publication-count">
+              <span>{t('profile.professional.metrics.publicationCount')}</span>
+              <strong>{professionalProfile.publicationCount ?? t('common.notSet')}</strong>
+            </article>
+          </div>
+        </section>
+      ) : null}
+    </div>
+  );
+};
+
+// (professionalStyles is imported at the top of the file so this module
+// remains ES-module-clean: every `import` declaration must precede any
+// executable code or export.)
+
 export default Profile;

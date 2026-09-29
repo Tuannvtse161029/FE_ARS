@@ -126,6 +126,7 @@ const ForgotPassword = () => {
               label={t('auth.email', 'Email address')}
               placeholder=" "
               floatLabel
+              required
               error={errors.email?.message}
               autoComplete="email"
               disabled={isLoading}

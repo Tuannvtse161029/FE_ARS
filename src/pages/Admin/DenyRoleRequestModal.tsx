@@ -93,7 +93,7 @@ export const DenyRoleRequestModal = ({ request, open, onClose, onActioned }: Pro
           <button className={styles.iconButton} onClick={onClose} disabled={submitting} type="button" aria-label={t('admin.roleRequests.deny.closeLabel')}><X size={18} /></button>
         </header>
         <div className={styles.content}>
-          <label className={styles.fieldLabel} htmlFor="role-denial-reason">{t('admin.roleRequests.deny.reasonLabel', 'Reason for denial')}</label>
+          <label className={styles.fieldLabel} htmlFor="role-denial-reason">{t('admin.roleRequests.deny.reasonLabel', 'Reason for denial')} <span className={styles.requiredStar} aria-hidden="true">*</span></label>
           <textarea ref={reasonRef} id="role-denial-reason" className={styles.textarea} rows={6} minLength={10} maxLength={1000} required value={reason} onChange={(event) => { setReason(event.target.value); setValidationError(null); }} aria-invalid={Boolean(validationError)} aria-describedby={errorId} disabled={submitting} />
           <div className={styles.counter}>{reason.length} / 1,000</div>
           {validationError ? <p id={errorId} className={styles.error} role="alert"><AlertTriangle size={15} />{validationError}</p> : null}

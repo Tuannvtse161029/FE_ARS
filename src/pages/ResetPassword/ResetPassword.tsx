@@ -124,6 +124,7 @@ const ResetPassword = () => {
                 type={showNewPassword ? 'text' : 'password'}
                 label={t('reset.newPassword', 'New Password')}
                 placeholder={t('reset.newPasswordPlaceholder', 'Enter new password')}
+                required
                 error={errors.newPassword?.message}
                 autoComplete="new-password"
                 disabled={isLoading}
@@ -155,6 +156,7 @@ const ResetPassword = () => {
               type={showConfirmPassword ? 'text' : 'password'}
               label={t('reset.confirmPassword', 'Confirm New Password')}
               placeholder={t('reset.confirmPasswordPlaceholder', 'Re-enter new password')}
+              required
               error={errors.confirmPassword?.message}
               autoComplete="new-password"
               disabled={isLoading}

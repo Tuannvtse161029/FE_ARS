@@ -1,0 +1,132 @@
+/* ── Overlay ───────────────────────────────────────────────────── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  background-color: rgba(15, 18, 32, 0.78);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  font-family: var(--font-family-ui);
+}
+
+/* ── Toolbar ───────────────────────────────────────────────────── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.toolbarTitle {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ink-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 40vw;
+}
+
+.toolbarActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  color: var(--ink-primary);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast),
+    transform var(--transition-fast);
+  text-decoration: none;
+}
+
+.iconBtn:hover:not(:disabled) {
+  background: var(--accent-primary);
+  color: var(--button-primary-ink);
+  border-color: var(--accent-primary);
+}
+
+.iconBtn:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.iconBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.closeBtn:hover:not(:disabled) {
+  background: var(--status-danger-surface);
+  color: var(--status-danger-text);
+  border-color: var(--status-danger-text);
+}
+
+.scaleBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 56px;
+  height: 32px;
+  padding: 0 8px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  color: var(--ink-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Stage (the zoomable area) ─────────────────────────────────── */
+.stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 32px;
+  user-select: none;
+}
+
+.image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  transform-origin: center;
+  transition: transform 0.12s ease-out;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  border-radius: var(--radius-sm);
+  background-color: var(--surface-raised);
+}
+
+/* ── Hint footer ───────────────────────────────────────────────── */
+.hint {
+  flex-shrink: 0;
+  text-align: center;
+  font-size: var(--font-size-xs);
+  color: var(--ink-muted);
+  padding: 8px 16px 12px;
+  background: var(--surface-sunken);
+  border-top: 1px solid var(--border-subtle);
+  letter-spacing: 0.02em;
+}

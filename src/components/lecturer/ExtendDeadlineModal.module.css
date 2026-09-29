@@ -136,6 +136,12 @@
   color: var(--text-primary, #0f172a);
 }
 
+.requiredStar {
+  color: var(--ars-error, #b91c1c);
+  margin-left: 2px;
+  font-weight: 700;
+}
+
 .inputDate {
   padding: 10px 12px;
   border-radius: var(--radius-md, 8px);
