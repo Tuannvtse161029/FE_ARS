@@ -76,6 +76,21 @@ vi.mock('../../../src/services/axios', () => ({
 
 vi.mock('../../../src/utils/storage', () => ({ storage: storageShim }));
 
+// Session-2 hardening: the centralized cleanup now delegates the
+// secure-token wipe to `secureToken.clear()`. Mock it so the test shim
+// stays isolated from the real `localStorage` / `sessionStorage` and
+// so the assertion suite can verify the new call.
+const secureTokenClearMock = vi.fn();
+vi.mock('../../../src/utils/secureToken', () => ({
+  secureToken: {
+    clear: (...args: unknown[]) => secureTokenClearMock(...args),
+    hasLiveSession: () => false,
+    getAccessToken: () => null,
+    writeAfterLogin: vi.fn(),
+    rehydrate: vi.fn().mockResolvedValue(false),
+  },
+}));
+
 // Seed JSDOM storage with the shim contents so removeItem actually fires.
 Object.defineProperty(global, 'localStorage', {
   value: {
@@ -161,6 +176,7 @@ describe('clearAuthSession — Agent 53 centralized cleanup', () => {
   beforeEach(() => {
     postMock.mockReset();
     postMock.mockResolvedValue({ status: 200, data: { ok: true } });
+    secureTokenClearMock.mockReset();
     for (const k of Object.keys(localStore)) delete localStore[k];
     for (const k of Object.keys(sessionStore)) delete sessionStore[k];
   });
@@ -333,5 +349,19 @@ describe('clearAuthSession — Agent 53 centralized cleanup', () => {
     // Both buckets stripped so no future mount can read the prior session.
     expect(sessionStore['ars-auth-storage']).toBeUndefined();
     expect(localStore['ars-auth-storage']).toBeUndefined();
+  });
+
+  // ── 10. Session-2 hardening — secureToken.clear is invoked ───────────────
+  // The encrypted envelope + the in-memory session key live in the
+  // secureToken module. The centralized cleanup is the single source of
+  // truth for wiping them, so a logout that skipped it would leave a
+  // stale envelope on disk.
+  it('invokes secureToken.clear() so the encrypted envelope + in-memory key are wiped', async () => {
+    seedAuthState({ withToken: true, remember: true });
+    secureTokenClearMock.mockClear();
+
+    await clearAuthSession();
+
+    expect(secureTokenClearMock).toHaveBeenCalledTimes(1);
   });
 });

@@ -22,6 +22,9 @@ import { Button } from '../Button';
 import type { FollowerResponse } from '../../types/domain';
 
 
+import { formatEntityIdLabel, shouldExposeIds } from '../../utils/idVisibility';
+
+
 import styles from './FollowListModal.module.css';
 
 
@@ -107,6 +110,14 @@ export const FollowListModal = ({
 
 
   const currentUserId = user?.userId ?? null;
+
+
+  const canViewIds = shouldExposeIds({
+    effectiveRole: user?.effectiveRole ?? null,
+    role: user?.role ?? null,
+    roleName: user?.role ?? null,
+    roleId: user?.roleId ?? null,
+  });
 
 
   const [activeTab, setActiveTab] = useState<'followers' | 'following'>(initialTab);
@@ -595,7 +606,7 @@ export const FollowListModal = ({
                       <div className={styles.userDetails}>
 
 
-                        <span className={styles.userName}>{targetName || `User #${targetId}`}</span>
+                        <span className={styles.userName}>{targetName || formatEntityIdLabel('User', targetId, canViewIds)}</span>
 
 
                       </div>

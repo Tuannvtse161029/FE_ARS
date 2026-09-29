@@ -79,6 +79,7 @@ import { ResearcherPublicView } from '../../components/profile/publicViews/Resea
 import { LecturerPublicView } from '../../components/profile/publicViews/LecturerPublicView';
 import { GraduateStudentPublicView } from '../../components/profile/publicViews/GraduateStudentPublicView';
 import { usePublicProfileData } from '../../hooks/usePublicProfileData';
+import { formatEntityIdLabel, shouldExposeIds } from '../../utils/idVisibility';
 import styles from './Profile.module.css';
 import { TrialCountdownCard } from '../../components/profile/TrialCountdownCard';
 
@@ -876,10 +877,23 @@ export const Profile = () => {
   const hasProfile = profile !== null;
   const isEmptyProfile = !hasProfile || (hasProfile && draftIsEmpty);
 
+  // ── ID-visibility gate ────────────────────────────────────────────
+  // Only Admins see internal database IDs in the UI (per the QA
+  // recommendation). Other roles see anonymous fallbacks like "User"
+  // instead of "User #14".
+  const canViewIds = shouldExposeIds({
+    effectiveRole: user?.effectiveRole ?? null,
+    role: user?.role ?? null,
+    roleName: user?.role ?? null,
+    roleId: user?.roleId ?? null,
+  });
+
   // ── Main render ────────────────────────────────────────────────────
 
   const displayName =
-    profile?.fullName?.trim() || (isOwner ? (user?.username || user?.email) : '') || `User #${targetUserId ?? '?'}`;
+    profile?.fullName?.trim() ||
+    (isOwner ? (user?.username || user?.email) : '') ||
+    formatEntityIdLabel('User', targetUserId, canViewIds);
   const displayEmail = profile?.email || (isOwner ? user?.email : '') || '';
   const avatarInitials = profile?.avatarInitials?.trim() || deriveInitials(displayName);
   const avatarUrl = profile?.avatarUrl ?? user?.avatarUrl ?? null;

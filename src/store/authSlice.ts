@@ -1,47 +1,37 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { storage } from '../utils/storage';
+import { secureToken } from '../utils/secureToken';
+import type { SessionUser } from '../utils/projectedUser';
+import { projectUser } from '../utils/projectedUser';
+import { AUTH_PERSIST_VERSION } from '../utils/constants';
 import type { User, AuthState, EffectiveRole } from '../types/auth';
 
 /**
- * sessionStorage-backed storage adapter for the auth store.
- *
- * Mirrors the Zustand persist API but always reads/writes sessionStorage so
- * auth state is cleared when the tab/window closes — matching the default
- * (Remember Me OFF) behaviour of the legacy storage.ts utility.
- *
- * NOTE: This adapter intentionally ignores the "Remember Me" flag so that the
- * auth store NEVER survives across browser restarts or Vite dev-server restarts
- * during development.  Users who want persistence can rely on the legacy
- * storage.ts `ars_token` / `ars_user` keys (which are gated on the checkbox).
- *
- * Zustand's PersistMiddleware requires the storage adapter to store/retrieve
- * the full PersistState structure (`{ state: S; version?: number }`) — not raw
- * strings.  We handle the JSON encoding/decoding ourselves here.
- *
- * `effectiveRole` is the Agent 39 BE-derived role (added alongside `user` /
- * `token` / `isAuthenticated`). It is persisted so the next session can
- * apply the same access rules without re-deriving from `isActive` after a
- * Vite dev-server restart — but the verified-guard still falls back to the
- * derived `!isActive && !isAdmin` heuristic when the field is absent (e.g.
- * for users with pre-migration persisted blobs).
+ * Session-2 hardening — the persisted Zustand slice no longer carries
+ * the JWT. The cleartext token lives only in the secureToken module's
+ * module-scoped variable; the persist contains just the slim user
+ * projection so guards can re-hydrate before the in-memory store is
+ * restored. Any new auth-related field that must survive a page reload
+ * goes through `SessionUser` (see `projectedUser.ts`); do not add new
+ * PII fields to this persist.
  */
+
 type PersistedAuth = Pick<
   AuthState,
-  'user' | 'token' | 'isAuthenticated' | 'effectiveRole'
+  'user' | 'isAuthenticated' | 'effectiveRole'
 >;
 
 /**
- * Smart storage adapter that respects "Remember Me":
- * - When Remember Me is ON (`ars_remember === 'true'`): reads/writes `localStorage` so the
- *   authenticated session survives browser and tab restarts.
- * - When Remember Me is OFF: reads/writes `sessionStorage` so the session expires upon tab close.
+ * Storage adapter for the slim auth slice. Uses the secureToken module's
+ * helper to pick the bucket (Remember Me ON → localStorage, OFF →
+ * sessionStorage) so the legacy `ars-auth-storage` key follows the same
+ * rule the rest of the auth flow does.
  *
- * Uses `storage.getRememberMe()` so the decision is consistent with the rest of
- * the app (it falls back to `sessionStorage` when `ars_remember` is absent,
- * which is the correct "Remember Me OFF" state).
+ * Critically this adapter does NOT touch the JWT envelope — the token
+ * write path is owned by `secureToken.writeAfterLogin` exclusively.
  */
-const smartAuthStorageAdapter = {
+const slimAuthStorageAdapter = {
   getItem: (name: string) => {
     if (typeof window === 'undefined') return null;
     const isRemember = storage.getRememberMe();
@@ -52,7 +42,7 @@ const smartAuthStorageAdapter = {
 
     if (raw === null) return null;
     try {
-      return { state: JSON.parse(raw) as PersistedAuth, version: 0 };
+      return { state: JSON.parse(raw) as PersistedAuth, version: AUTH_PERSIST_VERSION };
     } catch {
       return null;
     }
@@ -61,7 +51,7 @@ const smartAuthStorageAdapter = {
     if (typeof window === 'undefined') return;
     const isRemember = storage.getRememberMe();
 
-    const payload = JSON.stringify(value.state);
+    const payload = JSON.stringify({ ...value, version: AUTH_PERSIST_VERSION });
     if (isRemember) {
       localStorage.setItem(name, payload);
       sessionStorage.removeItem(name);
@@ -78,16 +68,15 @@ const smartAuthStorageAdapter = {
 };
 
 interface AuthStore extends AuthState {
-  login: (user: User, token: string, effectiveRole?: EffectiveRole) => void;
+  /**
+   * The token is passed in so the in-memory `secureToken` can hold the
+   * raw value, but it is NEVER persisted by this slice. See
+   * `secureToken.writeAfterLogin` for the encrypted write path.
+   */
+  login: (user: User | SessionUser, token: string, effectiveRole?: EffectiveRole) => void;
   logout: () => void;
   setLoading: (loading: boolean) => void;
-  updateUser: (user: Partial<User>) => void;
-  /**
-   * Explicitly overwrite the effective role. Used by `AuthContext` when the
-   * BE returns a fresh `effectiveRole` on login (or when the syncUserFromBE
-   * effect picks up a new value from `GET /api/user/{id}` after Admin
-   * approval). Replaces the previous value completely — never merges.
-   */
+  updateUser: (user: Partial<SessionUser> | Partial<User>) => void;
   setEffectiveRole: (effectiveRole: EffectiveRole | null) => void;
 }
 
@@ -97,44 +86,58 @@ const useAuthStore = create<AuthStore>()(
       user: null,
       token: null,
       isAuthenticated: false,
-      isLoading: true, // true until persisted state is rehydrated
-      // null = no logged-in user, or pre-migration persisted blob. The
-      // verified-guard / MainLayout derives Guest from `!isActive && !isAdmin`
-      // in this window — see `isGuestUser` in `src/hooks/usePermissions.ts`.
+      isLoading: true,
       effectiveRole: null,
 
-      login: (user: User, token: string, effectiveRole?: EffectiveRole) => {
-        // Use the storage utility so the decision is consistent with the
-        // rest of the app: falls back to `sessionStorage` when `ars_remember`
-        // is absent (the correct "Remember Me OFF" state), preventing stale
-        // localStorage auth state from leaking into new tabs.
+      login: (user: User | SessionUser, token: string, effectiveRole?: EffectiveRole) => {
         const isRemember = storage.getRememberMe();
+        const projected = projectUser(user);
+        if (!projected) return;
 
         const resolvedEffectiveRole =
           effectiveRole ??
-          (user.isActive
-            ? (user.effectiveRole ?? (user.roleName as EffectiveRole))
+          (projected.isActive
+            ? (projected.effectiveRole ?? (projected.roleName as EffectiveRole))
             : 'Guest');
 
         const nextState = {
-          user,
+          user: projected as unknown as User,
           token,
           isAuthenticated: true,
           isLoading: false,
           effectiveRole: resolvedEffectiveRole,
         };
 
-        set(nextState);
+    set(nextState);
 
-        if (typeof window !== 'undefined') {
-          const payload = JSON.stringify({ state: nextState, version: 0 });
-          if (isRemember) {
-            localStorage.setItem('ars-auth-storage', payload);
-          } else {
-            sessionStorage.setItem('ars-auth-storage', payload);
-          }
-        }
-      },
+    if (typeof window !== 'undefined') {
+      // Persist the slim user projection only — no token. The
+      // authSlice's `user` field is typed as `User | null` for
+      // back-compat with the rest of the FE; the projected shape is a
+      // strict subset so the structural assignment is sound.
+      const persistedUser = projected as unknown as User;
+      const payload = JSON.stringify({
+        state: {
+          user: persistedUser,
+          isAuthenticated: true,
+          effectiveRole: resolvedEffectiveRole,
+        },
+        version: AUTH_PERSIST_VERSION,
+      });
+      if (isRemember) {
+        localStorage.setItem('ars-auth-storage', payload);
+      } else {
+        sessionStorage.setItem('ars-auth-storage', payload);
+      }
+      // Make sure the live token is in the secureToken module's
+      // module-scope. (The AuthContext normally writes the envelope
+      // before calling `login`; this is a defensive back-stop for
+      // any test fixture that drives `login` directly.)
+      if (token) {
+        void secureToken.writeAfterLogin(token, null, isRemember);
+      }
+    }
+  },
 
       logout: () => {
         set({
@@ -148,16 +151,23 @@ const useAuthStore = create<AuthStore>()(
           sessionStorage.removeItem('ars-auth-storage');
           localStorage.removeItem('ars-auth-storage');
         }
+        secureToken.clear();
       },
 
       setLoading: (loading: boolean) => {
         set({ isLoading: loading });
       },
 
-      updateUser: (userData: Partial<User>) => {
-        set((state) => ({
-          user: state.user ? { ...state.user, ...userData } : null,
-        }));
+      updateUser: (userData: Partial<SessionUser> | Partial<User>) => {
+        set((state) => {
+          if (!state.user) return state;
+          // `SessionUser` is a strict structural subset of `User`, so
+          // the merged record satisfies the back-compat `User` type
+          // used elsewhere in the FE.
+          return {
+            user: { ...state.user, ...userData } as unknown as User,
+          };
+        });
       },
 
       setEffectiveRole: (effectiveRole: EffectiveRole | null) => {
@@ -166,10 +176,12 @@ const useAuthStore = create<AuthStore>()(
     }),
     {
       name: 'ars-auth-storage',
-      storage: smartAuthStorageAdapter,
+      storage: slimAuthStorageAdapter,
+      // Persist the slim projection only. The token is intentionally
+      // excluded so a stolen `ars-auth-storage` blob is not enough to
+      // replay a session.
       partialize: (state) => ({
         user: state.user,
-        token: state.token,
         isAuthenticated: state.isAuthenticated,
         effectiveRole: state.effectiveRole,
       }),

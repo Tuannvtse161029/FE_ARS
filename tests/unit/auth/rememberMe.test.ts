@@ -83,6 +83,52 @@ describe('Remember Me & Storage Persistence', () => {
     expect(savedLocal).toBeNull();
   });
 
+  // QA report recommendation: add an explicit happy path for the
+  // sessionStorage ⇄ localStorage switch driven by Remember Me.
+  it('routes encrypted token envelope to localStorage when Remember Me is enabled', async () => {
+    const { secureToken } = await import('../../../src/utils/secureToken');
+    storage.setRememberMe(true);
+
+    await secureToken.writeAfterLogin('header.payload.sig', null, true);
+
+    const localEnvelope = localStorage.getItem('ars_token_enc_v1');
+    const sessionEnvelope = sessionStorage.getItem('ars_token_enc_v1');
+    expect(localEnvelope).not.toBeNull();
+    // Envelope must NOT contain the cleartext JWT anywhere — that would
+    // defeat the Session-2 hardening that lives in secureToken.ts.
+    expect(localEnvelope).not.toContain('header.payload.sig');
+    expect(sessionEnvelope).toBeNull();
+  });
+
+  it('routes encrypted token envelope to sessionStorage when Remember Me is disabled', async () => {
+    const { secureToken } = await import('../../../src/utils/secureToken');
+    storage.setRememberMe(false);
+
+    await secureToken.writeAfterLogin('header.payload.sig', null, false);
+
+    const localEnvelope = localStorage.getItem('ars_token_enc_v1');
+    const sessionEnvelope = sessionStorage.getItem('ars_token_enc_v1');
+    expect(sessionEnvelope).not.toBeNull();
+    expect(sessionEnvelope).not.toContain('header.payload.sig');
+    expect(localEnvelope).toBeNull();
+  });
+
+  it('removes the encrypted envelope from the previous bucket when Remember Me toggles', async () => {
+    const { secureToken } = await import('../../../src/utils/secureToken');
+
+    storage.setRememberMe(true);
+    await secureToken.writeAfterLogin('token.remembered', null, true);
+    expect(localStorage.getItem('ars_token_enc_v1')).not.toBeNull();
+
+    // Simulate the next login with Remember Me turned off. The previous
+    // envelope should be evicted from localStorage so the user does not
+    // end up with two parallel encrypted copies.
+    storage.setRememberMe(false);
+    await secureToken.writeAfterLogin('token.session-only', null, false);
+    expect(sessionStorage.getItem('ars_token_enc_v1')).not.toBeNull();
+    expect(localStorage.getItem('ars_token_enc_v1')).toBeNull();
+  });
+
   it('cleans up auth storage upon logout', () => {
     storage.setRememberMe(true);
     const mockUser: User = {

@@ -22,6 +22,9 @@ const postGoogleLoginMock = vi.fn();
 const authStoreLoginMock = vi.fn();
 const authStoreLogoutMock = vi.fn();
 const authStoreSetLoadingMock = vi.fn();
+const secureTokenWriteAfterLoginMock = vi.fn();
+const secureTokenGetAccessTokenMock = vi.fn();
+const secureTokenClearMock = vi.fn();
 const storageSetTokenMock = vi.fn();
 const storageSetUserMock = vi.fn();
 const storageSetRememberMeMock = vi.fn();
@@ -55,6 +58,16 @@ vi.mock('../../../src/services/googleAuth.service', () => ({
       this.code = code as never;
       this.status = status;
     }
+  },
+}));
+
+vi.mock('../../../src/utils/secureToken', () => ({
+  secureToken: {
+    writeAfterLogin: (...args: unknown[]) => secureTokenWriteAfterLoginMock(...args),
+    getAccessToken: (...args: unknown[]) => secureTokenGetAccessTokenMock(...args),
+    hasLiveSession: () => false,
+    clear: (...args: unknown[]) => secureTokenClearMock(...args),
+    rehydrate: vi.fn().mockResolvedValue(false),
   },
 }));
 
@@ -178,6 +191,10 @@ beforeEach(() => {
   authStoreLoginMock.mockReset();
   authStoreLogoutMock.mockReset();
   authStoreSetLoadingMock.mockReset();
+  secureTokenWriteAfterLoginMock.mockReset();
+  secureTokenWriteAfterLoginMock.mockResolvedValue(undefined);
+  secureTokenGetAccessTokenMock.mockReset();
+  secureTokenClearMock.mockReset();
   storageSetTokenMock.mockReset();
   storageSetUserMock.mockReset();
   storageSetRememberMeMock.mockReset();
@@ -255,7 +272,11 @@ describe('AuthContext.loginWithGoogle', () => {
     // Wait for the new-user route to render.
     await new Promise<void>((r) => setTimeout(r, 100));
 
-    expect(storageSetTokenMock).toHaveBeenCalledWith('jwt-new');
+    expect(secureTokenWriteAfterLoginMock).toHaveBeenCalledWith(
+      'jwt-new',
+      null,
+      false,
+    );
     expect(storageSetUserMock).toHaveBeenCalledTimes(1);
     const persistedUser = storageSetUserMock.mock.calls[0][0];
     expect(persistedUser.id).toBe(99);
@@ -297,7 +318,11 @@ describe('AuthContext.loginWithGoogle', () => {
       await getHandle().loginWithGoogle('GIS_CRED_EXISTING');
     });
 
-    expect(storageSetTokenMock).toHaveBeenCalledWith('jwt-existing');
+    expect(secureTokenWriteAfterLoginMock).toHaveBeenCalledWith(
+      'jwt-existing',
+      null,
+      false,
+    );
     expect(authStoreLoginMock).toHaveBeenCalledTimes(1);
     // getById was called to refresh the BE authoritative profile.
     expect(getByIdMock).toHaveBeenCalledWith(42);
@@ -329,7 +354,7 @@ describe('AuthContext.loginWithGoogle', () => {
     });
 
     // No persistence, no authStore.login mutation.
-    expect(storageSetTokenMock).not.toHaveBeenCalled();
+    expect(secureTokenWriteAfterLoginMock).not.toHaveBeenCalled();
     expect(authStoreLoginMock).not.toHaveBeenCalled();
   });
 
@@ -349,7 +374,7 @@ describe('AuthContext.loginWithGoogle', () => {
     });
 
     expect(postGoogleLoginMock).toHaveBeenCalledTimes(1);
-    expect(storageSetTokenMock).not.toHaveBeenCalled();
+    expect(secureTokenWriteAfterLoginMock).not.toHaveBeenCalled();
     expect(authStoreLoginMock).not.toHaveBeenCalled();
   });
 

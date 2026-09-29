@@ -436,11 +436,23 @@ export const API_ENDPOINTS = {
 } as const;
 
 export const STORAGE_KEYS = {
+  // Legacy key — no longer written to. Kept exported so the cleanup
+  // routine in `auth.service.ts` and the `secureToken.clear()` path can
+  // remove any straggler entries from older builds.
   TOKEN: 'ars_token',
+  TOKEN_ENCRYPTED: 'ars_token_enc_v1',
+  TOKEN_REFRESH: 'ars_token_refresh_v1',
   USER: 'ars_user',
   REMEMBER_ME: 'ars_remember',
   SAVED_EMAIL: 'ars_saved_email',
 } as const;
+
+/**
+ * Schema version for the auth Zustand persist. Bumped whenever the
+ * persisted user projection changes shape; the version is read by
+ * `authSlice.ts` so future migrations can run on rehydrate.
+ */
+export const AUTH_PERSIST_VERSION = 1;
 
 export const ROLES = {
   RESEARCHER: 'Researcher',

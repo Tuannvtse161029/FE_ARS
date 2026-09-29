@@ -2743,6 +2743,11 @@ export const dictionary: Dictionary = {
     'researcher.form.openalex.emptyHint': 'Paste the OpenAlex Work ID (starts with "W") found on the OpenAlex page for this paper. ARS will fetch the public metadata so you don\'t need to retype it by hand.',
     'researcher.form.openalex.manualHint': 'ARS major field and subfield must be selected manually.',
     'researcher.form.openalex.invalid.example': 'Enter an OpenAlex work ID (e.g. W2741809807) or use manual entry.',
+    'researcher.form.openalex.formatHint':
+      'Format: the letter W followed by 1–10 digits (for example W2741809807). DOIs and full OpenAlex URLs are not accepted in this field.',
+    'researcher.form.openalex.formatWarning':
+      '"{value}" doesn\u2019t match the W-prefixed format. The "Look up metadata" button stays disabled until the ID is shaped like W2741809807.',
+    'researcher.form.openalex.exampleLabel': 'Example',
     'researcher.form.footer.hint': 'Submitting routes the manuscript to Admin screening for review.',
     'researcher.form.footer.validation': 'Submission remains unavailable until the required metadata (including major field and subfield), and a completed PDF upload are in place.',
     'researcher.form.footer.submit': 'Submit to Admin',

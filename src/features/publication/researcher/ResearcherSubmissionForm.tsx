@@ -9,6 +9,7 @@ import {
   type OpenAlexImportedMetadata,
   type OpenAlexLookupOutcome,
 } from './openalexAdapter';
+import { isValidOpenAlexId } from './openalex';
 import { PageHeader } from '../../../components/PageHeader';
 import { ErrorBanner } from '../../../components/ErrorBanner';
 import { Button } from '../../../components/Button/Button';
@@ -163,6 +164,17 @@ export const ResearcherSubmissionForm = () => {
   const [openAlexState, setOpenAlexState] = useState<OpenAlexUiState>({ stage: 'idle' });
   const [openAlexScanning, setOpenAlexScanning] = useState(false);
   const [openAlexImported, setOpenAlexImported] = useState(false);
+
+  // Live format validation. The "Look up metadata" button stays disabled
+  // until the draft normalises to a `W<digits>` work ID — this matches the
+  // BE contract (regex `W\d{1,10}`) and gives the user immediate feedback
+  // instead of leaving them guessing why the button is inert.
+  const trimmedDraft = openAlexDraft.trim();
+  const isDraftValid = isValidOpenAlexId(trimmedDraft);
+  const showFormatWarning =
+    trimmedDraft.length > 0 &&
+    !isDraftValid &&
+    (openAlexState.stage === 'idle' || openAlexState.stage === 'invalid');
 
   const handleScanOpenAlex = async () => {
     if (!openAlexDraft.trim()) {
@@ -632,51 +644,111 @@ export const ResearcherSubmissionForm = () => {
           </header>
 
           <div className={styles.openAlexLookupSurface}>
-            <div className={styles.openAlexEntry}>
-              <label htmlFor="submission-openalex">{t('researcher.form.openalex.label.workId')}</label>
-              <p className={styles.fieldHint}>{t('researcher.form.openalex.label.workIdDescription')}</p>
-              <div className={styles.openAlexInputRow}>
-                <input
-                  id="submission-openalex"
-                  data-testid="submission-openalex-input"
-                  placeholder="e.g. W2741809807"
-                  value={openAlexDraft}
-                  onChange={(event) => setOpenAlexDraft(event.target.value)}
-                  disabled={
-                    openAlexState.stage === 'confirmed' ||
-                    openAlexState.stage === 'skipped' ||
-                    openAlexScanning
-                  }
-                />
-                {openAlexState.stage === 'idle' ? (
-                  <Button
-                    type="button"
-                    variant="primary"
-                    size="md"
-                    className={styles.openAlexLookupButton}
-                    onClick={() => void handleScanOpenAlex()}
-                    disabled={!openAlexDraft.trim() || openAlexScanning}
-                    data-testid="submission-openalex-scan"
-                    isLoading={openAlexScanning}
-                  >
-                    {t('researcher.form.openalex.lookupCta')}
-                  </Button>
-                ) : null}
+            <div className={styles.openAlexLookupTopRow}>
+              <div className={styles.openAlexBrandLockup}>
+                <OpenAlexBrandLogo variant="mark" ariaLabel="" />
+                <div className={styles.openAlexBrandText}>
+                  <p className={styles.openAlexBrandName}>
+                    {t('researcher.form.openalex.label.brand')}
+                  </p>
+                  <p className={styles.openAlexBrandLabel}>
+                    {t('researcher.form.openalex.attribution')}
+                  </p>
+                </div>
               </div>
-              <p className={styles.fieldHint}>{t('researcher.form.openalex.emptyHint')}</p>
-              {openAlexState.stage === 'idle' ? (
-                <div className={styles.openAlexSecondaryActions}>
+              <div className={styles.openAlexLookupMeta}>
+                <span
+                  className={styles.openAlexFormatHint}
+                  data-testid="submission-openalex-format-hint"
+                  aria-live="polite"
+                >
+                  {t('researcher.form.openalex.formatHint')}
+                </span>
+                {openAlexState.stage === 'idle' ? (
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
                     onClick={handleSkipOpenAlex}
+                    className={styles.openAlexSkipButton}
                     data-testid="submission-openalex-skip"
                   >
                     {t('researcher.form.openalex.skip')}
                   </Button>
+                ) : null}
+              </div>
+            </div>
+
+            <div className={styles.openAlexLookupMainRow}>
+              <div className={styles.openAlexInputColumn}>
+                <label htmlFor="submission-openalex" className={styles.openAlexEntryLabel}>
+                  {t('researcher.form.openalex.label.workId')}
+                </label>
+                <div className={styles.openAlexInputRow}>
+                  <input
+                    id="submission-openalex"
+                    data-testid="submission-openalex-input"
+                    placeholder="e.g. W2741809807"
+                    value={openAlexDraft}
+                    onChange={(event) => setOpenAlexDraft(event.target.value)}
+                    disabled={
+                      openAlexState.stage === 'confirmed' ||
+                      openAlexState.stage === 'skipped' ||
+                      openAlexScanning
+                    }
+                    aria-invalid={showFormatWarning}
+                    aria-describedby="submission-openalex-format-hint"
+                  />
+                  {openAlexState.stage === 'idle' ? (
+                    <Button
+                      type="button"
+                      variant="primary"
+                      size="md"
+                      className={styles.openAlexLookupButton}
+                      onClick={() => void handleScanOpenAlex()}
+                      disabled={!isDraftValid || openAlexScanning}
+                      title={
+                        !trimmedDraft
+                          ? t('researcher.form.openalex.provideId')
+                          : !isDraftValid
+                            ? t('researcher.form.openalex.formatHint')
+                            : undefined
+                      }
+                      data-testid="submission-openalex-scan"
+                      isLoading={openAlexScanning}
+                    >
+                      {t('researcher.form.openalex.lookupCta')}
+                    </Button>
+                  ) : null}
                 </div>
-              ) : null}
+                {showFormatWarning ? (
+                  <p
+                    className={styles.fieldWarning}
+                    role="status"
+                    data-testid="submission-openalex-format-warning"
+                  >
+                    {t('researcher.form.openalex.formatWarning', undefined, {
+                      value: trimmedDraft,
+                    })}
+                  </p>
+                ) : (
+                  <p className={styles.fieldHint}>{t('researcher.form.openalex.emptyHint')}</p>
+                )}
+              </div>
+              <aside className={styles.openAlexSidePanel} aria-label={t('researcher.form.openalex.label.workIdDescription')}>
+                <p className={styles.openAlexSidePanelLabel}>
+                  {t('researcher.form.openalex.label.brand')}
+                </p>
+                <p className={styles.openAlexSidePanelDescription}>
+                  {t('researcher.form.openalex.label.workIdDescription')}
+                </p>
+                <p className={styles.openAlexSidePanelExample}>
+                  <span className={styles.openAlexSidePanelExampleLabel}>
+                    {t('researcher.form.openalex.exampleLabel', 'Example')}
+                  </span>
+                  <code>W2741809807</code>
+                </p>
+              </aside>
             </div>
           </div>
 

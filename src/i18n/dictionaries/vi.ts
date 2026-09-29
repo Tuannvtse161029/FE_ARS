@@ -2244,6 +2244,11 @@ export const dictionary: Dictionary = {
     'researcher.form.openalex.emptyHint': 'Dán Mã công trình OpenAlex (bắt đầu bằng "W") lấy từ trang OpenAlex của bài báo. ARS sẽ tải siêu dữ liệu công khai để bạn không cần nhập lại thủ công.',
     'researcher.form.openalex.manualHint': 'Lĩnh vực lớn và chuyên ngành phụ của ARS phải chọn thủ công.',
     'researcher.form.openalex.invalid.example': 'Nhập OpenAlex Work ID (ví dụ: W2741809807) hoặc dùng nhập thủ công.',
+    'researcher.form.openalex.formatHint':
+      'Định dạng: chữ W theo sau là 1–10 chữ số (ví dụ W2741809807). DOI và URL OpenAlex đầy đủ không được chấp nhận trong trường này.',
+    'researcher.form.openalex.formatWarning':
+      '"{value}" không khớp định dạng bắt đầu bằng W. Nút "Tra cứu siêu dữ liệu" sẽ bị vô hiệu cho đến khi mã có dạng W2741809807.',
+    'researcher.form.openalex.exampleLabel': 'Ví dụ',
     'researcher.form.footer.hint': 'Nộp sẽ chuyển bản thảo cho Quản trị viên sàng lọc để phản biện.',
     'researcher.form.footer.validation': 'Bản nộp vẫn chưa khả dụng cho đến khi siêu dữ liệu bắt buộc (gồm lĩnh vực lớn và chuyên ngành phụ) và việc tải PDF đã hoàn tất.',
     'researcher.form.footer.submit': 'Gửi cho Quản trị viên',

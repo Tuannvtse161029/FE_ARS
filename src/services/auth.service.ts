@@ -1,6 +1,7 @@
 import api from './axios';
 import { API_ENDPOINTS } from '../utils/constants';
 import { storage } from '../utils/storage';
+import { secureToken } from '../utils/secureToken';
 import { signalrService } from './signalr.service';
 import type {
   LoginRequest,
@@ -33,7 +34,16 @@ import type {
  * new persisted auth field MUST be added here.
  */
 const ARS_AUTH_STORAGE_KEYS = [
+  // Legacy plain-text key — no longer written, but a straggler from an
+  // older build must be wiped on logout. `secureToken.clear()` also
+  // strips it.
   'ars_token',
+  // Encrypted access token envelope. The cleartext is never in storage.
+  'ars_token_enc_v1',
+  // Refresh token (when the BE ships it). Same security model as the
+  // access token; held only in `localStorage` and only when Remember Me
+  // is on. Without the in-memory session key it is unrecoverable.
+  'ars_token_refresh_v1',
   'ars_user',
   'ars_remember',
   'ars-active-role',
@@ -156,6 +166,16 @@ export function clearAuthSession(): void {
       }
     } catch {
       /* defensive — axios may be mocked in tests */
+    }
+
+    // Drop the in-memory JWT and the on-disk envelope + refresh key. The
+    // `secureToken.clear` path is the single source of truth for wiping
+    // the encrypted access token state; it also strips the legacy
+    // plain-text `ars_token` key as a defensive back-stop.
+    try {
+      secureToken.clear();
+    } catch {
+      /* defensive */
     }
 
     // Defensive GIS auto-select disable (no-op when GIS is absent).

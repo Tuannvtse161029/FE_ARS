@@ -22,7 +22,16 @@ export const AppConfig = {
 };
 
 export const AuthConfig = {
+  // Legacy key — still exported so cleanup routines can sweep stragglers,
+  // but new writes go through `secureToken.writeAfterLogin` which writes
+  // to `tokenKeyAccess` (encrypted) instead.
   tokenKey: 'ars_token',
+  tokenKeyAccess: 'ars_token_enc_v1',
+  tokenKeyRefresh: 'ars_token_refresh_v1',
   userKey: 'ars_user',
+  // Effective lifetime of the access envelope. Until the BE ships a
+  // refresh-token endpoint, every page reload forces a re-login because
+  // the in-memory session key is dropped. Documented in
+  // `tickets/backend/BE-JWT-HTTPONLY-COOKIE.md`.
   tokenExpirationHours: 24,
 };
