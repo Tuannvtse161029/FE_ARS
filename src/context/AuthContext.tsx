@@ -17,6 +17,7 @@ import {
   type PostAuthSnapshot,
 } from '../utils/postAuthRoute';
 import { storage } from '../utils/storage';
+import { secureToken } from '../utils/secureToken';
 import {
   acquireGoogleLoginSession,
 } from '../utils/googleLoginGuard';
@@ -243,7 +244,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // reads getRememberMe() on every setToken/setUser call, so we MUST set
       // this BEFORE any setToken/setUser call below.
       storage.setRememberMe(rememberMe);
-      storage.setToken(response.token);
+      // Session-2 hardening: the access JWT is encrypted before it ever
+      // hits storage. `secureToken.writeAfterLogin` is the single write
+      // path for tokens; `storage.setToken` is now a back-stop for
+      // legacy test fixtures only.
+      const refreshToken =
+        (response as AuthResponse & { refreshToken?: string | null }).refreshToken ?? null;
+      await secureToken.writeAfterLogin(response.token, refreshToken, rememberMe);
 
       // Immediately fetch the authoritative user profile from the BE so ars_user
       // is written with the current state (verificationStatus, isActive, etc.).
@@ -617,7 +624,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             /* ignore */
           }
           storage.setRememberMe(rememberMe);
-          storage.setToken(session.token);
+          // Session-2 hardening: the GIS flow produces the same ARS
+          // session shape, so the encrypted-write path is identical.
+          await secureToken.writeAfterLogin(session.token, null, rememberMe);
           const onboardingUser = {
             id: session.userId,
             username: session.email,

@@ -1,35 +1,38 @@
-// Centralised read of the persisted `ars_user` blob.
-//
-// The auth store already mirrors `ars_user` into Zustand, but several guards
-// (`useAdminGuard`, `useVerifiedGuard`, the verified-redirect effect inside
-// `MainLayout`) need to read it BEFORE AuthContext has finished rehydrating
-// the store on the first render after a refresh. Reading the raw storage
-// keeps those guards working during that brief window.
-//
-// All callers parse the same shape, so the parser lives here too. Callers
-// narrow to the fields they care about (e.g. `{ isActive?: boolean }`).
-//
-// Named `readStoredUser` (not `useStoredUser`) because it doesn't subscribe
-// to React state; it's a one-shot read called from event handlers / effects.
+/**
+ * Centralised read of the persisted `ars_user` blob.
+ *
+ * The auth store already mirrors `ars_user` into Zustand, but several guards
+ * (`useAdminGuard`, `useVerifiedGuard`, the verified-redirect effect inside
+ * `MainLayout`) need to read it BEFORE AuthContext has finished rehydrating
+ * the store on the first render after a refresh. Reading the raw storage
+ * keeps those guards working during that brief window.
+ *
+ * Session-2 (security) — the persisted blob is now the *projected* shape
+ * (see `projectedUser.ts`). Sensitive fields like `orcidId`,
+ * `proofDocumentUrl`, `suspendedUntil`, `isEmailVerified` and the
+ * creation/updated timestamps are no longer stored. The shape returned
+ * here is therefore a strict subset of the legacy `User`.
+ *
+ * Named `readStoredUser` (not `useStoredUser`) because it doesn't subscribe
+ * to React state; it's a one-shot read called from event handlers / effects.
+ */
+
+import type { SessionUser } from './projectedUser';
 
 const STORAGE_KEY = 'ars_user';
 
-export interface StoredUserShape {
-  isActive?: boolean;
-  roleId?: number;
-  roleName?: string;
-  verificationStatus?: string;
-  accountTier?: string;
-  /**
-   * Effective role — Agent 39. Mirrors `User.effectiveRole`. Optional for
-   * backwards compatibility with pre-migration persisted blobs (the
-   * `usePermissions` helper derives Guest from `!isActive && !isAdmin` in
-   * that window).
-   */
-  effectiveRole?: string;
-  requiresOnboarding?: boolean;
-  isNewUser?: boolean;
-}
+export type StoredUserShape = Pick<
+  SessionUser,
+  | 'isActive'
+  | 'roleId'
+  | 'roleName'
+  | 'verificationStatus'
+  | 'accountTier'
+  | 'effectiveRole'
+  | 'requiresOnboarding'
+  | 'isNewUser'
+  | 'id'
+>;
 
 export const readStoredUser = <T extends StoredUserShape = StoredUserShape>(): T | null => {
   try {

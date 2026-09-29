@@ -493,6 +493,13 @@
   line-height: var(--line-height-normal);
 }
 
+.fieldWarning {
+  color: var(--ars-warn, #b45309);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  margin: 0;
+}
+
 .fieldFile {
   display: flex;
   flex-direction: column;
@@ -637,30 +644,64 @@
   text-transform: none;
 }
 
+/* The lookup surface fills the formCard column end-to-end. We split the
+   area into a thin top "branding" row (brand mark + format hint + skip)
+   and a wide main row that holds the input on the left and a compact
+   "How it works" aside on the right. This replaces the previous
+   brand-on-left / entry-on-right split that left a dead column when the
+   formCard was wider than ~640px. */
 .openAlexLookupSurface {
   display: grid;
-  grid-template-columns: minmax(178px, 0.85fr) minmax(0, 2.15fr);
-  overflow: hidden;
+  gap: 0;
   border: 1px solid var(--ars-node);
   border-radius: var(--radius-md);
   background: var(--ars-paper);
   box-shadow: 0 1px 2px var(--shadow-color);
+  overflow: hidden;
+}
+
+.openAlexLookupTopRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--ars-paper-inset);
+  border-bottom: 1px solid var(--ars-network);
+  flex-wrap: wrap;
+}
+
+.openAlexLookupMainRow {
+  display: grid;
+  grid-template-columns: minmax(0, 3.2fr) minmax(0, 1.8fr);
+  gap: 0;
+  align-items: stretch;
+}
+
+@media (max-width: 880px) {
+  .openAlexLookupMainRow {
+    grid-template-columns: 1fr;
+  }
 }
 
 .openAlexBrandLockup {
   display: flex;
   align-items: center;
-  gap: var(--space-5);
-  padding: var(--space-5);
-  background: var(--ars-paper-inset);
-  border-right: 1px solid var(--ars-network);
+  gap: var(--space-3);
+  min-width: 0;
 }
 
 .openAlexBrandMark {
-  width: 24px !important;
-  height: 24px !important;
+  width: 28px !important;
+  height: 28px !important;
   flex: 0 0 auto;
   display: block;
+}
+
+.openAlexBrandText {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
 }
 
 .openAlexBrandName,
@@ -670,13 +711,12 @@
 
 .openAlexBrandName {
   color: var(--ars-ink);
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-base);
   font-weight: var(--font-weight-bold);
   line-height: 1.1;
 }
 
 .openAlexBrandLabel {
-  margin-top: 2px;
   color: var(--ars-ink-muted);
   font-family: var(--font-family-mono);
   font-size: var(--font-size-xs);
@@ -685,14 +725,48 @@
   text-transform: uppercase;
 }
 
-.openAlexEntry {
+.openAlexLookupMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.openAlexFormatHint {
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  max-width: 64ch;
+}
+
+.openAlexSkipButton {
+  padding-left: var(--space-2);
+  padding-right: var(--space-2);
+  color: var(--ars-ink-muted);
+}
+
+.openAlexSkipButton:hover:not(:disabled) {
+  color: var(--ars-researcher);
+  background: transparent;
+}
+
+.openAlexInputColumn {
   display: grid;
   gap: var(--space-2);
   padding: var(--space-4) var(--space-5);
+  border-right: 1px solid var(--ars-network);
   min-width: 0;
 }
 
-.openAlexEntry>label {
+@media (max-width: 880px) {
+  .openAlexInputColumn {
+    border-right: 0;
+    border-bottom: 1px solid var(--ars-network);
+  }
+}
+
+.openAlexEntryLabel {
   color: var(--ars-ink);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
@@ -707,6 +781,7 @@
 .openAlexInputRow input {
   min-width: 0;
   flex: 1;
+  height: 44px;
   border: 1px solid var(--ars-node);
   border-radius: var(--radius-md);
   background: var(--ars-paper-alt);
@@ -734,15 +809,73 @@
 
 .openAlexLookupButton {
   align-self: stretch;
-  min-height: 40px;
+  min-height: 44px;
+  padding-left: var(--space-5);
+  padding-right: var(--space-5);
   background: var(--ars-ink) !important;
   border-color: var(--ars-ink) !important;
   color: var(--ars-paper) !important;
+  white-space: nowrap;
 }
 
 .openAlexLookupButton:hover:not(:disabled) {
   background: var(--ars-ink-soft) !important;
   border-color: var(--ars-ink-soft) !important;
+}
+
+/* Side panel that fills the right column with actionable metadata so the
+   formCard no longer has dead space on the right of the input. */
+.openAlexSidePanel {
+  display: grid;
+  gap: var(--space-2);
+  align-content: center;
+  padding: var(--space-4) var(--space-5);
+  background: var(--ars-paper-alt);
+  min-width: 0;
+}
+
+.openAlexSidePanelLabel {
+  margin: 0;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ars-researcher);
+}
+
+.openAlexSidePanelDescription {
+  margin: 0;
+  color: var(--ars-ink-soft);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+.openAlexSidePanelExample {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  flex-wrap: wrap;
+}
+
+.openAlexSidePanelExampleLabel {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ars-ink-muted);
+}
+
+.openAlexSidePanelExample code {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink);
+  background: var(--ars-paper);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
 }
 
 .openAlexSecondaryActions {
@@ -785,18 +918,13 @@
 }
 
 @media (max-width: 760px) {
-  .openAlexLookupSurface {
-    grid-template-columns: 1fr;
+  .openAlexLookupTopRow {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
-  .openAlexBrandLockup {
-    padding: var(--space-4);
-    border-right: 0;
-    border-bottom: 1px solid var(--ars-network);
-  }
-
-  .openAlexEntry {
-    padding: var(--space-4);
+  .openAlexLookupMeta {
+    justify-content: flex-start;
   }
 
   .openAlexInputRow {

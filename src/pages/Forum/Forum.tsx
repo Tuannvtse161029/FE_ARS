@@ -666,7 +666,17 @@ const CreatePostModal = ({
         reset();
         onPublished();
       } else {
-        setSubmitError(createError?.message ?? 'Failed to publish post. Please verify all inputs and try again.');
+        // The hook's `createError` already runs through `sanitizeForumError`,
+        // which extracts the BE's `message` / `title` / `errors[firstKey][0]`
+        // for any 4xx response. Only fall back to the generic message when
+        // the hook didn't capture one — e.g. when the failure happened
+        // before the request (e.g. attachment upload succeeded but the
+        // create returned null with no captured error).
+        const fallback =
+          createError?.message && createError.message.trim().length > 0
+            ? createError.message
+            : 'Failed to publish post. Please verify all inputs and try again.';
+        setSubmitError(fallback);
       }
     } catch (err) {
       setSubmitting(false);

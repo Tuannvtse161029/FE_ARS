@@ -37,6 +37,7 @@ import { ConfirmModal } from '../lecturer/ConfirmModal';
 import { Button } from '../Button';
 import { formatRelativeTime } from '../../utils/formatDate';
 import { storage } from '../../utils/storage';
+import { formatEntityIdLabel, shouldExposeIds } from '../../utils/idVisibility';
 import type { ForumComment } from '../../types/forum.types';
 import styles from './CommentSection.module.css';
 
@@ -116,6 +117,12 @@ export const CommentSection = ({
   const { canInteract, reason: interactDisabledReason } = useCanInteractInForum();
   const stored = storage.getUser();
   const currentUserId = user?.userId ?? stored?.id ?? null;
+  const canViewIds = shouldExposeIds({
+    effectiveRole: user?.effectiveRole ?? null,
+    role: user?.role ?? null,
+    roleName: user?.role ?? null,
+    roleId: user?.roleId ?? null,
+  });
 
   const [resolvedNames, setResolvedNames] = useState<Record<number, string>>({});
 
@@ -557,7 +564,7 @@ export const CommentSection = ({
       return resolvedNames[comment.userId];
     }
     if (comment.userId != null) {
-      return `User #${comment.userId}`;
+      return formatEntityIdLabel('User', comment.userId, canViewIds);
     }
     return 'Anonymous';
   };

@@ -1,42 +1,67 @@
 import { STORAGE_KEYS } from './constants';
+import { secureToken } from './secureToken';
+import type { SessionUser } from './projectedUser';
+import { projectUser, serializeSessionUser } from './projectedUser';
 import type { User } from '../types/auth';
 
-// Pick localStorage for "Remember Me", sessionStorage otherwise.
-// Session storage is cleared automatically when the tab/window closes.
+// The session token is no longer round-tripped through plain storage. The
+// `ars_token` key is delegated to `secureToken.ts` which encrypts the
+// JWT before it ever hits `localStorage` / `sessionStorage`. This module
+// only owns the *user* blob and the remember-me flag; the token side is
+// exclusively `secureToken.getAccessToken()`.
 const rememberBucket = (): Storage => (storage.getRememberMe() ? localStorage : sessionStorage);
 
-// We force-define `storage` object first, then call it from helpers.
 export const storage = {
+  /**
+   * Returns the raw access token from in-memory storage. Falls back to
+   * the legacy `ars_token` key when the secureToken module has not been
+   * initialized yet (degraded Web Crypto environment only).
+   */
   getToken: (): string | null => {
-    // Read deterministically from the bucket matching the active Remember Me
-    // flag. Cross-bucket fallback chains (localStorage || sessionStorage)
-    // previously let a missing primary bucket silently borrow from the wrong
-    // session -- logout wipes both buckets via clearAll() so this is safe.
-    return rememberBucket().getItem(STORAGE_KEYS.TOKEN);
-  },
-
-  setToken: (token: string): void => {
-    rememberBucket().setItem(STORAGE_KEYS.TOKEN, token);
-  },
-
-  removeToken: (): void => {
-    localStorage.removeItem(STORAGE_KEYS.TOKEN);
-    sessionStorage.removeItem(STORAGE_KEYS.TOKEN);
-  },
-
-  getUser: (): User | null => {
-    // Mirror getToken(): deterministic bucket selection -- see comment there.
-    const raw = rememberBucket().getItem(STORAGE_KEYS.USER);
-    if (!raw) return null;
+    const live = secureToken.getAccessToken();
+    if (live) return live;
+    // Defensive fallback for the degraded-environment branch in
+    // secureToken.writeAfterLogin. The legacy key is still used so
+    // older builds remain functional in the rare case where Web Crypto
+    // is unavailable (http://, very old browsers).
     try {
-      return JSON.parse(raw) as User;
+      return localStorage.getItem('ars_token') || sessionStorage.getItem('ars_token');
     } catch {
       return null;
     }
   },
 
-  setUser: (user: User): void => {
-    rememberBucket().setItem(STORAGE_KEYS.USER, JSON.stringify(user));
+  /**
+   * Plain-text token writes are not allowed. This shim forwards through
+   * the secure path so legacy test fixtures that pre-date the migration
+   * keep working. New callers should use `secureToken.writeAfterLogin`
+   * directly.
+   */
+  setToken: (token: string): void => {
+    if (typeof window === 'undefined') return;
+    const rememberMe = storage.getRememberMe();
+    void secureToken.writeAfterLogin(token, null, rememberMe);
+  },
+
+  removeToken: (): void => {
+    secureToken.clear();
+  },
+
+  getUser: (): SessionUser | null => {
+    const raw = rememberBucket().getItem(STORAGE_KEYS.USER);
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      return projectUser(parsed as unknown as User);
+    } catch {
+      return null;
+    }
+  },
+
+  setUser: (user: User | SessionUser): void => {
+    const payload = serializeSessionUser(user);
+    if (!payload) return;
+    rememberBucket().setItem(STORAGE_KEYS.USER, payload);
   },
 
   removeUser: (): void => {
@@ -72,7 +97,11 @@ export const storage = {
     localStorage.removeItem(STORAGE_KEYS.SAVED_EMAIL);
   },
 
-  // Clear auth data from BOTH storages to guarantee complete logout.
+  /**
+   * Clear auth data from BOTH storages. The token side is delegated to
+   * `secureToken.clear()` which wipes the envelope, the in-memory key,
+   * and the legacy fallback key.
+   */
   clearAuth: (): void => {
     storage.removeToken();
     storage.removeUser();
@@ -84,11 +113,9 @@ export const storage = {
   },
 
   clearAll: (): void => {
-    localStorage.removeItem(STORAGE_KEYS.TOKEN);
-    localStorage.removeItem(STORAGE_KEYS.USER);
-    localStorage.removeItem(STORAGE_KEYS.REMEMBER_ME);
-    sessionStorage.removeItem(STORAGE_KEYS.TOKEN);
-    sessionStorage.removeItem(STORAGE_KEYS.USER);
+    storage.removeToken();
+    storage.removeUser();
+    storage.removeRememberMe();
   },
 };
 

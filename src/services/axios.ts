@@ -1,6 +1,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { API_BASE_URL } from '../utils/constants';
 import { storage } from '../utils/storage';
+import { secureToken } from '../utils/secureToken';
 import type { AxiosErrorResponse } from '../types/api';
 import { clearAuthSession } from './auth.service';
 import { loadingTracker } from './loadingTracker';
@@ -71,10 +72,11 @@ api.interceptors.response.use(
       currentPath.startsWith('/forgot-password') ||
       currentPath === '/reset-password';
 
-    const hasToken = Boolean(
-      typeof window !== 'undefined' &&
-      (localStorage.getItem('ars_token') || sessionStorage.getItem('ars_token'))
-    );
+    // Session-2 hardening: a "live session" is the in-memory access
+    // token (or a refresh token on disk, once the BE ships the refresh
+    // endpoint). The plain-text `ars_token` storage key is no longer
+    // authoritative — `secureToken.hasLiveSession` is.
+    const hasToken = secureToken.hasLiveSession();
 
     if (error.response?.status === 401 && !isAuthEndpoint && !isAuthPage && !sessionFailureHandled && hasToken) {
       sessionFailureHandled = true;

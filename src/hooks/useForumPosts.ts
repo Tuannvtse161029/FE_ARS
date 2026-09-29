@@ -17,45 +17,69 @@ export const FORUM_SERVICE_UNAVAILABLE_MESSAGE =
 // `5xx` and `undefined status` (network / CORS / etc.) failures by mapping
 // them to the static "service unavailable" string so a BE SQL stack trace
 // never surfaces in the UI. 4xx responses are user-controlled (bad auth,
-// validation, etc.) and we preserve their original messages.
+// validation, etc.) and we preserve their original messages — including
+// the BE's `message` field, ASP.NET ProblemDetails `title`, and ModelState
+// `errors[firstKey][0]` patterns.
 const sanitizeForumError = (err: unknown): Error => {
   const baseError =
     err instanceof Error ? err : new Error('Failed to load forum posts');
 
-  let isServerSideFailure = false;
   if (axios.isAxiosError(err)) {
     const status = err.response?.status;
-    if (status === 400 && err.response?.data) {
-      const data = err.response.data as any;
+    const data = err.response?.data as
+      | {
+          message?: string;
+          title?: string;
+          error?: string;
+          errors?: Record<string, string[] | string>;
+          detail?: string;
+        }
+      | undefined;
+
+    if (status && status >= 400 && status < 500 && data) {
+      // ASP.NET Core ProblemDetails / model state pattern
       if (data.errors && typeof data.errors === 'object') {
         const firstErrorKey = Object.keys(data.errors)[0];
-        const firstError = data.errors[firstErrorKey];
-        const msg = Array.isArray(firstError) ? firstError[0] : String(firstError);
-        return new Error(msg || 'Invalid post data. Please verify all inputs.');
+        if (firstErrorKey) {
+          const firstError = data.errors[firstErrorKey];
+          const msg = Array.isArray(firstError) ? firstError[0] : String(firstError);
+          if (msg) return new Error(msg);
+        }
       }
-      if (typeof data.message === 'string') {
+      // Common envelope shape returned by the ARS BE controllers.
+      if (typeof data.message === 'string' && data.message.trim()) {
         return new Error(data.message);
       }
-      if (typeof data.title === 'string') {
+      if (typeof data.title === 'string' && data.title.trim()) {
         return new Error(data.title);
       }
+      if (typeof data.error === 'string' && data.error.trim()) {
+        return new Error(data.error);
+      }
+      if (typeof data.detail === 'string' && data.detail.trim()) {
+        return new Error(data.detail);
+      }
+      // Role-specific fallbacks for codes the BE may return without a body.
+      if (status === 401) {
+        return new Error('You need to sign in again to publish a post.');
+      }
+      if (status === 403) {
+        return new Error('Forum posts are restricted for your account role.');
+      }
     }
+
     if (status === 403) {
-      return new Error('Forum posts are restricted for unapproved guest accounts.');
+      return new Error('Forum posts are restricted for your account role.');
     }
     if (status === undefined || status >= 500) {
-      isServerSideFailure = true;
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.warn('[forum] service unavailable — original error:', baseError);
+      }
+      const sanitized = new Error(FORUM_SERVICE_UNAVAILABLE_MESSAGE);
+      sanitized.name = baseError.name;
+      return sanitized;
     }
-  }
-
-  if (isServerSideFailure) {
-    if (import.meta.env.DEV) {
-      // eslint-disable-next-line no-console
-      console.warn('[forum] service unavailable — original error:', baseError);
-    }
-    const sanitized = new Error(FORUM_SERVICE_UNAVAILABLE_MESSAGE);
-    sanitized.name = baseError.name;
-    return sanitized;
   }
 
   return baseError;
