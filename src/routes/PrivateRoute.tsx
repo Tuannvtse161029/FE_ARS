@@ -1,17 +1,26 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { DelayedLoadingOverlay } from '../components/DelayedLoadingOverlay';
 import { ROUTES } from './paths';
 import { resolvePostAuthRoute, type PostAuthSnapshot } from '../utils/postAuthRoute';
 
 export const PrivateRoute = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <DelayedLoadingOverlay isLoading label="Verifying session..." />;
+  }
 
   return isAuthenticated ? <Outlet /> : <Navigate to={ROUTES.LOGIN} replace />;
 };
 
 export const PublicRoute = () => {
-  const { user, isAuthenticated, effectiveRole } = useAuth();
+  const { user, isAuthenticated, isLoading, effectiveRole } = useAuth();
   const location = useLocation();
+
+  if (isLoading) {
+    return <DelayedLoadingOverlay isLoading label="Loading..." />;
+  }
 
   // If the user is unauthenticated OR is explicitly on an auth action route,
   // do NOT intercept and redirect them.

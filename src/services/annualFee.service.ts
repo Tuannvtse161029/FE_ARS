@@ -209,6 +209,18 @@ export const purchaseAnnualFee = async (
 };
 
 /**
+ * Confirm purchase with BE immediately when redirected back from PayOS
+ */
+export const confirmPayment = async (orderCode: string | number): Promise<boolean> => {
+  try {
+    const response = await api.post<{ success?: boolean }>(`/api/AnnualFees/confirm/${orderCode}`);
+    return response.data?.success ?? true;
+  } catch {
+    return false;
+  }
+};
+
+/**
  * Get the user's current active annual fee subscription.
  * Returns null if the user has no active subscription.
  *
@@ -609,6 +621,7 @@ export const annualFeeService = {
   deleteAnnualFeePlan,
   toggleAnnualFeePlan,
   purchaseAnnualFee,
+  confirmPayment,
   getMyCurrentSubscription,
   getMyPurchaseHistory,
   listAnnualFeePlanSubscribers,

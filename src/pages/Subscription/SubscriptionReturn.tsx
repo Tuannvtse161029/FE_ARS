@@ -56,14 +56,30 @@ export const SubscriptionReturn = () => {
     setMessage('Payment received. We are verifying your subscription.');
 
     try {
+      const payosSaysCancelled =
+        cancelFlag ||
+        payosStatus === 'cancelled' ||
+        payosStatus === 'failed' ||
+        (payosCode !== null && payosCode !== '00');
+
+      if (payosSaysCancelled) {
+        setState('failed');
+        setMessage(
+          'You cancelled the payment. Your subscription has not been activated.',
+        );
+        return;
+      }
+
+      // If we have an orderCode and payment was not cancelled, confirm with BE immediately
+      if (orderCode) {
+        await annualFeeService.confirmPayment(orderCode);
+      }
+
       // Authoritative check: ask the BE for the user's current subscription.
       await refetch();
 
       // The hook will populate `current`. Read the latest snapshot.
       const sub = current ?? (await annualFeeService.getMyCurrentSubscription());
-
-      const payosSaysCancelled = cancelFlag || payosStatus === 'cancelled' || payosStatus === 'failed' ||
-        (payosCode !== null && payosCode !== '00');
 
       const isPaid = sub?.purchase == null || sub.purchase.status === 'Paid';
       if (sub && !sub.isExpired && isPaid) {
@@ -82,14 +98,6 @@ export const SubscriptionReturn = () => {
         return;
       }
 
-      if (payosSaysCancelled) {
-        setState('failed');
-        setMessage(
-          'You cancelled the payment. Your subscription has not been activated.',
-        );
-        return;
-      }
-
       // PayOS redirect said success but BE has no active sub yet — typical
       // race while the webhook is propagating.
       setState('pending');
@@ -104,7 +112,7 @@ export const SubscriptionReturn = () => {
           : 'Failed to verify payment. Please try again.',
       );
     }
-  }, [refetch, current, payosCode, payosStatus, cancelFlag]);
+  }, [refetch, current, orderCode, payosCode, payosStatus, cancelFlag]);
 
   useEffect(() => {
     void verify();

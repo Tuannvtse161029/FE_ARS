@@ -17,11 +17,13 @@ const isFullyApproved = (
 };
 
 export const useVerifiedGuard = () => {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
+    if (isLoading) return;
+
     if (!isAuthenticated) {
       navigate(ROUTES.LOGIN, { replace: true });
       return;
