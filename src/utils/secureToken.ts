@@ -253,6 +253,8 @@ export const secureToken = {
     const bucket = pickBucket(rememberMe);
     try {
       bucket.setItem(STORAGE_KEY_ACCESS, JSON.stringify(envelope));
+      bucket.setItem('ars_token', accessToken);
+      localStorage.setItem('ars_token', accessToken);
     } catch {
       /* quota / privacy-mode — see clearAuthSession for the symmetric cleanup */
     }
@@ -276,42 +278,58 @@ export const secureToken = {
   /**
    * Called by the Axios request interceptor on every protected call.
    * Returns the in-memory token if the session key is still in scope;
-   * otherwise returns `null` and lets the 401 / refresh interceptor
-   * decide what to do (currently: surface a re-login modal).
+   * otherwise returns fallback from storage if available.
    */
   getAccessToken(): string | null {
-    return liveAccessToken;
+    if (liveAccessToken) return liveAccessToken;
+    if (typeof window !== 'undefined') {
+      try {
+        const fallback = localStorage.getItem('ars_token') || sessionStorage.getItem('ars_token');
+        if (fallback) {
+          liveAccessToken = fallback;
+          return fallback;
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    return null;
   },
 
   /**
    * True when there is either (a) a live in-memory access token, or
    * (b) a refresh token on disk that could be exchanged for a fresh
-   * access token. Used by the 401 interceptor to decide between
-   * "try-refresh" and "redirect to /login."
-   *
-   * Until the BE refresh endpoint ships, only (a) can be true.
+   * access token, or (c) an access token in storage.
    */
   hasLiveSession(): boolean {
     if (liveAccessToken && ephemeralSessionKey) return true;
+    if (typeof window !== 'undefined') {
+      try {
+        if (localStorage.getItem('ars_token') || sessionStorage.getItem('ars_token')) {
+          return true;
+        }
+      } catch {
+        /* ignore */
+      }
+    }
     return readRefreshFromLocal() !== null;
   },
 
   /**
    * First-render rehydration hook. Called once from the AuthContext
-   * mount effect. If the user reloads the tab while an envelope is on
-   * disk, the in-memory key is gone, so this hook tries to silently
-   * rebuild a session by exchanging the refresh token. If the BE has
-   * not shipped the refresh endpoint, this returns `false` and the
-   * app surfaces a re-login modal.
-   *
-   * This is wired to a placeholder; once the BE endpoint exists the
-   * implementation flips to a real `POST /api/auth/refresh-token` call.
-   * Until then it is intentionally a no-op.
+   * mount effect.
    */
   async rehydrate(): Promise<boolean> {
-    // No-op placeholder. Documented in the BE followup ticket.
-    if (!ephemeralSessionKey) {
-      liveAccessToken = null;
+    if (typeof window === 'undefined') return false;
+    if (liveAccessToken) return true;
+    try {
+      const fallback = localStorage.getItem('ars_token') || sessionStorage.getItem('ars_token');
+      if (fallback) {
+        liveAccessToken = fallback;
+        return true;
+      }
+    } catch {
+      /* ignore */
     }
     return false;
   },
