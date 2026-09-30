@@ -66,7 +66,7 @@ export const useVerifiedGuard = () => {
 
     // Land them on /forum (replace so back button doesn't trap them).
     navigate(ROUTES.FORUM, { replace: true });
-  }, [user, isAuthenticated, location.pathname, navigate]);
+  }, [user, isAuthenticated, isLoading, location.pathname, navigate]);
 };
 
 export default useVerifiedGuard;

@@ -305,10 +305,13 @@ export const secureToken = {
   },
 
   /**
-   * True when there is either a live token or a persisted session token.
+   * True when there is either a live in-memory token, an on-disk session token,
+   * or a refresh token on disk.
    */
   hasLiveSession(): boolean {
-    return Boolean(this.getAccessToken());
+    if (liveAccessToken && ephemeralSessionKey) return true;
+    if (this.getAccessToken()) return true;
+    return readRefreshFromLocal() !== null;
   },
 
   /**
