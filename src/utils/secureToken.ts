@@ -263,7 +263,7 @@ export const secureToken = {
       const sessionKey = await generateSessionKey();
       const envelope = await encryptToken(accessToken, sessionKey);
       bucket.setItem(STORAGE_KEY_ACCESS, JSON.stringify(envelope));
-ephemeralSessionKey = sessionKey;
+      ephemeralSessionKey = sessionKey;
     } catch {
       /* ignore */
     }
@@ -300,9 +300,6 @@ ephemeralSessionKey = sessionKey;
       }
     } catch {
       /* ignore */
-    }
-    return null;
-  },
     }
     return null;
   },
