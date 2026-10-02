@@ -18,8 +18,9 @@
  * the current subscription so the card reflects the BE's authoritative
  * state.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import {
   AlertTriangle,
   Calendar,
@@ -30,7 +31,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { useSubscription } from '../../hooks/useSubscription';
+import { useSubscription, clearSubscriptionCache } from '../../hooks/useSubscription';
 import { useLocale } from '../../i18n/I18nContext';
 import { annualFeeService } from '../../services/annualFee.service';
 import { PageHeader } from '../../components/PageHeader';
@@ -127,6 +128,7 @@ const ROLE_FEATURES = {
 export const Subscription = () => {
   const { user, effectiveRole } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const locale = useLocale();
   const {
     current,
@@ -141,6 +143,14 @@ export const Subscription = () => {
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
   const [isOrdering, setIsOrdering] = useState(false);
   const [orderError, setOrderError] = useState<Error | null>(null);
+
+  // Holds a handle to the PayOS checkout popup so we can detect when the
+  // user finishes (or cancels) payment without a top-level navigation
+  // reloading the SPA. Without this, the parent's in-memory JWT and
+  // secureToken session key survive across the PayOS round-trip — which
+  // is the whole point of using a popup instead of `window.location.assign`.
+  const checkoutPopupRef = useRef<Window | null>(null);
+  const checkoutWatchdogRef = useRef<number | null>(null);
 
   const [history, setHistory] = useState<AnnualFeePurchase[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -217,10 +227,136 @@ export const Subscription = () => {
     }
   }, [location.pathname, refetchSubscription, fetchHistory]);
 
+  // PayOS popup-close watchdog. When the popup closes (the user either
+  // completed the payment and PayOS redirected the popup back to our
+  // `/subscription/return` URL, or they cancelled), pull the BE's
+  // authoritative subscription state and route accordingly. We retry
+  // for up to ~10 s because the PayOS webhook that flips the purchase
+  // from `PENDING_PAYMENT` to `ACTIVE` can lag the popup redirect by
+  // a few seconds — without the retry window the user would see a
+  // misleading "payment failed" toast even though the payment actually
+  // succeeded.
+  //
+  // The watchdog only runs while `checkoutPopupRef.current` is set
+  // (i.e. the user actually opened a popup on this mount). It cleans
+  // itself up on unmount so navigating away from the page doesn't
+  // leave dangling timers or stale popups.
+  useEffect(() => {
+    if (!checkoutPopupRef.current) return undefined;
+
+    // Track whether we've already kicked off the post-close handler so
+    // the polling interval doesn't fire the success navigation twice.
+    let handled = false;
+    const popup = checkoutPopupRef.current;
+
+    const POLL_MS = 500;
+    // Retry budget for the BE webhook race. 10 s × 2 s backoff = ~5
+    // attempts which is well above the latency we see on the BE.
+    const MAX_RETRY_MS = 10_000;
+    const RETRY_DELAY_MS = 2_000;
+
+    const tick = async () => {
+      // `popup.closed` is `true` once the popup window is destroyed
+      // (either the user closed it or PayOS closed it after redirect).
+      // Some browsers report `null` instead of `false` while the popup
+      // is still mid-navigation, so we treat any truthy non-false value
+      // as "still alive".
+      const stillOpen = popup.closed === false || popup.closed === undefined;
+      if (stillOpen || handled) return;
+      handled = true;
+      if (checkoutWatchdogRef.current !== null) {
+        window.clearInterval(checkoutWatchdogRef.current);
+        checkoutWatchdogRef.current = null;
+      }
+      checkoutPopupRef.current = null;
+
+      // Burst-refetch: try immediately, then on a slow backoff, until
+      // the BE reports the purchase active OR we exhaust the budget.
+      const startedAt = Date.now();
+      let active = false;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        try {
+          clearSubscriptionCache();
+          await refetchSubscription();
+          // Read the latest snapshot — the hook updates internal state
+          // synchronously after the fetch resolves.
+          const latest = await annualFeeService.getMyCurrentSubscription();
+          if (latest && !latest.isExpired) {
+            active = true;
+            break;
+          }
+        } catch {
+          // Network blip — keep retrying until the budget is spent.
+        }
+        if (Date.now() - startedAt >= MAX_RETRY_MS) break;
+        await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+      }
+
+      if (active) {
+        toast.success(
+          locale === 'vi'
+            ? 'Thanh toán thành công! Đang chuyển đến không gian làm việc của bạn.'
+            : 'Payment confirmed! Taking you back to your workspace.',
+        );
+        navigate(ROUTES.HOME, { replace: true });
+      } else {
+        toast.warning(
+          locale === 'vi'
+            ? 'Chúng tôi vẫn đang xác nhận thanh toán của bạn. Bạn sẽ nhận được thông báo khi đăng ký được kích hoạt.'
+            : "We're still confirming your payment. You'll be notified once your subscription is active.",
+        );
+      }
+    };
+
+    checkoutWatchdogRef.current = window.setInterval(() => {
+      void tick();
+    }, POLL_MS);
+
+    return () => {
+      if (checkoutWatchdogRef.current !== null) {
+        window.clearInterval(checkoutWatchdogRef.current);
+        checkoutWatchdogRef.current = null;
+      }
+      checkoutPopupRef.current = null;
+    };
+  }, [refetchSubscription, navigate, location.pathname, locale]);
+
   const selectedPlan = useMemo<AnnualFee | null>(
     () => plans.find((plan) => plan.id === selectedPlanId) ?? null,
     [plans, selectedPlanId],
   );
+
+  // Open PayOS checkout in a popup so the parent SPA stays mounted across
+  // the round-trip. Background — `window.location.assign(checkoutUrl)` would
+  // trigger a hard browser navigation to a third-party domain and back,
+  // which re-evaluates the JS bundle on return and drops the in-memory
+  // JWT and secureToken session key. The auth context would then look
+  // unauthenticated on first refetch and route the user to /login. The
+  // popup keeps the parent alive so the session survives intact.
+  //
+  // When the popup closes (PayOS redirects the popup to our
+  // `/subscription/return` page and the user dismisses it after seeing
+  // the confirmation), the `checkoutWatchdog` effect below calls
+  // `refetchSubscription()` to pull the BE's authoritative state and
+  // either navigates the parent to `/home` on success or surfaces a
+  // toast + stays on `/subscription` if the webhook hasn't propagated.
+  const openPayosCheckoutPopup = useCallback((checkoutUrl: string): Window | null => {
+    if (typeof window === 'undefined') return null;
+    // `noopener,noreferrer` keeps the popup from gaining a reference back
+    // to the parent (defence-in-depth against PayOS-hosted content trying
+    // to navigate `window.opener`). The window name is fixed so successive
+    // purchases reuse the same popup rather than spawning new ones.
+    const popup = window.open(
+      checkoutUrl,
+      'payos_checkout',
+      'width=960,height=780,menubar=no,toolbar=no,location=no,noopener,noreferrer',
+    );
+    if (popup) {
+      checkoutPopupRef.current = popup;
+    }
+    return popup;
+  }, []);
 
   const handleProceedToPay = useCallback(async () => {
     if (!selectedPlan) return;
@@ -250,8 +386,24 @@ export const Subscription = () => {
             : null,
       });
       if (order.checkoutUrl && typeof order.checkoutUrl === 'string') {
-        // Browser-side redirect only. The FE never grants access from the
-        // returned query string — the BE confirms payment via webhook.
+        // Primary path — popup-based checkout. The popup is what PayOS
+        // returns the user to (via our `/subscription/return` URL). The
+        // popup's "Go to workspace" button works inside the popup, but
+        // the parent SPA also independently polls the BE on popup close
+        // so the user gets a smooth in-place redirect even if they just
+        // dismiss the popup.
+        const popup = openPayosCheckoutPopup(order.checkoutUrl);
+        if (popup) {
+          return;
+        }
+        // Popup blocked — fall back to a top-level redirect. This is the
+        // legacy behaviour and known to drop the in-memory auth session
+        // (the user will land on /login if the BE hasn't yet activated
+        // the subscription). We surface a toast so the user understands
+        // why they're being redirected and can re-login if needed.
+        toast.warning(
+          'Popup blocked — finishing checkout in this tab. Allow popups next time to keep your session signed in.',
+        );
         window.location.assign(order.checkoutUrl);
         return;
       }
@@ -263,7 +415,7 @@ export const Subscription = () => {
     } finally {
       setIsOrdering(false);
     }
-  }, [selectedPlan, user?.userId]);
+  }, [selectedPlan, user?.userId, openPayosCheckoutPopup]);
 
   const featureDisabled = !AppConfig.features.enableSubscriptionAccess;
   // True when the BE has returned a valid subscription that is not expired.

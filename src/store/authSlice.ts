@@ -80,14 +80,32 @@ interface AuthStore extends AuthState {
   setEffectiveRole: (effectiveRole: EffectiveRole | null) => void;
 }
 
-const useAuthStore = create<AuthStore>()(
-  persist(
-    (set) => ({
+const getInitialAuthState = () => {
+  if (typeof window === 'undefined') {
+    return {
       user: null,
       token: null,
       isAuthenticated: false,
       isLoading: true,
       effectiveRole: null,
+    };
+  }
+  const initialUser = storage.getUser();
+  const initialToken = storage.getToken();
+  const isAuth = Boolean(initialUser && initialToken);
+  return {
+    user: (initialUser as unknown as User) ?? null,
+    token: initialToken,
+    isAuthenticated: isAuth,
+    isLoading: false,
+    effectiveRole: (initialUser?.effectiveRole as EffectiveRole) ?? null,
+  };
+};
+
+const useAuthStore = create<AuthStore>()(
+  persist(
+    (set) => ({
+      ...getInitialAuthState(),
 
       login: (user: User | SessionUser, token: string, effectiveRole?: EffectiveRole) => {
         const isRemember = storage.getRememberMe();
@@ -187,7 +205,14 @@ const useAuthStore = create<AuthStore>()(
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {
+          const liveToken = storage.getToken();
+          if (liveToken) {
+            state.token = liveToken;
+            state.isAuthenticated = true;
+          }
           state.isLoading = false;
+        } else {
+          useAuthStore.setState({ isLoading: false });
         }
       },
     }

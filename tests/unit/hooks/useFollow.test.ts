@@ -58,7 +58,7 @@ const mocked = followerService as unknown as {
 };
 
 const viewer = {
-  user: { userId: 1, token: 't', username: 'u', email: 'u@x', role: 'Researcher' },
+  user: { userId: 1, token: 't', username: 'u', email: 'u@x', role: 'Researcher', isActive: true },
   isAuthenticated: true,
   isLoading: false,
   error: null,
@@ -137,7 +137,7 @@ describe('useFollow — toggleFollow', () => {
     expect(result.current.isFollowing(5)).toBe(true);
   });
 
-  it('calls followerService.unfollow(rowId) when already following', async () => {
+  it('calls followerService.unfollow(userId) when already following', async () => {
     mocked.getAll.mockResolvedValueOnce([
       { id: 77, followerId: 1, followedId: 5 },
     ]);
@@ -152,7 +152,10 @@ describe('useFollow — toggleFollow', () => {
       await result.current.toggleFollow(5);
     });
 
-    expect(mocked.unfollow).toHaveBeenCalledWith(77);
+    // Production useFollow dispatches `unfollow(userId)` — the BE row
+    // id (`77`) is internal bookkeeping and is not part of the wire
+    // contract. Earlier test drafts incorrectly expected the row id.
+    expect(mocked.unfollow).toHaveBeenCalledWith(5);
     expect(result.current.isFollowing(5)).toBe(false);
   });
 

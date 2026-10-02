@@ -17,11 +17,13 @@ const isFullyApproved = (
 };
 
 export const useVerifiedGuard = () => {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
+    if (isLoading) return;
+
     if (!isAuthenticated) {
       navigate(ROUTES.LOGIN, { replace: true });
       return;
@@ -64,7 +66,7 @@ export const useVerifiedGuard = () => {
 
     // Land them on /forum (replace so back button doesn't trap them).
     navigate(ROUTES.FORUM, { replace: true });
-  }, [user, isAuthenticated, location.pathname, navigate]);
+  }, [user, isAuthenticated, isLoading, location.pathname, navigate]);
 };
 
 export default useVerifiedGuard;

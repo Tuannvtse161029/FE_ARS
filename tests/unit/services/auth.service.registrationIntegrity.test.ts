@@ -315,10 +315,11 @@ describe('usePermissions — isVerified false for unapproved users', () => {
     expect(result.current.canCreatePost).toBe(false);
   });
 
-  it('hasWallet is false for unverified users', () => {
-    const { result } = renderHook(() => usePermissions());
-    expect(result.current.hasWallet).toBe(false);
-  });
+  // The `hasWallet` flag was retired when the wallet money flows were
+  // removed from the platform (see WALLET_SCOPE_CHANGE.md). The wallet
+  // API surface no longer exists and `usePermissions` no longer
+  // surfaces it. No replacement assertion is needed — the remaining
+  // flags cover the post-wallet-removal permission contract.
 
   // Agent 39 — isGuest surfaces from the BE-derived effectiveRole field, not
   // the derived `!isActive && !isAdmin` heuristic.

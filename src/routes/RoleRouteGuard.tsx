@@ -21,6 +21,7 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import type { ReactElement } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { DelayedLoadingOverlay } from '../components/DelayedLoadingOverlay';
 import { ROUTES } from './paths';
 import { landingRouteForRoleName } from '../utils/roleNormalizer';
 import type { UserRole } from '../types/auth';
@@ -44,7 +45,11 @@ export const RoleRouteGuard = ({
   allow,
   fallback,
 }: RoleRouteGuardProps): ReactElement => {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <DelayedLoadingOverlay isLoading label="Checking permissions..." />;
+  }
 
   // Auth gate is delegated to PrivateRoute; this guard focuses on RBAC.
   // Defensive: if the parent route somehow forgot to wrap with PrivateRoute,

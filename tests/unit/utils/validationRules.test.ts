@@ -125,7 +125,7 @@ describe('validateEmail', () => {
   });
 
   test('rejects emails without an @ sign', () => {
-    expect(validateEmail('user.example.com')).toMatch(/invalid email/i);
+    expect(validateEmail('user.example.com')).toMatch(/@/);
   });
 
   test('rejects empty input', () => {

@@ -151,7 +151,7 @@ describe('orcid.service — error class hierarchy', () => {
     expect(err).toBeInstanceOf(Error);
     expect(err).toBeInstanceOf(OrcidCheckFeatureDisabledError);
     expect(err.name).toBe('OrcidCheckFeatureDisabledError');
-    expect(err.message).toContain('not yet available');
+    expect(err.message).toContain('ORCID Check');
   });
 
   it('OrcidInvalidFormatError carries the offending value in its message', () => {

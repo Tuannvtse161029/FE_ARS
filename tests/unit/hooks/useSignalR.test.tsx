@@ -26,6 +26,7 @@ vi.mock('../../../src/i18n/I18nContext', () => ({
     t: (key: string, fallback?: string) => fallback || key,
     locale: 'en',
   })),
+  useLocale: vi.fn(() => 'en'),
 }));
 
 describe('useSignalR', () => {

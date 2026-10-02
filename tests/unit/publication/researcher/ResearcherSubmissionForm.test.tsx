@@ -19,7 +19,7 @@ import { dictionary } from '../../../../src/i18n/dictionaries/en';
 
 const translate = (key: string, fallback?: string, params?: Record<string, string | number>) =>
   Object.entries(params ?? {}).reduce((text, [name, value]) => text.replaceAll(`{${name}}`, String(value)), dictionary[key] ?? fallback ?? key);
-vi.mock('../../../../src/i18n/I18nContext', () => ({ useT: () => translate }));
+vi.mock('../../../../src/i18n/I18nContext', () => ({ useT: () => translate, useLocale: () => 'en' }));
 vi.mock('../../../../src/components/PdfViewer', () => ({ default: () => <div data-testid="mock-local-preview" />, PdfViewer: () => <div data-testid="mock-local-preview" /> }));
 
 const { mockUseFirebaseUpload } = vi.hoisted(() => ({

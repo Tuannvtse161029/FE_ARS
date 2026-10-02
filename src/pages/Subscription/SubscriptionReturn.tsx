@@ -56,7 +56,10 @@ export const SubscriptionReturn = () => {
     setMessage('Payment received. We are verifying your subscription.');
 
     try {
-      const payosSaysCancelled = cancelFlag || payosStatus === 'cancelled' || payosStatus === 'failed' ||
+      const payosSaysCancelled =
+        cancelFlag ||
+        payosStatus === 'cancelled' ||
+        payosStatus === 'failed' ||
         (payosCode !== null && payosCode !== '00');
 
       if (payosSaysCancelled) {

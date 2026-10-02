@@ -325,7 +325,9 @@ describe('clearAuthSession — Agent 53 centralized cleanup', () => {
     delete (global as unknown as { google?: unknown }).google;
     seedAuthState({ withToken: false });
 
-    await expect(clearAuthSession()).resolves.toBeUndefined();
+    // `clearAuthSession` is synchronous and returns `void`; it should
+    // simply not throw when Google Identity Services is absent.
+    expect(() => clearAuthSession()).not.toThrow();
   });
 
   // ── 8. authService.logout still triggers the centralized routine ─────────

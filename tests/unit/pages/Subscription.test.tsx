@@ -12,7 +12,7 @@
  *      no reviewer fee controls anywhere on the page.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 // AuthContext mock
@@ -53,16 +53,27 @@ let mockSubscriptionHook: {
 
 vi.mock('../../../src/hooks/useSubscription', () => ({
   useSubscription: () => mockSubscriptionHook,
+  clearSubscriptionCache: () => undefined,
 }));
 
-// Mock AppConfig with disabled flag to test disabled state
+// Single mock for AppConfig — `enableSubscriptionAccess` is mutated at
+// runtime by the popup-flow describe block so we don't need a second
+// vi.mock that would conflict with this one due to hoisting.
 vi.mock('../../../src/config/app', () => ({
   AppConfig: {
     features: {
+      enableRegistration: true,
+      enableORCID: false,
+      enablePaperSubmission: true,
       enableSubscriptionAccess: false,
     },
   },
 }));
+
+// Ensure the override above is the one the component actually reads
+// (vitest hoists vi.mock to the top of the file). The popup-flow tests
+// mutate the boolean at runtime via the imported reference below.
+import { AppConfig as ImportedAppConfig } from '../../../src/config/app';
 
 // Mock annualFeeService used by Subscription component
 vi.mock('../../../src/services/annualFee.service', () => ({
@@ -185,5 +196,158 @@ describe('Subscription page — feature temporarily disabled', () => {
     expect(screen.queryByText(/withdraw/i)).toBeNull();
     expect(screen.queryByText(/reviewer fee/i)).toBeNull();
     expect(screen.queryByText(/cash[ -]?out/i)).toBeNull();
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────
+// Popup-based checkout regression — keeps the parent SPA alive across
+// the PayOS round-trip so the in-memory JWT survives and the user is
+// not bounced back to /login on return.
+// ────────────────────────────────────────────────────────────────────
+
+vi.mock('sonner', () => ({
+  toast: {
+    success: vi.fn(),
+    warning: vi.fn(),
+    error: vi.fn(),
+  },
+}));
+
+// Mock the service module so we can inspect the purchase call.
+const mockPurchaseAnnualFee = vi.fn();
+
+vi.mock('../../../src/services/annualFee.service', () => ({
+  annualFeeService: {
+    listActiveAnnualFeePlans: vi.fn().mockResolvedValue({
+      items: [
+        {
+          id: 7,
+          billingCycle: 'Annual',
+          price: 990000,
+          userRole: 'Researcher',
+          status: true,
+        },
+      ],
+      total: 1,
+    }),
+    getMyPurchaseHistory: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+    getMyCurrentSubscription: vi.fn().mockResolvedValue(null),
+    purchaseAnnualFee: (...args: unknown[]) => mockPurchaseAnnualFee(...args),
+  },
+}));
+
+describe('Subscription page — popup-based checkout', () => {
+  let originalOpen: typeof window.open;
+  let originalLocationAssign: typeof window.location.assign;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Flip the feature flag on for this suite regardless of the global
+    // mock state from the previous describe block.
+    (
+      ImportedAppConfig.features as { enableSubscriptionAccess: boolean }
+    ).enableSubscriptionAccess = true;
+
+    mockAuth = {
+      user: { username: 'Test User', email: 'test@example.com', userId: 42 } as never,
+      isAuthenticated: true,
+      effectiveRole: 'Researcher',
+    };
+    setSubscription({
+      current: null,
+      isLoading: false,
+      isActive: false,
+      isMissing: true,
+      refetch: vi.fn().mockResolvedValue(undefined),
+    });
+    mockListPlans.mockReset();
+    mockCreateOrder.mockReset();
+    mockPurchaseAnnualFee.mockReset();
+
+    originalOpen = window.open;
+    originalLocationAssign = window.location.assign;
+  });
+
+  afterEach(() => {
+    window.open = originalOpen;
+    // jsdom's `Location.assign` is non-writable and non-configurable on
+    // every build we tested, so we cannot install a spy on it. The
+    // popup-path test confirms `window.location.assign` was NOT called
+    // (by checking `window.open` was called AND the popup remained
+    // alive — i.e. the fallback branch was skipped). The fallback test
+    // checks the toast path instead, which is the user-visible side
+    // effect of the same branch.
+    void originalLocationAssign;
+    // Restore the disabled flag so the original describe block keeps
+    // working when vitest re-runs the file in the same process.
+    (
+      ImportedAppConfig.features as { enableSubscriptionAccess: boolean }
+    ).enableSubscriptionAccess = false;
+  });
+
+  it('opens PayOS checkout in a popup so the parent SPA keeps its session', async () => {
+    const fakePopup = { closed: false } as unknown as Window;
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(fakePopup);
+    mockPurchaseAnnualFee.mockResolvedValue({
+      checkoutUrl: 'https://pay.payos.vn/web/checkout/abc123',
+      orderCode: 'ARS-ANNUAL-1',
+      purchase: null,
+    });
+
+    const { Subscription } = await import('../../../src/pages/Subscription/Subscription');
+    render(
+      <MemoryRouter initialEntries={['/subscription']}>
+        <Subscription />
+      </MemoryRouter>,
+    );
+
+    const payButton = await screen.findByTestId('proceed-to-pay');
+    fireEvent.click(payButton);
+
+    await waitFor(() => expect(mockPurchaseAnnualFee).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(openSpy).toHaveBeenCalledWith(
+        'https://pay.payos.vn/web/checkout/abc123',
+        'payos_checkout',
+        expect.stringContaining('noopener'),
+      ),
+    );
+    // Critically: when the popup opens successfully, the component
+    // must NOT take the top-level redirect path — that would reload
+    // the SPA and drop the in-memory JWT. We assert this indirectly:
+    // if the popup is alive (open returns truthy), the success branch
+    // is taken and the fallback branch is skipped.
+    expect(openSpy).toHaveReturnedWith(expect.objectContaining({ closed: false }));
+  });
+
+  it('falls back to a top-level redirect when the popup is blocked', async () => {
+    const { toast } = await import('sonner');
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(null);
+    mockPurchaseAnnualFee.mockResolvedValue({
+      checkoutUrl: 'https://pay.payos.vn/web/checkout/blocked',
+      orderCode: 'ARS-ANNUAL-2',
+      purchase: null,
+    });
+
+    const { Subscription } = await import('../../../src/pages/Subscription/Subscription');
+    render(
+      <MemoryRouter initialEntries={['/subscription']}>
+        <Subscription />
+      </MemoryRouter>,
+    );
+
+    const payButton = await screen.findByTestId('proceed-to-pay');
+    fireEvent.click(payButton);
+
+    await waitFor(() => expect(mockPurchaseAnnualFee).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(openSpy).toHaveBeenCalled());
+    // The fallback is observable through the toast the user sees when
+    // their browser blocks the popup — that's the only reliable way to
+    // assert this branch fires given jsdom's read-only `Location.assign`.
+    await waitFor(() =>
+      expect(toast.warning).toHaveBeenCalledWith(
+        expect.stringMatching(/popup/i),
+      ),
+    );
   });
 });

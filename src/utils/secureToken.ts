@@ -229,35 +229,45 @@ export const secureToken = {
     refreshToken: string | null,
     rememberMe: boolean,
   ): Promise<void> {
+    liveAccessToken = accessToken;
     if (typeof window === 'undefined') return;
-    const crypto = getCrypto();
-    if (!crypto) {
-      // Degraded environment — fall back to writing the raw token to the
-      // legacy key so the rest of the app continues to work. The user
-      // pays a security cost (token in plain storage) but does not get
-      // locked out. This branch only runs on http:// or very old
-      // browsers, both of which the production deploy does not hit.
-      const bucket = pickBucket(rememberMe);
+
+    // Always persist cleartext token to the selected bucket and ensure it's available
+    const bucket = pickBucket(rememberMe);
+    try {
+      bucket.setItem('ars_token', accessToken);
+    } catch {
+      /* ignore */
+    }
+    if (rememberMe) {
       try {
-        bucket.setItem('ars_token', accessToken);
+        localStorage.setItem('ars_token', accessToken);
       } catch {
         /* ignore */
       }
-      liveAccessToken = accessToken;
+    } else {
+      try {
+        sessionStorage.setItem('ars_token', accessToken);
+      } catch {
+        /* ignore */
+      }
+    }
+
+    const crypto = getCrypto();
+    if (!crypto) {
       ephemeralSessionKey = null;
       return;
     }
 
-    const sessionKey = await generateSessionKey();
-    const envelope = await encryptToken(accessToken, sessionKey);
-    const bucket = pickBucket(rememberMe);
     try {
+      const sessionKey = await generateSessionKey();
+      const envelope = await encryptToken(accessToken, sessionKey);
       bucket.setItem(STORAGE_KEY_ACCESS, JSON.stringify(envelope));
-      bucket.setItem('ars_token', accessToken);
-      localStorage.setItem('ars_token', accessToken);
+      ephemeralSessionKey = sessionKey;
     } catch {
-      /* quota / privacy-mode — see clearAuthSession for the symmetric cleanup */
+      /* ignore */
     }
+
     if (refreshToken) {
       try {
         localStorage.setItem(STORAGE_KEY_REFRESH, refreshToken);
@@ -271,67 +281,45 @@ export const secureToken = {
         /* ignore */
       }
     }
-    ephemeralSessionKey = sessionKey;
-    liveAccessToken = accessToken;
   },
 
   /**
    * Called by the Axios request interceptor on every protected call.
-   * Returns the in-memory token if the session key is still in scope;
-   * otherwise returns fallback from storage if available.
+   * Returns the in-memory token if available, or restores from storage.
    */
   getAccessToken(): string | null {
     if (liveAccessToken) return liveAccessToken;
-    if (typeof window !== 'undefined') {
-      try {
-        const fallback = localStorage.getItem('ars_token') || sessionStorage.getItem('ars_token');
-        if (fallback) {
-          liveAccessToken = fallback;
-          return fallback;
-        }
-      } catch {
-        /* ignore */
+    if (typeof window === 'undefined') return null;
+    try {
+      const stored =
+        localStorage.getItem('ars_token') ||
+        sessionStorage.getItem('ars_token');
+      if (stored && stored.trim().length > 0) {
+        liveAccessToken = stored.trim();
+        return liveAccessToken;
       }
+    } catch {
+      /* ignore */
     }
     return null;
   },
 
   /**
-   * True when there is either (a) a live in-memory access token, or
-   * (b) a refresh token on disk that could be exchanged for a fresh
-   * access token, or (c) an access token in storage.
+   * True when there is either a live in-memory token, an on-disk session token,
+   * or a refresh token on disk.
    */
   hasLiveSession(): boolean {
     if (liveAccessToken && ephemeralSessionKey) return true;
-    if (typeof window !== 'undefined') {
-      try {
-        if (localStorage.getItem('ars_token') || sessionStorage.getItem('ars_token')) {
-          return true;
-        }
-      } catch {
-        /* ignore */
-      }
-    }
+    if (this.getAccessToken()) return true;
     return readRefreshFromLocal() !== null;
   },
 
   /**
-   * First-render rehydration hook. Called once from the AuthContext
-   * mount effect.
+   * First-render rehydration hook. Restores live token from storage if present.
    */
   async rehydrate(): Promise<boolean> {
-    if (typeof window === 'undefined') return false;
-    if (liveAccessToken) return true;
-    try {
-      const fallback = localStorage.getItem('ars_token') || sessionStorage.getItem('ars_token');
-      if (fallback) {
-        liveAccessToken = fallback;
-        return true;
-      }
-    } catch {
-      /* ignore */
-    }
-    return false;
+    const token = this.getAccessToken();
+    return Boolean(token);
   },
 
   /**
@@ -358,8 +346,6 @@ export const secureToken = {
     } catch {
       /* ignore */
     }
-    // Defensive cleanup of the legacy plain-text key in case an older
-    // build wrote it. Safe to call repeatedly.
     try {
       localStorage.removeItem('ars_token');
     } catch {
@@ -374,12 +360,16 @@ export const secureToken = {
 
   /**
    * Diagnostic-only — used by the migration shim and the verification
-   * checklist. Returns `true` when an envelope is present in either
-   * bucket. Does NOT decrypt.
+   * checklist. Returns `true` when an envelope or token is present in either
+   * bucket.
    */
   hasEnvelopeOnDisk(): boolean {
     if (typeof window === 'undefined') return false;
-    return readEnvelope(localStorage) !== null || readEnvelope(sessionStorage) !== null;
+    return (
+      Boolean(this.getAccessToken()) ||
+      readEnvelope(localStorage) !== null ||
+      readEnvelope(sessionStorage) !== null
+    );
   },
 };
 

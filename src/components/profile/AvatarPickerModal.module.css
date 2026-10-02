@@ -68,10 +68,94 @@
 .uploadButton { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 10px 14px; border: 1px solid var(--color-primary); color: var(--color-primary); cursor: pointer; font-weight: 600; }
 .uploadButton:hover { background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface)); }
 .uploadButton input { display: none; }
-.cropStage { width: min(220px, 62vw); aspect-ratio: 1; overflow: hidden; border: 3px solid var(--color-primary); border-radius: 50%; background: #e2e8f0; }
-.cropStage img { width: 100%; height: 100%; object-fit: cover; }
-.rangeLabel { width: min(340px, 100%); display: grid; gap: 4px; color: var(--color-text-secondary); font-size: var(--font-size-sm); }
-.rangeLabel input { width: 100%; accent-color: var(--color-primary); }
+.cropStage {
+  position: relative;
+  width: min(240px, 64vw);
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 3px solid var(--color-primary);
+  border-radius: 50%;
+  background: #e2e8f0;
+  user-select: none;
+  touch-action: none;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, .14);
+}
+
+.cropStage:focus-visible {
+  outline: 3px solid var(--ars-yellow, #f2c94c);
+  outline-offset: 4px;
+}
+
+.cropStageImage {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform-origin: center;
+  /* Centring and panning are both applied through the inline `transform`
+     so the percentages share the same reference. See the math comment on
+     `translateXPct` / `translateYPct` in AvatarPickerModal.tsx. */
+  pointer-events: none;
+  will-change: transform;
+}
+
+.cropStageHint {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, .68);
+  color: white;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  letter-spacing: .02em;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .18s ease;
+}
+
+.cropStage:hover .cropStageHint,
+.cropStage:focus-visible .cropStageHint {
+  opacity: 1;
+}
+
+.cropActions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  width: min(240px, 64vw);
+}
+
+.cropResetBtn {
+  min-height: 32px;
+  padding: 6px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast, .16s ease),
+    color var(--transition-fast, .16s ease),
+    border-color var(--transition-fast, .16s ease);
+}
+
+.cropResetBtn:hover {
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  border-color: var(--color-primary);
+}
+
+.cropResetBtn:focus-visible {
+  outline: 3px solid var(--ars-yellow, #f2c94c);
+  outline-offset: 2px;
+}
 .emptyUpload { color: var(--color-text-secondary); text-align: center; }
 .preview { display: flex; align-items: center; gap: 10px; margin-top: 16px; color: var(--color-text-secondary); font-size: var(--font-size-sm); }
 .preview img, .previewAvatar { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; }
