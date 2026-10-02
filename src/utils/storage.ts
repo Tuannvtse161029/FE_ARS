@@ -48,7 +48,11 @@ export const storage = {
   },
 
   getUser: (): SessionUser | null => {
-    const raw = rememberBucket().getItem(STORAGE_KEYS.USER);
+    if (typeof window === 'undefined') return null;
+    const raw =
+      rememberBucket().getItem(STORAGE_KEYS.USER) ||
+      localStorage.getItem(STORAGE_KEYS.USER) ||
+      sessionStorage.getItem(STORAGE_KEYS.USER);
     if (!raw) return null;
     try {
       const parsed = JSON.parse(raw) as Record<string, unknown>;
@@ -59,9 +63,19 @@ export const storage = {
   },
 
   setUser: (user: User | SessionUser): void => {
+    if (typeof window === 'undefined') return;
     const payload = serializeSessionUser(user);
     if (!payload) return;
-    rememberBucket().setItem(STORAGE_KEYS.USER, payload);
+    try {
+      rememberBucket().setItem(STORAGE_KEYS.USER, payload);
+      if (storage.getRememberMe()) {
+        localStorage.setItem(STORAGE_KEYS.USER, payload);
+      } else {
+        sessionStorage.setItem(STORAGE_KEYS.USER, payload);
+      }
+    } catch {
+      /* ignore */
+    }
   },
 
   removeUser: (): void => {
