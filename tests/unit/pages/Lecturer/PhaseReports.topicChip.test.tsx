@@ -79,6 +79,7 @@ vi.mock('../../../../src/i18n/I18nContext', () => ({
   useI18n: () => ({
     t: (key: string, fallback: string) => fallback,
   }),
+  useLocale: () => 'en',
 }));
 
 vi.mock('../../../../src/components/PageHeader', () => ({

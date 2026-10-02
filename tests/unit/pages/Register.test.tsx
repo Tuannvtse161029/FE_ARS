@@ -132,7 +132,7 @@ describe('Register Page – smoke', () => {
     renderRegister();
     await waitForDictionary();
     expect(screen.getByLabelText(/full name/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/^email$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/phone number/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/retype password/i)).toBeInTheDocument();
@@ -193,7 +193,7 @@ describe('Register Page – submit button state', () => {
     const user = userEvent.setup();
     renderRegister();
     await user.type(screen.getByLabelText(/full name/i), 'Dr. Nguyen Van A');
-    await user.type(screen.getByLabelText(/email address/i), 'test@example.com');
+    await user.type(screen.getByLabelText(/email/i), 'test@example.com');
     await user.type(screen.getByLabelText(/phone number/i), '+84 90 123 4567');
     await user.type(screen.getByLabelText(/^password$/i), 'Password123');
     await user.type(screen.getByLabelText(/retype password/i), 'Different123');
@@ -204,7 +204,7 @@ describe('Register Page – submit button state', () => {
     const user = userEvent.setup();
     renderRegister();
     await user.type(screen.getByLabelText(/full name/i), 'Dr. Nguyen Van A');
-    await user.type(screen.getByLabelText(/email address/i), 'not-valid-email');
+    await user.type(screen.getByLabelText(/email/i), 'not-valid-email');
     await user.type(screen.getByLabelText(/phone number/i), '+84 90 123 4567');
     await user.type(screen.getByLabelText(/^password$/i), 'Password123');
     await user.type(screen.getByLabelText(/retype password/i), 'Password123');
@@ -221,7 +221,7 @@ describe('Register Page – submit button enabled when form is complete', () => 
     const user = userEvent.setup();
     renderRegister();
     await user.type(screen.getByLabelText(/full name/i), 'Dr. Nguyen Van A');
-    await user.type(screen.getByLabelText(/email address/i), 'test@example.com');
+    await user.type(screen.getByLabelText(/email/i), 'test@example.com');
     await user.type(screen.getByLabelText(/phone number/i), '+84 90 123 4567');
     await user.type(screen.getByLabelText(/^password$/i), 'Password123');
     await user.type(screen.getByLabelText(/retype password/i), 'Password123');
@@ -343,7 +343,7 @@ describe('Register Page – pdfUrl included in registration payload', () => {
 
     // Fill in all required fields
     await user.type(screen.getByLabelText(/full name/i), 'Dr. Nguyen Van A');
-    await user.type(screen.getByLabelText(/email address/i), 'test@example.com');
+    await user.type(screen.getByLabelText(/email/i), 'test@example.com');
     await user.type(screen.getByLabelText(/phone number/i), '+84 90 123 4567');
     await user.type(screen.getByLabelText(/^password$/i), 'Password123');
     await user.type(screen.getByLabelText(/retype password/i), 'Password123');
@@ -385,7 +385,7 @@ describe('Register Page – pdfUrl included in registration payload', () => {
 
     // Fill all required fields
     await user.type(screen.getByLabelText(/full name/i), 'Dr. Nguyen Van A');
-    await user.type(screen.getByLabelText(/email address/i), 'test@example.com');
+    await user.type(screen.getByLabelText(/email/i), 'test@example.com');
     await user.type(screen.getByLabelText(/phone number/i), '+84 90 123 4567');
     await user.type(screen.getByLabelText(/^password$/i), 'Password123');
     await user.type(screen.getByLabelText(/retype password/i), 'Password123');

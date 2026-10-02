@@ -42,6 +42,7 @@ vi.mock('../../../src/i18n/I18nContext', () => ({
     },
     language: 'en',
   }),
+  useLocale: () => 'en',
 }));
 
 vi.mock('../../../src/services/axios', () => ({
