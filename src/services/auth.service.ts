@@ -3,6 +3,7 @@ import { API_ENDPOINTS } from '../utils/constants';
 import { storage } from '../utils/storage';
 import { secureToken } from '../utils/secureToken';
 import { signalrService } from './signalr.service';
+import { useAuthStore } from '../store/authSlice';
 import type {
   LoginRequest,
   RegisterRequest,
@@ -587,39 +588,42 @@ export const authService = {
   },
 
   getCurrentUser: (): AuthResponse | null => {
-    const user = storage.getUser();
+    // Session-2 — PII (email, username, fullName, avatarUrl, etc.) no
+    // longer lives in `storage.getUser()`. Pull from the runtime auth
+    // store, which is populated by AuthContext.login on every login
+    // and re-hydrated from the BE during `loginWithGoogle` /
+    // `CompleteGoogleRegistration`. The persisted blob only carries
+    // opaque IDs + feature flags so the route guards can bootstrap
+    // before the auth store finishes rehydrating.
+    const persisted = storage.getUser();
+    const runtimeUser = useAuthStore.getState().user as
+      | (typeof persisted & { email?: string; username?: string; fullName?: string; trialExpiryAt?: string | null })
+      | null;
     const token = storage.getToken();
-    if (user && token) {
-      // Read ALL fields from persisted user — not just token/username/role.
-      // Missing verificationStatus/accountTier defaults mirror the live path:
-      // For `effectiveRole`, fall back to the derived value (unverified ⇒
-      // 'Guest') when the persisted blob pre-dates the migration. Old blobs
-      // hydrate cleanly because the field is optional everywhere.
-      const isActive = user.isActive ?? false;
-      return {
-        token,
-        username: user.username,
-        email: user.email,
-        role: user.roleName,
-        isActive,
-        // Agent 30 (regression) — preserve the BE-supplied
-        // `verificationStatus` as `null` when the BE omitted it. The
-        // prior `'Pending'` default coerced a brand-new account
-        // into a false "Admin review in flight" state.
-        verificationStatus: user.verificationStatus ?? null,
-        accountTier: user.accountTier ?? 'Free',
-        effectiveRole:
-          user.effectiveRole ??
-          (isActive && user.roleName
-            ? (user.roleName as EffectiveRole)
-            : 'Guest'),
-        // 7-day trial expiry — the persisted `User` blob is the only
-        // source we have on a fresh page reload, so we surface it here
-        // without re-fetching /api/user/{id}. Absent ⇒ no active trial.
-        trialExpiryAt: user.trialExpiryAt ?? null,
-      };
-    }
-    return null;
+    if (!persisted || !token) return null;
+    const isActive = persisted.isActive ?? false;
+    return {
+      token,
+      username: runtimeUser?.username ?? '',
+      email: runtimeUser?.email ?? '',
+      role: persisted.roleName,
+      isActive,
+      // Agent 30 (regression) — preserve the BE-supplied
+      // `verificationStatus` as `null` when the BE omitted it. The
+      // prior `'Pending'` default coerced a brand-new account
+      // into a false "Admin review in flight" state.
+      verificationStatus: persisted.verificationStatus ?? null,
+      accountTier: persisted.accountTier ?? 'Free',
+      effectiveRole:
+        persisted.effectiveRole ??
+        (isActive && persisted.roleName
+          ? (persisted.roleName as EffectiveRole)
+          : 'Guest'),
+      // 7-day trial expiry — comes from the in-memory auth store, not
+      // the persisted blob (which no longer stores it). Absent ⇒ no
+      // active trial.
+      trialExpiryAt: runtimeUser?.trialExpiryAt ?? null,
+    };
   },
 
   setAuthData: (authResponse: AuthResponse): void => {

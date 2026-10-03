@@ -322,6 +322,20 @@ export const API_ENDPOINTS = {
       GET_ALL: '/api/AuditLog',
       EXPORT: '/api/AuditLog/export',
     },
+    // Transaction — admin audit list for every ARS payment / wallet
+    // event. The BE exposes a plain paged list (`/api/Transaction/paged`)
+    // plus a single-record detail (`/api/Transaction/{id}`) and the
+    // create/update mutations used by the BE-internal flow. The
+    // admin transactions page only consumes the read endpoints.
+    //
+    // Wire format — the BE uses **PascalCase** query keys on the
+    // paged list (`PageNumber`, `PageSize`). The page-id endpoint
+    // returns the full `TransactionResponse` (see types/transaction.ts).
+    TRANSACTIONS: {
+      GET_ALL: '/api/Transaction',
+      GET_PAGED: '/api/Transaction/paged',
+      GET_BY_ID: (id: number) => `/api/Transaction/${id}`,
+    },
     // UserReward — Admin CRUD over reward configurations (e.g. the
     // Researcher-published-paper reward). Paged list uses PascalCase
     // query keys, matching the AnnualFees convention. The BE also

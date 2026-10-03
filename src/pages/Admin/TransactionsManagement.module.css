@@ -356,6 +356,250 @@
   font-size: var(--font-size-xs);
 }
 
+/* ── Filter toolbar ─────────────────────────────────────── */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--ars-paper-alt);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-md);
+}
+
+.toolbarField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 180px;
+  flex: 1 1 200px;
+}
+
+.toolbarFieldSearch {
+  flex: 2 1 320px;
+}
+
+.toolbarLabel {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-family-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ars-ink-muted);
+}
+
+.toolbarInput,
+.toolbarSelect {
+  background: var(--ars-paper);
+  color: var(--ars-ink);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-sm);
+  min-height: 36px;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.toolbarInput:focus,
+.toolbarSelect:focus {
+  outline: none;
+  border-color: var(--ars-admin);
+  box-shadow: 0 0 0 3px rgba(45, 53, 97, 0.18);
+}
+
+.toolbarInput::placeholder {
+  color: var(--ars-ink-muted);
+}
+
+.toolbarClear {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--ars-paper);
+  color: var(--ars-ink-soft);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-family-ui);
+  min-height: 36px;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.toolbarClear:hover:not(:disabled) {
+  background: var(--ars-paper-alt);
+  color: var(--ars-ink);
+  border-color: var(--ars-ink-muted);
+}
+
+.toolbarClear:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Pagination footer ──────────────────────────────────── */
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--ars-network);
+  background: var(--ars-paper);
+}
+
+.paginationInfo {
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  font-family: var(--font-family-mono);
+}
+
+.paginationActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.paginationBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--ars-paper-alt);
+  color: var(--ars-ink);
+  border: 1px solid var(--ars-network);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-family-ui);
+  min-height: 30px;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.paginationBtn:hover:not(:disabled) {
+  background: var(--ars-paper);
+  border-color: var(--ars-ink-muted);
+}
+
+.paginationBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Status pills (status-as-coloured) ─────────────────── */
+/* The BE may return a free-form status string, so the pill style is
+   derived from the lowercase status. Each canonical status gets its
+   OWN color so admins can scan the table at a glance:
+
+     Paid             →  green    (--ars-success)
+     Pending          →  yellow   (--ars-warning)
+     Pending_Payment  →  yellow   (--ars-warning) — alias for Pending
+     Active           →  green    (active subscription)
+     Expired          →  red      (--ars-error) — negative terminal state
+     Processing       →  teal     (--ars-info)
+     Failed           →  red      (--ars-error)
+     Cancelled        →  brown    (--ars-admin) — distinct from the error red
+     Refunded         →  purple   (a unique admin-tier tone)
+     Rejected         →  red variant
+     Denied           →  red variant
+     Completed        →  green    (alias for Paid)
+     Succeeded        →  green    (alias for Paid)
+
+   Unknown statuses fall back to a neutral grey pill. */
+.statusPill_neutral {
+  background: var(--ars-paper);
+  color: var(--ars-ink-soft);
+  border-color: var(--ars-network);
+}
+
+/* Paid / Completed / Succeeded — green (positive outcome) */
+.statusPill_paid,
+.statusPill_completed,
+.statusPill_succeeded {
+  background: var(--ars-success-bg);
+  color: var(--ars-success);
+}
+
+/* Pending / Pending_Payment — yellow (waiting on external event) */
+.statusPill_pending,
+.statusPill_pending_payment {
+  background: var(--ars-warning-bg);
+  color: var(--ars-warning);
+}
+
+/* Active — green (subscription is live and paying) */
+.statusPill_active,
+.statusPill_activated,
+.statusPill_live {
+  background: var(--ars-success-bg);
+  color: var(--ars-success);
+  border-color: color-mix(in srgb, var(--ars-success) 30%, transparent);
+}
+
+/* Expired / Inactive / Lapsed / Terminated — red (negative terminal
+   state: the subscription has lapsed and the user is no longer paying).
+   Same red family as Failed but with a slightly stronger border so
+   admins can tell "this ended badly" apart from "this payment
+   errored mid-flight". */
+.statusPill_expired,
+.statusPill_inactive,
+.statusPill_lapsed,
+.statusPill_terminated {
+  background: var(--ars-error-bg);
+  color: var(--ars-error);
+  border-color: color-mix(in srgb, var(--ars-error) 40%, transparent);
+}
+
+/* Processing / InProgress — blue (active, not waiting on user) */
+.statusPill_processing,
+.statusPill_inprogress,
+.statusPill_in_progress,
+.statusPill_accepted_processing,
+.statusPill_accepted {
+  background: var(--ars-info-bg);
+  color: var(--ars-info);
+}
+
+/* Failed — red (terminal failure) */
+.statusPill_failed {
+  background: var(--ars-error-bg);
+  color: var(--ars-error);
+}
+
+/* Cancelled — admin brown (terminal, but not an error) */
+.statusPill_cancelled,
+.statusPill_canceled {
+  background: var(--ars-paper-inset);
+  color: var(--ars-admin);
+  border-color: color-mix(in srgb, var(--ars-admin) 25%, transparent);
+}
+
+/* Refunded — purple (a distinct admin-only state) */
+.statusPill_refunded {
+  background: var(--ars-admin-light);
+  color: var(--ars-admin);
+}
+
+/* Rejected / Denied — red (admin decision against the request) */
+.statusPill_rejected,
+.statusPill_denied {
+  background: var(--ars-error-bg);
+  color: var(--ars-error);
+  border-color: color-mix(in srgb, var(--ars-error) 40%, transparent);
+}
+
 /* ── Responsive ─────────────────────────────────────────── */
 @media (max-width: 768px) {
   .actions {
