@@ -24,6 +24,7 @@ import {
 import { Link } from 'react-router-dom';
 import { useI18n, useLocale } from '../../i18n/I18nContext';
 import { adminService } from '../../services/admin.service';
+import { transactionService } from '../../services/transaction.service';
 import type {
   AnalyticsMetric,
   AnalyticsRange,
@@ -309,9 +310,15 @@ export const AdminDashboard = () => {
     setLoadingAnalytics(true);
     setAnalyticsError(null);
     try {
+      // Revenue is sourced from the live `/api/Transaction/paged` audit
+      // log (aggregated client-side) instead of the BE's
+      // `/api/Analytics/timeseries?metric=revenue` endpoint, which has
+      // historically returned empty or stale data. Registrations still
+      // come from the BE analytics endpoint since that contract is
+      // working correctly.
       const [registrationData, revenueData] = await Promise.all([
         adminService.getAnalyticsTimeseries(range, 'user_registrations', signal),
-        adminService.getAnalyticsTimeseries(range, 'revenue', signal),
+        transactionService.getRevenueTimeseriesFromTransactions(range, signal),
       ]);
       if (!signal.aborted) {
         setRegistrations(registrationData);
