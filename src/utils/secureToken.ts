@@ -54,6 +54,14 @@
 const ENVELOPE_VERSION = 'v1' as const;
 const STORAGE_KEY_ACCESS = 'ars_token_enc_v1';
 const STORAGE_KEY_REFRESH = 'ars_token_refresh_v1';
+const STORAGE_KEY_SAVED_EMAIL = 'ars_saved_email_enc_v1';
+// Session-3 (security) — the user projection is also wrapped in an
+// envelope under the same ephemeral session key as the JWT. A DevTools
+// viewer can no longer read the user id, role, or verification status
+// directly from `localStorage` / `sessionStorage` — only an opaque
+// ciphertext blob is visible. On page reload the in-memory key is gone
+// and the caller is treated as unauthenticated until the next login.
+const STORAGE_KEY_USER = 'ars_user_enc_v1';
 
 // In-memory session key. Cleared on page reload. The single source of
 // truth for "can we decrypt the current envelope?"
@@ -63,6 +71,11 @@ let ephemeralSessionKey: CryptoKey | null = null;
 // only in memory. When the user logs out, this is dropped before the
 // envelope is cleared so a stray in-flight request cannot reuse it.
 let liveAccessToken: string | null = null;
+
+// Cached decrypted "remember me" email. Held only in memory; not
+// recomputable across page reloads. This is the only place the plaintext
+// email lives — never written to localStorage.
+let liveSavedEmail: string | null = null;
 
 /**
  * The envelope shape that hits localStorage / sessionStorage. Stored as
@@ -192,6 +205,23 @@ const readEnvelope = (bucket: Storage): TokenEnvelope | null => {
   }
 };
 
+/**
+ * Read a named envelope from localStorage. Used by the saved-email
+ * path which keeps the JWT and the saved-email envelopes under
+ * different keys but the same on-disk shape.
+ */
+const readEnvelopeFromKey = (storageKey: string): TokenEnvelope | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as unknown;
+    return isEnvelope(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
 const readRefreshFromLocal = (): string | null => {
   try {
     return localStorage.getItem(STORAGE_KEY_REFRESH);
@@ -210,6 +240,8 @@ export const secureToken = {
   KEYS: {
     ACCESS: STORAGE_KEY_ACCESS,
     REFRESH: STORAGE_KEY_REFRESH,
+    SAVED_EMAIL: STORAGE_KEY_SAVED_EMAIL,
+    USER: STORAGE_KEY_USER,
   },
   VERSION: ENVELOPE_VERSION,
 
@@ -218,6 +250,12 @@ export const secureToken = {
    * successful login. Generates a fresh session key, encrypts the JWT,
    * writes the envelope to the chosen bucket, and stashes the raw token
    * in module-scope memory for the Axios interceptor.
+   *
+   * Security note: the cleartext token NEVER touches `localStorage` /
+   * `sessionStorage` — only the AES-256-GCM envelope does. A casual
+   * DevTools viewer sees an opaque ciphertext blob, not a copy-pasteable
+   * bearer token. The only recovery path is the in-memory `liveAccessToken`
+   * variable, which is wiped on logout / 401 / clearAuthSession.
    *
    * The optional refresh token (when the BE ships it) is held in
    * `localStorage` regardless of `rememberMe` — refreshing after a tab
@@ -232,40 +270,48 @@ export const secureToken = {
     liveAccessToken = accessToken;
     if (typeof window === 'undefined') return;
 
-    // Always persist cleartext token to the selected bucket and ensure it's available
-    const bucket = pickBucket(rememberMe);
-    try {
-      bucket.setItem('ars_token', accessToken);
-    } catch {
-      /* ignore */
-    }
-    if (rememberMe) {
-      try {
-        localStorage.setItem('ars_token', accessToken);
-      } catch {
-        /* ignore */
-      }
-    } else {
-      try {
-        sessionStorage.setItem('ars_token', accessToken);
-      } catch {
-        /* ignore */
-      }
-    }
-
+    // The cleartext JWT MUST NOT be written to either storage bucket.
+    // Earlier revisions of this helper also wrote the cleartext under
+    // `ars_token` for a "degraded-environment fallback" — that was
+    // removed because it rendered the encryption meaningless: any
+    // DevTools viewer could read the JWT without ever attempting
+    // decryption. If Web Crypto is unavailable (http:// or ancient
+    // browser), the session is rejected at login time instead of being
+    // silently downgraded to plain-text storage.
     const crypto = getCrypto();
     if (!crypto) {
       ephemeralSessionKey = null;
-      return;
+      // Surface a console error so we can detect the fallback path in
+      // production logs. The caller (AuthContext) treats this as a
+      // hard failure and aborts the login flow.
+      console.error(
+        '[secureToken] Web Crypto API unavailable — refusing to persist JWT in cleartext.',
+      );
+      throw new Error('Secure token storage requires Web Crypto API.');
     }
 
     try {
       const sessionKey = await generateSessionKey();
       const envelope = await encryptToken(accessToken, sessionKey);
+      const bucket = pickBucket(rememberMe);
+      // Evict the previous bucket's envelope so a user who toggles
+      // Remember Me off after a refresh does not end up with two
+      // parallel encrypted copies (one in localStorage, one in
+      // sessionStorage). The token in the old bucket is already
+      // inaccessible because the in-memory key is fresh, but the
+      // orphaned envelope is still visible to a DevTools viewer.
+      const otherBucket = rememberMe ? sessionStorage : localStorage;
+      try {
+        otherBucket.removeItem(STORAGE_KEY_ACCESS);
+      } catch {
+        /* ignore */
+      }
       bucket.setItem(STORAGE_KEY_ACCESS, JSON.stringify(envelope));
       ephemeralSessionKey = sessionKey;
-    } catch {
-      /* ignore */
+    } catch (err) {
+      ephemeralSessionKey = null;
+      console.error('[secureToken] Failed to encrypt access token envelope.', err);
+      throw err;
     }
 
     if (refreshToken) {
@@ -285,22 +331,17 @@ export const secureToken = {
 
   /**
    * Called by the Axios request interceptor on every protected call.
-   * Returns the in-memory token if available, or restores from storage.
+   * Returns the in-memory token if available. The token is NEVER
+   * recoverable from storage alone — the encrypted envelope can only
+   * be opened with the in-memory `ephemeralSessionKey`, which is wiped
+   * on page reload. A reload therefore forces re-authentication.
    */
   getAccessToken(): string | null {
     if (liveAccessToken) return liveAccessToken;
-    if (typeof window === 'undefined') return null;
-    try {
-      const stored =
-        localStorage.getItem('ars_token') ||
-        sessionStorage.getItem('ars_token');
-      if (stored && stored.trim().length > 0) {
-        liveAccessToken = stored.trim();
-        return liveAccessToken;
-      }
-    } catch {
-      /* ignore */
-    }
+    // The legacy `ars_token` plaintext fallback was removed as part of
+    // the Session-2 hardening — re-enabling it would defeat the entire
+    // encryption layer. If `liveAccessToken` is null (page reload,
+    // fresh tab), the caller treats the user as unauthenticated.
     return null;
   },
 
@@ -326,6 +367,10 @@ export const secureToken = {
    * Wipes the in-memory token + session key AND the on-disk envelope +
    * refresh token. Called by `clearAuthSession` on logout and on a
    * hard 401.
+   *
+   * Also actively scrubs any leftover plaintext `ars_token` key from a
+   * previous (pre-Session-2) build so a stale token can never resurface
+   * after the upgrade.
    */
   clear(): void {
     liveAccessToken = null;
@@ -346,6 +391,10 @@ export const secureToken = {
     } catch {
       /* ignore */
     }
+    // Defensive scrub of the legacy plaintext `ars_token` key that
+    // earlier builds used as a degraded-environment fallback. We
+    // actively remove it here so a session from a previous build
+    // cannot resurface as a plaintext-readable JWT after the upgrade.
     try {
       localStorage.removeItem('ars_token');
     } catch {
@@ -353,6 +402,55 @@ export const secureToken = {
     }
     try {
       sessionStorage.removeItem('ars_token');
+    } catch {
+      /* ignore */
+    }
+    // Wipe the saved-email cache + envelope so the next user on the
+    // same browser doesn't inherit the previous user's email.
+    liveSavedEmail = null;
+    try {
+      localStorage.removeItem(STORAGE_KEY_SAVED_EMAIL);
+    } catch {
+      /* ignore */
+    }
+    // Defensive scrub of the legacy plaintext `ars_saved_email` key.
+    try {
+      localStorage.removeItem('ars_saved_email');
+    } catch {
+      /* ignore */
+    }
+    // Wipe the encrypted user projection envelope from both buckets.
+    // (The in-memory auth store clears its own user via AuthContext.logout.)
+    try {
+      localStorage.removeItem(STORAGE_KEY_USER);
+    } catch {
+      /* ignore */
+    }
+    try {
+      sessionStorage.removeItem(STORAGE_KEY_USER);
+    } catch {
+      /* ignore */
+    }
+    // Defensive scrub of the legacy plaintext `ars_user` / Zustand
+    // `ars-auth-storage` keys so a session from a previous build
+    // cannot resurface as readable data after the upgrade.
+    try {
+      localStorage.removeItem('ars_user');
+    } catch {
+      /* ignore */
+    }
+    try {
+      sessionStorage.removeItem('ars_user');
+    } catch {
+      /* ignore */
+    }
+    try {
+      localStorage.removeItem('ars-auth-storage');
+    } catch {
+      /* ignore */
+    }
+    try {
+      sessionStorage.removeItem('ars-auth-storage');
     } catch {
       /* ignore */
     }
@@ -370,6 +468,154 @@ export const secureToken = {
       readEnvelope(localStorage) !== null ||
       readEnvelope(sessionStorage) !== null
     );
+  },
+
+  /**
+   * Read the decrypted "remember me" email. Returns `null` when no
+   * email is cached (no Remember Me ticked, or page reload that wiped
+   * the in-memory key).
+   */
+  getSavedEmail(): string | null {
+    return liveSavedEmail;
+  },
+
+  /**
+   * Persist the "remember me" email as an AES-256-GCM envelope under
+   * `ars_saved_email_enc_v1`. Re-uses the same ephemeral session key
+   * as the JWT when available; falls back to a freshly-generated key
+   * when no token envelope has been written yet (e.g. very first
+   * load). Empty input clears the cache and the on-disk envelope.
+   */
+  async setSavedEmail(email: string): Promise<void> {
+    if (typeof window === 'undefined') return;
+    const trimmed = (email ?? '').trim();
+    if (!trimmed) {
+      liveSavedEmail = null;
+      try {
+        localStorage.removeItem(STORAGE_KEY_SAVED_EMAIL);
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+    liveSavedEmail = trimmed;
+    const crypto = getCrypto();
+    if (!crypto) {
+      // Without Web Crypto we cannot safely persist. Drop the cache
+      // too so the in-memory state and disk state stay consistent.
+      liveSavedEmail = null;
+      return;
+    }
+    try {
+      const key = ephemeralSessionKey ?? (await generateSessionKey());
+      const envelope = await encryptToken(trimmed, key);
+      try {
+        localStorage.setItem(STORAGE_KEY_SAVED_EMAIL, JSON.stringify(envelope));
+      } catch {
+        /* ignore */
+      }
+    } catch {
+      /* ignore */
+    }
+  },
+
+  /**
+   * Decrypt the on-disk saved-email envelope back into memory. Used by
+   * the Login page when the module-scoped cache is empty (e.g. the
+   * first render after a login). Requires the in-memory session key
+   * to be available — page reloads return `null` (the email is gone
+   * and the user re-types it).
+   */
+  async rehydrateSavedEmail(): Promise<boolean> {
+    if (typeof window === 'undefined') return false;
+    if (liveSavedEmail) return true;
+    if (!ephemeralSessionKey) return false;
+    const envelope = readEnvelopeFromKey(STORAGE_KEY_SAVED_EMAIL);
+    if (!envelope) return false;
+    try {
+      const plaintext = await decryptToken(envelope, ephemeralSessionKey);
+      liveSavedEmail = plaintext;
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  /**
+   * Persist the PII-stripped `PersistedSessionUser` projection as an
+   * encrypted envelope under `STORAGE_KEY_USER`. Re-uses the same
+   * ephemeral session key as the JWT when available; falls back to a
+   * freshly-generated key when no token envelope has been written yet
+   * (e.g. very first load). The plaintext projection is never written
+   * to either storage bucket — a DevTools viewer sees only the
+   * opaque ciphertext.
+   *
+   * Returns `true` on success, `false` when the encryption failed
+   * (e.g. Web Crypto unavailable). On failure the caller should treat
+   * the user as logged out so the auth store stops re-persisting on
+   * every action.
+   */
+  async writePersistedUser(jsonPayload: string): Promise<boolean> {
+    if (typeof window === 'undefined') return false;
+    const crypto = getCrypto();
+    if (!crypto) {
+      // Refuse to fall back to plaintext — consistent with the JWT
+      // path. A console error surfaces the degraded-environment case
+      // so the operator knows they need to ship the BE JWT cookie
+      // ticket to escape this failure mode.
+      console.error(
+        '[secureToken] Web Crypto API unavailable — refusing to persist user projection in cleartext.',
+      );
+      return false;
+    }
+    try {
+      const key = ephemeralSessionKey ?? (await generateSessionKey());
+      const envelope = await encryptToken(jsonPayload, key);
+      // Write to BOTH buckets so the in-memory `ephemeralSessionKey`
+      // can decrypt either side on rehydrate. The previous bucket's
+      // envelope is evicted first so we never accumulate two copies.
+      const buckets: Storage[] = [localStorage, sessionStorage];
+      for (const bucket of buckets) {
+        try {
+          bucket.setItem(STORAGE_KEY_USER, JSON.stringify(envelope));
+        } catch {
+          /* ignore */
+        }
+      }
+      return true;
+    } catch (err) {
+      console.error('[secureToken] Failed to encrypt user projection envelope.', err);
+      return false;
+    }
+  },
+
+  /**
+   * Decrypt the on-disk user projection envelope and return the
+   * plaintext JSON string. Requires the in-memory session key to be
+   * available — page reloads return `null` (the key is gone, the
+   * envelope is opaque, and the user is treated as logged out until
+   * the next login). Returns `null` when no envelope is present.
+   */
+  async readPersistedUser(): Promise<string | null> {
+    if (typeof window === 'undefined') return null;
+    if (!ephemeralSessionKey) return null;
+    const envelope = readEnvelopeFromKey(STORAGE_KEY_USER);
+    if (!envelope) return null;
+    try {
+      return await decryptToken(envelope, ephemeralSessionKey);
+    } catch {
+      return null;
+    }
+  },
+
+  /**
+   * Diagnostic-only — returns `true` when an encrypted user envelope
+   * is present in either bucket. Used by the migration shim and the
+   * verification checklist.
+   */
+  hasUserEnvelopeOnDisk(): boolean {
+    if (typeof window === 'undefined') return false;
+    return readEnvelopeFromKey(STORAGE_KEY_USER) !== null;
   },
 };
 

@@ -2,20 +2,23 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { storage } from '../utils/storage';
 import { secureToken } from '../utils/secureToken';
-import type { SessionUser } from '../utils/projectedUser';
-import { projectUser } from '../utils/projectedUser';
+import type { PersistedSessionUser, SessionUser } from '../utils/projectedUser';
+import { projectUser, projectUserForStorage } from '../utils/projectedUser';
 import { AUTH_PERSIST_VERSION } from '../utils/constants';
 import type { User, AuthState, EffectiveRole } from '../types/auth';
 
 /**
- * Session-2 hardening — the persisted Zustand slice no longer carries
- * the JWT. The cleartext token lives only in the secureToken module's
- * module-scoped variable; the persist contains just the slim user
- * projection so guards can re-hydrate before the in-memory store is
- * restored. Any new auth-related field that must survive a page reload
- * goes through `SessionUser` (see `projectedUser.ts`); do not add new
- * PII fields to this persist.
+ * Session-3 hardening — the `ars-auth-storage` key no longer exists
+ * in plaintext. Both the JWT and the PII-stripped user projection are
+ * stored as AES-256-GCM envelopes under `secureToken`; the Zustand
+ * persist adapter is a thin shim that delegates reads / writes to
+ * `secureToken.readPersistedUser` / `secureToken.writePersistedUser`.
+ * A DevTools viewer sees only opaque ciphertext blobs under
+ * `ars_user_enc_v1` — no user id, no role, no verification status.
+ * The runtime SessionUser with PII stays in the in-memory store and
+ * is rehydrated from the BE on login.
  */
+
 
 type PersistedAuth = Pick<
   AuthState,
@@ -23,47 +26,58 @@ type PersistedAuth = Pick<
 >;
 
 /**
- * Storage adapter for the slim auth slice. Uses the secureToken module's
- * helper to pick the bucket (Remember Me ON → localStorage, OFF →
- * sessionStorage) so the legacy `ars-auth-storage` key follows the same
- * rule the rest of the auth flow does.
- *
- * Critically this adapter does NOT touch the JWT envelope — the token
- * write path is owned by `secureToken.writeAfterLogin` exclusively.
+ * Storage adapter for the slim auth slice. Reads / writes go through
+ * the encrypted envelope path in `secureToken` — the cleartext
+ * projection is NEVER written to either bucket. The `name` parameter
+ * is ignored (Zustand passes the storage key name in) because we use
+ * a single canonical key (`ars_user_enc_v1`) managed by
+ * `secureToken.writePersistedUser` / `secureToken.readPersistedUser`.
  */
 const slimAuthStorageAdapter = {
-  getItem: (name: string) => {
+  getItem: (_name: string) => {
     if (typeof window === 'undefined') return null;
-    const isRemember = storage.getRememberMe();
-
-    const raw = isRemember
-      ? (localStorage.getItem(name) || sessionStorage.getItem(name))
-      : (sessionStorage.getItem(name) || localStorage.getItem(name));
-
-    if (raw === null) return null;
-    try {
-      return { state: JSON.parse(raw) as PersistedAuth, version: AUTH_PERSIST_VERSION };
-    } catch {
-      return null;
-    }
+    // Synchronous cache read — `storage.getUser()` returns the
+    // previously-decrypted projection; the envelope is decrypted
+    // lazily on first access by `bootstrapUserCache` (see
+    // `utils/storage.ts`). Guards reading from the auth store during
+    // the first render of a session accept the brief "no user yet"
+    // window — they re-run their effect once the store rehydrates.
+    const stored = storage.getUser();
+    if (!stored) return null;
+    // Read the live effectiveRole from the cache if it was set after
+    // `setUser` (login) but before the persist rehydrates.
+    const effectiveRole =
+      (stored as unknown as { effectiveRole?: EffectiveRole | null })
+        .effectiveRole ?? null;
+    return {
+      state: {
+        user: stored as unknown as User,
+        isAuthenticated: true,
+        effectiveRole,
+      } as PersistedAuth,
+      version: AUTH_PERSIST_VERSION,
+    };
   },
-  setItem: (name: string, value: { state: PersistedAuth; version?: number }) => {
+  setItem: (_name: string, value: { state: PersistedAuth; version?: number }) => {
     if (typeof window === 'undefined') return;
-    const isRemember = storage.getRememberMe();
-
-    const payload = JSON.stringify({ ...value, version: AUTH_PERSIST_VERSION });
-    if (isRemember) {
-      localStorage.setItem(name, payload);
-      sessionStorage.removeItem(name);
-    } else {
-      sessionStorage.setItem(name, payload);
-      localStorage.removeItem(name);
-    }
+    const projected = value.state.user
+      ? projectUserForStorage(
+          value.state.user as unknown as SessionUser,
+        )
+      : null;
+    if (!projected) return;
+    const envelopePayload = JSON.stringify({
+      ...projected,
+      // Stash effectiveRole in the envelope so the adapter's
+      // `getItem` can restore it on rehydrate. The field is dropped
+      // before any UI-side read; the PII strip happens on write.
+      __er: value.state.effectiveRole ?? null,
+    });
+    void secureToken.writePersistedUser(envelopePayload);
   },
-  removeItem: (name: string) => {
+  removeItem: (_name: string) => {
     if (typeof window === 'undefined') return;
-    sessionStorage.removeItem(name);
-    localStorage.removeItem(name);
+    storage.removeUser();
   },
 };
 
@@ -72,8 +86,13 @@ interface AuthStore extends AuthState {
    * The token is passed in so the in-memory `secureToken` can hold the
    * raw value, but it is NEVER persisted by this slice. See
    * `secureToken.writeAfterLogin` for the encrypted write path.
+   *
+   * Returns a `Promise<void>` so callers can `await` the envelope
+   * write before reading from storage. Older callers that ignore the
+   * return value still work because the write is fire-and-forget
+   * internally.
    */
-  login: (user: User | SessionUser, token: string, effectiveRole?: EffectiveRole) => void;
+  login: (user: User | SessionUser, token: string, effectiveRole?: EffectiveRole) => Promise<void>;
   logout: () => void;
   setLoading: (loading: boolean) => void;
   updateUser: (user: Partial<SessionUser> | Partial<User>) => void;
@@ -107,7 +126,7 @@ const useAuthStore = create<AuthStore>()(
     (set) => ({
       ...getInitialAuthState(),
 
-      login: (user: User | SessionUser, token: string, effectiveRole?: EffectiveRole) => {
+      login: async (user: User | SessionUser, token: string, effectiveRole?: EffectiveRole): Promise<void> => {
         const isRemember = storage.getRememberMe();
         const projected = projectUser(user);
         if (!projected) return;
@@ -129,30 +148,28 @@ const useAuthStore = create<AuthStore>()(
     set(nextState);
 
     if (typeof window !== 'undefined') {
-      // Persist the slim user projection only — no token. The
-      // authSlice's `user` field is typed as `User | null` for
-      // back-compat with the rest of the FE; the projected shape is a
-      // strict subset so the structural assignment is sound.
-      const persistedUser = projected as unknown as User;
-      const payload = JSON.stringify({
-        state: {
-          user: persistedUser,
-          isAuthenticated: true,
-          effectiveRole: resolvedEffectiveRole,
-        },
-        version: AUTH_PERSIST_VERSION,
-      });
-      if (isRemember) {
-        localStorage.setItem('ars-auth-storage', payload);
-      } else {
-        sessionStorage.setItem('ars-auth-storage', payload);
+      // Persist the storage-safe projection (no PII) as an encrypted
+      // envelope under `ars_user_enc_v1`. The cleartext projection
+      // is NEVER written to either storage bucket — a DevTools viewer
+      // sees only the opaque ciphertext. The `effectiveRole` is
+      // stashed inside the envelope so the adapter's `getItem` can
+      // restore it on rehydrate.
+      const persistedUser = projectUserForStorage(projected) as
+        | PersistedSessionUser
+        | null;
+      if (persistedUser) {
+        const envelopePayload = JSON.stringify({
+          ...persistedUser,
+          __er: resolvedEffectiveRole ?? null,
+        });
+        await secureToken.writePersistedUser(envelopePayload);
       }
       // Make sure the live token is in the secureToken module's
       // module-scope. (The AuthContext normally writes the envelope
       // before calling `login`; this is a defensive back-stop for
       // any test fixture that drives `login` directly.)
       if (token) {
-        void secureToken.writeAfterLogin(token, null, isRemember);
+        await secureToken.writeAfterLogin(token, null, isRemember);
       }
     }
   },
@@ -166,8 +183,9 @@ const useAuthStore = create<AuthStore>()(
           effectiveRole: null,
         });
         if (typeof window !== 'undefined') {
-          sessionStorage.removeItem('ars-auth-storage');
-          localStorage.removeItem('ars-auth-storage');
+          // Delegate to the secure path so the encrypted envelope and
+          // its cache are both cleared.
+          storage.removeUser();
         }
         secureToken.clear();
       },

@@ -1,7 +1,7 @@
 import { STORAGE_KEYS } from './constants';
 import { secureToken } from './secureToken';
-import type { SessionUser } from './projectedUser';
-import { projectUser, serializeSessionUser } from './projectedUser';
+import type { SessionUser, PersistedSessionUser } from './projectedUser';
+import { projectUser, serializePersistedSessionUser } from './projectedUser';
 import type { User } from '../types/auth';
 
 // The session token is no longer round-tripped through plain storage. The
@@ -9,26 +9,67 @@ import type { User } from '../types/auth';
 // JWT before it ever hits `localStorage` / `sessionStorage`. This module
 // only owns the *user* blob and the remember-me flag; the token side is
 // exclusively `secureToken.getAccessToken()`.
-const rememberBucket = (): Storage => (storage.getRememberMe() ? localStorage : sessionStorage);
+//
+// Session-3 (security) — the `ars_user` blob is no longer readable
+// from DevTools at all. Every write goes through
+// `secureToken.writePersistedUser` which wraps the PII-stripped
+// `PersistedSessionUser` projection in an AES-256-GCM envelope under
+// the same ephemeral session key as the JWT. A DevTools viewer sees
+// only the opaque ciphertext under `ars_user_enc_v1`; without the
+// in-memory key the user id, role, and verification status are
+// unrecoverable. The runtime SessionUser (with PII) stays in the
+// in-memory auth store for the duration of the session and is
+// refetched from the BE on every login.
+
+// Cached decrypted user projection. The Zustand persist layer calls
+// `getUser()` synchronously from its rehydrate callback, but
+// `secureToken.readPersistedUser()` is async (Web Crypto). We resolve
+// the envelope once on first call and stash the plaintext projection
+// here. The cache is invalidated by `setUser` / `removeUser` and on
+// logout so a stale blob cannot leak across users.
+let cachedUserProjection: PersistedSessionUser | null = null;
+let userEnvelopeBootstrapped = false;
+
+/**
+ * One-time bootstrap: decrypts the on-disk `ars_user_enc_v1` envelope
+ * and caches the plaintext projection. Subsequent synchronous calls
+ * to `getUser()` return the cache without round-tripping Web Crypto.
+ * Called from `getUser` on first invocation in a session; idempotent
+ * so it's safe to call multiple times.
+ */
+const bootstrapUserCache = async (): Promise<PersistedSessionUser | null> => {
+  if (userEnvelopeBootstrapped) return cachedUserProjection;
+  userEnvelopeBootstrapped = true;
+  if (typeof window === 'undefined') return null;
+  const json = await secureToken.readPersistedUser();
+  if (!json) {
+    cachedUserProjection = null;
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(json) as Record<string, unknown>;
+    const projected = projectUser(parsed as unknown as User) as
+      | PersistedSessionUser
+      | null;
+    cachedUserProjection = projected;
+    return projected;
+  } catch {
+    cachedUserProjection = null;
+    return null;
+  }
+};
 
 export const storage = {
   /**
-   * Returns the raw access token from in-memory storage. Falls back to
-   * the legacy `ars_token` key when the secureToken module has not been
-   * initialized yet (degraded Web Crypto environment only).
+   * Returns the raw access token from in-memory storage only. The
+   * legacy `ars_token` plaintext fallback was removed — there is no
+   * environment in which we knowingly store the JWT in cleartext. If
+   * `secureToken.getAccessToken()` returns null (page reload, fresh
+   * tab, before login completes) the caller treats the user as
+   * unauthenticated and routes to the login page.
    */
   getToken: (): string | null => {
-    const live = secureToken.getAccessToken();
-    if (live) return live;
-    // Defensive fallback for the degraded-environment branch in
-    // secureToken.writeAfterLogin. The legacy key is still used so
-    // older builds remain functional in the rare case where Web Crypto
-    // is unavailable (http://, very old browsers).
-    try {
-      return localStorage.getItem('ars_token') || sessionStorage.getItem('ars_token');
-    } catch {
-      return null;
-    }
+    return secureToken.getAccessToken();
   },
 
   /**
@@ -47,40 +88,97 @@ export const storage = {
     secureToken.clear();
   },
 
-  getUser: (): SessionUser | null => {
+  /**
+   * Read the persisted user projection. Returns `null` when no
+   * envelope is on disk, the in-memory session key is gone (page
+   * reload), or the envelope cannot be decrypted. The first call in
+   * a session asynchronously bootstraps the cache; subsequent calls
+   * return the cached value synchronously. Call `refreshUserFromDisk`
+   * if you need a forced re-read.
+   */
+  getUser: (): PersistedSessionUser | null => {
     if (typeof window === 'undefined') return null;
-    const raw =
-      rememberBucket().getItem(STORAGE_KEYS.USER) ||
-      localStorage.getItem(STORAGE_KEYS.USER) ||
-      sessionStorage.getItem(STORAGE_KEYS.USER);
-    if (!raw) return null;
-    try {
-      const parsed = JSON.parse(raw) as Record<string, unknown>;
-      return projectUser(parsed as unknown as User);
-    } catch {
-      return null;
+    if (!userEnvelopeBootstrapped) {
+      // Fire-and-forget the bootstrap so the next sync call has the
+      // decrypted value ready. Guards reading from storage during the
+      // first render of a session accept the brief "no user yet"
+      // window — they re-run their effect once the auth store
+      // rehydrates.
+      void bootstrapUserCache();
     }
+    return cachedUserProjection;
+  },
+
+  /**
+   * Force a re-read of the encrypted user envelope from disk. Useful
+   * after a logout that ran on a different tab and we want to pick up
+   * the cleared state. Resets the bootstrap flag and triggers a fresh
+   * decrypt.
+   */
+  async refreshUserFromDisk(): Promise<PersistedSessionUser | null> {
+    userEnvelopeBootstrapped = false;
+    cachedUserProjection = null;
+    return bootstrapUserCache();
   },
 
   setUser: (user: User | SessionUser): void => {
     if (typeof window === 'undefined') return;
-    const payload = serializeSessionUser(user);
-    if (!payload) return;
+    // PII (email, username, fullName, avatarUrl, etc.) is intentionally
+    // stripped before write. Only opaque IDs and feature flags reach
+    // the envelope payload; the runtime SessionUser in the auth store
+    // still carries the PII for the duration of the session.
+    const persisted = serializePersistedSessionUser(user);
+    if (!persisted) return;
+    // Cache the plaintext projection so the next `getUser` call is
+    // synchronous.
     try {
-      rememberBucket().setItem(STORAGE_KEYS.USER, payload);
-      if (storage.getRememberMe()) {
-        localStorage.setItem(STORAGE_KEYS.USER, payload);
-      } else {
-        sessionStorage.setItem(STORAGE_KEYS.USER, payload);
-      }
+      const parsed = JSON.parse(persisted) as PersistedSessionUser;
+      cachedUserProjection = parsed;
+      userEnvelopeBootstrapped = true;
     } catch {
       /* ignore */
     }
+    // Persist as an encrypted envelope. The cleartext projection is
+    // NEVER written to either bucket.
+    void secureToken.writePersistedUser(persisted);
   },
 
   removeUser: (): void => {
-    localStorage.removeItem(STORAGE_KEYS.USER);
-    sessionStorage.removeItem(STORAGE_KEYS.USER);
+    cachedUserProjection = null;
+    userEnvelopeBootstrapped = false;
+    try {
+      localStorage.removeItem(secureToken.KEYS.USER);
+    } catch {
+      /* ignore */
+    }
+    try {
+      sessionStorage.removeItem(secureToken.KEYS.USER);
+    } catch {
+      /* ignore */
+    }
+    // Defensive scrub of any legacy plaintext `ars_user` / Zustand
+    // `ars-auth-storage` blobs that may still be on disk from a
+    // pre-Session-3 build.
+    try {
+      localStorage.removeItem(STORAGE_KEYS.USER);
+    } catch {
+      /* ignore */
+    }
+    try {
+      sessionStorage.removeItem(STORAGE_KEYS.USER);
+    } catch {
+      /* ignore */
+    }
+    try {
+      localStorage.removeItem('ars-auth-storage');
+    } catch {
+      /* ignore */
+    }
+    try {
+      sessionStorage.removeItem('ars-auth-storage');
+    } catch {
+      /* ignore */
+    }
   },
 
   getRememberMe: (): boolean => {
@@ -95,20 +193,40 @@ export const storage = {
     }
   },
 
+  /**
+   * Saved email — used by the Login page to pre-fill the email field
+   * after a successful "Remember Me" login. We do NOT persist this
+   * in plaintext because the email is direct PII; instead we encrypt
+   * it under a session-anchored key that lives only in this module's
+   * scope. The ciphertext lands under `ars_saved_email_enc_v1`.
+   *
+   * The trade-off: a page reload discards the in-memory key, so the
+   * email field will be blank on next load. The user simply re-types
+   * their email — same UX as before Session-2 if they didn't tick
+   * "Remember Me" across tab close. We consider the privacy win worth
+   * it: a DevTools viewer can no longer learn the victim's email
+   * just by inspecting `localStorage`.
+   */
   getSavedEmail: (): string => {
-    return localStorage.getItem(STORAGE_KEYS.SAVED_EMAIL) || '';
+    if (typeof window === 'undefined') return '';
+    // The decrypted email is held only in module-scope memory of
+    // secureToken; if the page reloads, the key is gone and we return
+    // an empty string. The caller (Login page) treats this as "no
+    // saved email" — they fall back to typing their email again.
+    return secureToken.getSavedEmail() ?? '';
   },
 
   setSavedEmail: (email: string): void => {
+    if (typeof window === 'undefined') return;
     if (email && email.trim()) {
-      localStorage.setItem(STORAGE_KEYS.SAVED_EMAIL, email.trim());
+      void secureToken.setSavedEmail(email.trim());
     } else {
-      localStorage.removeItem(STORAGE_KEYS.SAVED_EMAIL);
+      void secureToken.setSavedEmail('');
     }
   },
 
   removeSavedEmail: (): void => {
-    localStorage.removeItem(STORAGE_KEYS.SAVED_EMAIL);
+    void secureToken.setSavedEmail('');
   },
 
   /**

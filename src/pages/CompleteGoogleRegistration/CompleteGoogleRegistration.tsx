@@ -163,9 +163,13 @@ export const CompleteGoogleRegistration = () => {
     const storedUserId = stored?.id ?? 0;
     const authUserId = user?.userId ?? storeUser?.id ?? 0;
     const userId = storedUserId > 0 ? storedUserId : authUserId > 0 ? authUserId : 0;
-    const email = stored?.email ?? user?.email ?? storeUser?.email ?? '';
+    // Session-2 — `storage.getUser()` no longer carries PII; pull
+    // email/fullName from the runtime auth store only. `AuthResponse`
+    // exposes `email` and `username` (no `fullName`); use the username
+    // as the human-readable display name when no `fullName` is present.
+    const email = user?.email ?? storeUser?.email ?? '';
     const fullName =
-      stored?.fullName ?? user?.username ?? storeUser?.fullName ?? email ?? 'Google User';
+      user?.username ?? storeUser?.username ?? email ?? 'Google User';
     if (!token) return null;
     if (!email) return null;
     return {

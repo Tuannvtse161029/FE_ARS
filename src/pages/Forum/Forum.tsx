@@ -71,9 +71,11 @@ export const Forum = () => {
   const { user } = useAuth();
   const stored = storage.getUser();
   const currentUserId = user?.userId ?? stored?.id ?? null;
-  const currentUserName =
-    stored?.fullName ?? stored?.username ?? user?.username ?? 'You';
-  const currentUserAvatarUrl = user?.avatarUrl ?? stored?.avatarUrl ?? null;
+  // Session-2 — fullName / username / avatarUrl no longer live in the
+  // persisted `ars_user` blob; read them from the runtime auth store.
+  // `AuthResponse` exposes `username` and `avatarUrl` (no `fullName`).
+  const currentUserName = user?.username ?? 'You';
+  const currentUserAvatarUrl = user?.avatarUrl ?? null;
 
   const [activeCategory, setActiveCategory] = useState<Category>('All Posts');
   const [sortBy, setSortBy] = useState<SortBy>('Newest');
