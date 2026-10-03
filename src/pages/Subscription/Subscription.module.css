@@ -155,8 +155,16 @@
 
 .actionRow {
   display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: flex-start;
+}
+
+.actionRowButtons {
+  display: flex;
   align-items: center;
   gap: var(--space-3);
+  flex-wrap: wrap;
 }
 
 .proceedButton {
@@ -175,6 +183,48 @@
 .proceedButton:disabled {
   cursor: not-allowed;
   opacity: 0.6;
+}
+
+.policyLinkBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  color: var(--ink-primary);
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-family-ui);
+  cursor: pointer;
+  min-height: 40px;
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.policyLinkBtn:hover:not(:disabled) {
+  background-color: var(--ars-paper, #f1f5f9);
+  border-color: color-mix(in srgb, var(--ink-primary, #0f172a) 20%, transparent);
+}
+
+.policyLinkBtn:focus-visible {
+  outline: 2px solid var(--ars-admin-mid, #475569);
+  outline-offset: 2px;
+}
+
+.policyLinkBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.policyHint {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--ink-secondary);
+  line-height: 1.5;
+  max-width: 520px;
 }
 
 .errorBox {
