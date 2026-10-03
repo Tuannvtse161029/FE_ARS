@@ -16,7 +16,8 @@ export type PolicySlug =
   | 'privacy_policy'
   | 'terms_of_service'
   | 'researcher_responsibility'
-  | 'reviewer_responsibility';
+  | 'reviewer_responsibility'
+  | 'payment_policy';
 
 /** Stable registry — drives the Admin Policies list and the public read paths. */
 export const POLICY_SLUGS: readonly PolicySlug[] = [
@@ -24,6 +25,7 @@ export const POLICY_SLUGS: readonly PolicySlug[] = [
   'terms_of_service',
   'researcher_responsibility',
   'reviewer_responsibility',
+  'payment_policy',
 ] as const;
 
 export interface PolicyMeta {
@@ -60,6 +62,12 @@ export const POLICY_META: Readonly<Record<PolicySlug, PolicyMeta>> = {
     title: 'Reviewer Responsibility',
     summary:
       'Confidentiality, objectivity, and turnaround expectations reviewers agree to when they accept a peer-review assignment.',
+  },
+  payment_policy: {
+    key: 'payment_policy',
+    title: 'Payment & No-Refund Policy',
+    summary:
+      'Terms users agree to when purchasing an annual subscription — confirms the purchase is final, no refunds will be issued, and outlines what the platform provides in return.',
   },
 };
 
@@ -216,4 +224,40 @@ ARS has zero tolerance for reviewers who:
 - Contact authors directly outside the ARS review workflow to negotiate outcomes.
 
 Such behaviour results in immediate removal from the reviewer pool.`,
+
+  payment_policy: `1. Confirmation of Purchase
+
+By proceeding to payment, you confirm that you are purchasing a paid annual subscription to the Academic Research Sharing (ARS) platform. The plan name, billing cycle, and total price are displayed on the checkout screen immediately before you click "Pay with PayOS" and are sourced directly from the platform's billing system. Please review these details before confirming.
+
+2. No-Refund Policy
+
+All annual subscription payments are FINAL and NON-REFUNDABLE.
+
+- Once a payment is successfully processed through our payment provider (PayOS) and the subscription is activated on your account, the amount paid cannot be returned, credited, or transferred to another user under any circumstances.
+- This policy applies regardless of the reason for non-use, including but not limited to: change of mind, infrequent use of the platform, dissatisfaction with a feature, switch to a different academic role, or duplicate accidental purchases.
+- Subscription fees do not include any prorated or partial refund if you choose to stop using the platform before the end of your billing cycle.
+
+3. What Your Subscription Includes
+
+In exchange for the annual fee, the platform provides continuous access to the features associated with your role for the duration of the billing cycle you selected (e.g. 12 months for an Annual plan). A full description of the features included in each role's subscription is available on the Subscription page and may be updated over time as the platform evolves.
+
+4. Subscription Renewal and Expiry
+
+- Your subscription will remain active until the end of the selected billing cycle.
+- The platform does NOT auto-renew your subscription. When your subscription reaches the end of its billing cycle, the associated role-gated features will be paused until you choose to purchase a new subscription.
+- You are responsible for tracking the expiry date of your subscription. The platform may send courtesy reminder emails, but failure to receive such a reminder does not extend or reactivate an expired subscription.
+
+5. Payment Disputes and Errors
+
+- If a payment is processed but the subscription is not activated on your account within a reasonable time (typically within 5 minutes), please contact platform support with your payment reference so we can investigate.
+- Duplicate charges caused by network errors or user retry are reviewed case by case. If a duplicate charge is confirmed by our payment provider, a refund of the duplicate amount will be issued.
+- Chargebacks initiated through your bank or card issuer without first contacting platform support may result in the suspension of your account while the dispute is investigated.
+
+6. Changes to This Policy
+
+The platform may update this payment policy to reflect changes in payment providers, legal requirements, or commercial practices. The version number and last-updated date are displayed at the bottom of this page, and the version on screen at the time of your purchase is the version that governs that transaction.
+
+7. Acceptance
+
+By clicking the "Confirm and proceed to payment" button, you acknowledge that you have read, understood, and agreed to this Payment & No-Refund Policy in its entirety, and that you voluntarily waive any right to a refund once the payment is processed.`,
 };

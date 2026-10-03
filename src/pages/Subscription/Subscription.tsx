@@ -26,6 +26,7 @@ import {
   Calendar,
   CheckCircle2,
   CreditCard,
+  FileText,
   Loader,
   XCircle,
   Clock,
@@ -38,6 +39,7 @@ import { PageHeader } from '../../components/PageHeader';
 import { SkeletonRow } from '../../components/SkeletonRow';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import { Button } from '../../components/Button/Button';
+import { PaymentPolicyModal } from '../../components/subscription/PaymentPolicyModal';
 import { ROUTES } from '../../routes/paths';
 import { AppConfig } from '../../config/app';
 import type {
@@ -143,6 +145,20 @@ export const Subscription = () => {
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
   const [isOrdering, setIsOrdering] = useState(false);
   const [orderError, setOrderError] = useState<Error | null>(null);
+
+  // Two-step payment gate. First the user must read and accept the
+  // Payment & No-Refund Policy in the modal; only then does the PayOS
+  // popup launch. `isPolicyModalOpen` controls visibility, and
+  // `pendingPurchase` carries the side-effects to run after acceptance
+  // (i.e. the same fetch that used to live directly in handleProceedToPay).
+  const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
+  const [pendingPurchase, setPendingPurchase] = useState<
+    | {
+        planId: number;
+        userId: number;
+      }
+    | null
+  >(null);
 
   // Holds a handle to the PayOS checkout popup so we can detect when the
   // user finishes (or cancels) payment without a top-level navigation
@@ -358,64 +374,88 @@ export const Subscription = () => {
     return popup;
   }, []);
 
-  const handleProceedToPay = useCallback(async () => {
+  const startPayosPurchase = useCallback(
+    async (planId: number, authenticatedUserId: number) => {
+      setIsOrdering(true);
+      setOrderError(null);
+      try {
+        const order = await annualFeeService.purchaseAnnualFee(planId, {
+          userId: authenticatedUserId,
+          returnUrl:
+            typeof window !== 'undefined'
+              ? `${window.location.origin}${ROUTES.SUBSCRIPTION_RETURN}?status=success`
+              : null,
+          cancelUrl:
+            typeof window !== 'undefined'
+              ? `${window.location.origin}${ROUTES.SUBSCRIPTION_RETURN}?status=cancelled`
+              : null,
+        });
+        if (order.checkoutUrl && typeof order.checkoutUrl === 'string') {
+          // Primary path — popup-based checkout. The popup is what PayOS
+          // returns the user to (via our `/subscription/return` URL). The
+          // popup's "Go to workspace" button works inside the popup, but
+          // the parent SPA also independently polls the BE on popup close
+          // so the user gets a smooth in-place redirect even if they just
+          // dismiss the popup.
+          const popup = openPayosCheckoutPopup(order.checkoutUrl);
+          if (popup) {
+            return;
+          }
+          // Popup blocked — fall back to a top-level redirect. This is the
+          // legacy behaviour and known to drop the in-memory auth session
+          // (the user will land on /login if the BE hasn't yet activated
+          // the subscription). We surface a toast so the user understands
+          // why they're being redirected and can re-login if needed.
+          toast.warning(
+            'Popup blocked — finishing checkout in this tab. Allow popups next time to keep your session signed in.',
+          );
+          window.location.assign(order.checkoutUrl);
+          return;
+        }
+        throw new Error('Backend did not return a PayOS checkout URL.');
+      } catch (caught) {
+        setOrderError(
+          caught instanceof Error ? caught : new Error('Failed to start subscription payment.'),
+        );
+      } finally {
+        setIsOrdering(false);
+      }
+    },
+    [openPayosCheckoutPopup],
+  );
+
+  // Step 1 of the payment flow: the user clicks "Pay with PayOS" and the
+  // Payment & No-Refund Policy modal opens. We do NOT call the BE yet —
+  // acceptance is a precondition so a user who closes the modal leaves
+  // no pending purchase.
+  const handleProceedToPay = useCallback(() => {
     if (!selectedPlan) return;
-    // The BE's POST /api/AnnualFees/{id}/purchase requires `userId` in the
-    // request body. Pulling it from the authenticated session ensures the
-    // purchase is attributed to the correct user even if JWT role/claim
-    // lookup is stale. Skip silently when no session is present — the
-    // route guard already prevents unauthenticated users from reaching
-    // this page, so this is a defensive no-op.
     const authenticatedUserId = user?.userId ?? null;
     if (!authenticatedUserId) {
       setOrderError(new Error('You must be signed in to purchase a subscription.'));
       return;
     }
-    setIsOrdering(true);
     setOrderError(null);
-    try {
-      const order = await annualFeeService.purchaseAnnualFee(selectedPlan.id, {
-        userId: authenticatedUserId,
-        returnUrl:
-          typeof window !== 'undefined'
-            ? `${window.location.origin}${ROUTES.SUBSCRIPTION_RETURN}?status=success`
-            : null,
-        cancelUrl:
-          typeof window !== 'undefined'
-            ? `${window.location.origin}${ROUTES.SUBSCRIPTION_RETURN}?status=cancelled`
-            : null,
-      });
-      if (order.checkoutUrl && typeof order.checkoutUrl === 'string') {
-        // Primary path — popup-based checkout. The popup is what PayOS
-        // returns the user to (via our `/subscription/return` URL). The
-        // popup's "Go to workspace" button works inside the popup, but
-        // the parent SPA also independently polls the BE on popup close
-        // so the user gets a smooth in-place redirect even if they just
-        // dismiss the popup.
-        const popup = openPayosCheckoutPopup(order.checkoutUrl);
-        if (popup) {
-          return;
-        }
-        // Popup blocked — fall back to a top-level redirect. This is the
-        // legacy behaviour and known to drop the in-memory auth session
-        // (the user will land on /login if the BE hasn't yet activated
-        // the subscription). We surface a toast so the user understands
-        // why they're being redirected and can re-login if needed.
-        toast.warning(
-          'Popup blocked — finishing checkout in this tab. Allow popups next time to keep your session signed in.',
-        );
-        window.location.assign(order.checkoutUrl);
-        return;
-      }
-      throw new Error('Backend did not return a PayOS checkout URL.');
-    } catch (caught) {
-      setOrderError(
-        caught instanceof Error ? caught : new Error('Failed to start subscription payment.'),
-      );
-    } finally {
-      setIsOrdering(false);
-    }
-  }, [selectedPlan, user?.userId, openPayosCheckoutPopup]);
+    setPendingPurchase({ planId: selectedPlan.id, userId: authenticatedUserId });
+    setIsPolicyModalOpen(true);
+  }, [selectedPlan, user?.userId]);
+
+  // Step 2: the user ticked the checkbox and clicked "Confirm and proceed
+  // to payment". We close the modal and start the PayOS popup.
+  const handlePolicyAccepted = useCallback(() => {
+    const pending = pendingPurchase;
+    setIsPolicyModalOpen(false);
+    setPendingPurchase(null);
+    if (!pending) return;
+    void startPayosPurchase(pending.planId, pending.userId);
+  }, [pendingPurchase, startPayosPurchase]);
+
+  // Cancel from the modal: just close it. The pending purchase is
+  // discarded — no BE call is made and no popup opens.
+  const handlePolicyCancelled = useCallback(() => {
+    setIsPolicyModalOpen(false);
+    setPendingPurchase(null);
+  }, []);
 
   const featureDisabled = !AppConfig.features.enableSubscriptionAccess;
   // True when the BE has returned a valid subscription that is not expired.
@@ -621,24 +661,50 @@ export const Subscription = () => {
       {/* ACTION ROW — hidden for users with an active subscription and while loading */}
       {!featureDisabled && !isSubscriptionLoading && !hasActiveSubscription && (
         <div className={styles.actionRow}>
-          <Button
-            onClick={() => void handleProceedToPay()}
-            disabled={
-              !selectedPlan || isOrdering || plansLoading || plansError !== null
-            }
-            data-testid="proceed-to-pay"
-          >
-            {isOrdering ? (
-              <>
-                <Loader size={14} className={styles.spinningIcon} aria-hidden />{' '}
-                Starting PayOS checkout…
-              </>
-            ) : (
-              <>
-                <CreditCard size={14} aria-hidden /> Pay with PayOS
-              </>
-            )}
-          </Button>
+          <div className={styles.actionRowButtons}>
+            <Button
+              onClick={() => void handleProceedToPay()}
+              disabled={
+                !selectedPlan || isOrdering || plansLoading || plansError !== null
+              }
+              data-testid="proceed-to-pay"
+            >
+              {isOrdering ? (
+                <>
+                  <Loader size={14} className={styles.spinningIcon} aria-hidden />{' '}
+                  Starting PayOS checkout…
+                </>
+              ) : (
+                <>
+                  <CreditCard size={14} aria-hidden /> Pay with PayOS
+                </>
+              )}
+            </Button>
+            <button
+              type="button"
+              className={styles.policyLinkBtn}
+              onClick={() => {
+                if (!selectedPlan) return;
+                const authenticatedUserId = user?.userId ?? null;
+                if (!authenticatedUserId) {
+                  setOrderError(new Error('You must be signed in to view the policy.'));
+                  return;
+                }
+                setOrderError(null);
+                setPendingPurchase({ planId: selectedPlan.id, userId: authenticatedUserId });
+                setIsPolicyModalOpen(true);
+              }}
+              disabled={!selectedPlan || isOrdering}
+              data-testid="read-payment-policy"
+              aria-label="Read the full Payment & No-Refund Policy"
+            >
+              <FileText size={14} aria-hidden /> Read full policy
+            </button>
+          </div>
+          <p className={styles.policyHint}>
+            By continuing, you confirm that all annual subscription payments are final and
+            non-refundable once processed.
+          </p>
         </div>
       )}
 
@@ -646,6 +712,20 @@ export const Subscription = () => {
         <div className={styles.errorBox} role="alert">
           <AlertTriangle size={14} aria-hidden /> {orderError.message}
         </div>
+      )}
+
+      {/* PAYMENT POLICY MODAL — opens before PayOS checkout. Acceptance is
+          required (checkbox + explicit confirm button) before the popup
+          launches. The admin-editable policy text is fetched live from
+          Firebase each time the modal opens. */}
+      {isPolicyModalOpen && selectedPlan && (
+        <PaymentPolicyModal
+          isOpen={isPolicyModalOpen}
+          planLabel={`${billingCycleLabel(selectedPlan.billingCycle)} — ${formatVnd(selectedPlan.price)} VND`}
+          planId={selectedPlan.id}
+          onCancel={handlePolicyCancelled}
+          onAccept={handlePolicyAccepted}
+        />
       )}
 
       {/* PURCHASE HISTORY */}
