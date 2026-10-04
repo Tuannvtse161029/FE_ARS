@@ -384,6 +384,9 @@
   text-underline-offset: 2px;
   cursor: pointer;
   font-family: var(--font-family-ui);
+  background: transparent;
+  border: none;
+  padding: 0;
 }
 
 .viewContentLink:hover {

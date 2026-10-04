@@ -27,26 +27,40 @@ export interface PublishedPaperCardProps {
 
 /**
  * Author chip — OpenAlex-style scannable row. Renders the author name
- * as plain text by default; when the adapter was able to confirm the
- * author is a registered ARS user (today: the paper's submitter, via
- * the BE's `PaperResponse.authorId` + `authorName`), the name itself
- * becomes a link to that user's public profile at `/profile/:userId`.
- * Authors we cannot confidently identify stay as plain text — the
- * "never build a URL from a bare name" rule is preserved.
+ * as plain text by default; the name becomes a link to that user's
+ * public profile at `/profile/:userId` when one of two signals is true:
  *
- * When the author also carries a canonical ORCID, the ORCID chip is
- * rendered alongside the profile link, as before.
+ *   1. `author.userId` is populated by the BE and `buildAuthorProfilePath`
+ *      validates it as a positive integer (per-author identification).
+ *   2. The call site has flagged this entry as the paper's submitter via
+ *      `isResearcher` + `researcherId` (paper-level identification).
+ *
+ * Authors we cannot confidently identify stay as plain text — the
+ * "never build a URL from a bare name" rule is preserved. When the
+ * author also carries a canonical ORCID, the ORCID chip is rendered
+ * alongside the profile link.
  */
-const AuthorChip = ({ author }: { readonly author: PublicationAuthor }) => {
+const AuthorChip = ({
+  author,
+  isResearcher,
+  researcherId,
+}: {
+  readonly author: PublicationAuthor;
+  readonly isResearcher?: boolean;
+  readonly researcherId?: number | null;
+}) => {
   const t = useT();
   const links = resolveAuthorLinks(author);
-  const profilePath = buildAuthorProfilePath(author);
+  const perAuthorPath = buildAuthorProfilePath(author);
+  const profilePath =
+    perAuthorPath ?? (isResearcher && researcherId ? `/profile/${researcherId}` : null);
+  const linkClass = perAuthorPath ? card.authorNameLink : card.authorProfileLink;
   return (
     <span className={card.author} data-testid="public-paper-author" data-author-id={author.id}>
       {profilePath ? (
         <Link
           to={profilePath}
-          className={card.authorNameLink}
+          className={linkClass}
           aria-label={t(
             'home.catalog.author.viewProfile',
             'View {name}\u2019s profile',
@@ -148,13 +162,50 @@ export const PublishedPaperCard = ({
       </header>
 
       <section className={card.section} aria-label="Authors">
+        {(paper.researcherName || paper.submitterName) && (
+          <div className={card.researcherRow}>
+            {paper.authorId ? (
+              <Link
+                to={`/profile/${paper.authorId}`}
+                className={card.researcherBadge}
+                data-testid="public-paper-researcher"
+                title={copy('View researcher profile', 'Xem hồ sơ nhà nghiên cứu')}
+              >
+                <UserCheck size={14} aria-hidden="true" />
+                <span className={card.researcherLabel}>{copy('Researcher:', 'Nhà nghiên cứu:')}</span>
+                <strong className={card.researcherName}>{paper.researcherName || paper.submitterName}</strong>
+              </Link>
+            ) : (
+              <div className={card.researcherBadge} data-testid="public-paper-researcher">
+                <UserCheck size={14} aria-hidden="true" />
+                <span className={card.researcherLabel}>{copy('Researcher:', 'Nhà nghiên cứu:')}</span>
+                <strong className={card.researcherName}>{paper.researcherName || paper.submitterName}</strong>
+              </div>
+            )}
+          </div>
+        )}
         <p className={card.authorsList}>
-          {orderedAuthors.map((author, index) => (
-            <span key={author.id} className={card.authorWrap}>
-              <AuthorChip author={author} />
-              {index < orderedAuthors.length - 1 ? <span className={card.authorSeparator}>, </span> : null}
-            </span>
-          ))}
+          {orderedAuthors.length > 0 && (paper.researcherName || paper.submitterName) && (
+            <span className={card.coAuthorsLabel}>{copy('Authors:', 'Tác giả:')}</span>
+          )}
+          {orderedAuthors.map((author, index) => {
+            const isResearcher = Boolean(
+              paper.authorId &&
+              ((paper.researcherName && author.name.trim().toLowerCase() === paper.researcherName.trim().toLowerCase()) ||
+               (paper.submitterName && author.name.trim().toLowerCase() === paper.submitterName.trim().toLowerCase()) ||
+               orderedAuthors.length === 1)
+            );
+            return (
+              <span key={author.id} className={card.authorWrap}>
+                <AuthorChip
+                  author={author}
+                  isResearcher={isResearcher}
+                  researcherId={paper.authorId}
+                />
+                {index < orderedAuthors.length - 1 ? <span className={card.authorSeparator}>, </span> : null}
+              </span>
+            );
+          })}
         </p>
       </section>
 
@@ -206,7 +257,7 @@ export const PublishedPaperCard = ({
                 <span className={card.identifierPlain}>{copy('Not supplied', 'Chưa cung cấp')}</span>
               )}
             </div>
-                        {paperExternalLinks.length > 1 && paperExternalLinks[1]?.source === 'OpenAlex' && (
+            {paperExternalLinks.length > 1 && paperExternalLinks[1]?.source === 'OpenAlex' && (
               <div className={card.detailRow}>
                 <span className={card.detailLabel}>
                   <OpenAlexBrandLogo
@@ -231,6 +282,23 @@ export const PublishedPaperCard = ({
               <span className={card.detailLabel}>{copy('Field', 'Ngành')}</span>
               <FieldPath paper={paper} />
             </div>
+            {(paper.researcherName || paper.submitterName) && (
+              <div className={card.detailRow}>
+                <span className={card.detailLabel}>{copy('Researcher', 'Nhà nghiên cứu')}</span>
+                {paper.authorId ? (
+                  <Link
+                    to={`/profile/${paper.authorId}`}
+                    className={card.profileLink}
+                    title={copy('View profile', 'Xem hồ sơ')}
+                  >
+                    <span>{paper.researcherName || paper.submitterName}</span>
+                    <ExternalLink size={12} aria-hidden="true" />
+                  </Link>
+                ) : (
+                  <span className={card.identifierPlain}>{paper.researcherName || paper.submitterName}</span>
+                )}
+              </div>
+            )}
           </section>
 
           <section className={card.reviewerRow} aria-label="Editorial review">

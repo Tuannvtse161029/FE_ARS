@@ -48,6 +48,7 @@ export interface Paper {
   subFieldId?: number | null;
   authorId?: number | null;
   authorName?: string | null;
+  researcherName?: string | null;
   openAlexWorkId?: string | null;
   doi?: string | null;
   authorshipVerificationStatus?: string | null;

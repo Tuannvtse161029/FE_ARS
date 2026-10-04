@@ -92,6 +92,7 @@ export interface PublicationPaper {
   subFieldId?: number | null;
   authorId?: number | null;
   submitterName?: string;
+  researcherName?: string;
   doi?: string;
   openAlexId?: string;
   externalIdentifier?: string;

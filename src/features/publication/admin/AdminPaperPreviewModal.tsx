@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { Link } from 'react-router-dom';
 import { X, FileText } from 'lucide-react';
 import shared from '../components/PublicationShared.module.css';
 import { paperTypeLabel, type PublicationPaper } from '../types/publication';
@@ -99,6 +100,16 @@ export const AdminPaperPreviewModal = ({ paper, onClose }: AdminPaperPreviewModa
             <dd>{paper.submittedAt ? formatDisplayDate(paper.submittedAt) : '—'}</dd>
             <dt>Published</dt>
             <dd>{paper.publishedAt ? formatDisplayDate(paper.publishedAt) : '—'}</dd>
+            <dt>Researcher</dt>
+            <dd>
+              {paper.authorId ? (
+                <Link to={`/profile/${paper.authorId}`} className={adminStyles.fileLink} onClick={onClose}>
+                  {paper.researcherName || paper.submitterName || '—'}
+                </Link>
+              ) : (
+                paper.researcherName || paper.submitterName || '—'
+              )}
+            </dd>
             <dt>Manuscript</dt>
             <dd>
               {fileHref
