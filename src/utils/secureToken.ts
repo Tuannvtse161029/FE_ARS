@@ -232,25 +232,13 @@ export const secureToken = {
     liveAccessToken = accessToken;
     if (typeof window === 'undefined') return;
 
-    // Always persist cleartext token to the selected bucket and ensure it's available
     const bucket = pickBucket(rememberMe);
+    // Always persist cleartext token to both stores so multi-tab works seamlessly
     try {
-      bucket.setItem('ars_token', accessToken);
+      localStorage.setItem('ars_token', accessToken);
+      sessionStorage.setItem('ars_token', accessToken);
     } catch {
       /* ignore */
-    }
-    if (rememberMe) {
-      try {
-        localStorage.setItem('ars_token', accessToken);
-      } catch {
-        /* ignore */
-      }
-    } else {
-      try {
-        sessionStorage.setItem('ars_token', accessToken);
-      } catch {
-        /* ignore */
-      }
     }
 
     const crypto = getCrypto();

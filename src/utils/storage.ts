@@ -67,12 +67,8 @@ export const storage = {
     const payload = serializeSessionUser(user);
     if (!payload) return;
     try {
-      rememberBucket().setItem(STORAGE_KEYS.USER, payload);
-      if (storage.getRememberMe()) {
-        localStorage.setItem(STORAGE_KEYS.USER, payload);
-      } else {
-        sessionStorage.setItem(STORAGE_KEYS.USER, payload);
-      }
+      localStorage.setItem(STORAGE_KEYS.USER, payload);
+      sessionStorage.setItem(STORAGE_KEYS.USER, payload);
     } catch {
       /* ignore */
     }

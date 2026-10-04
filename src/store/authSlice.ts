@@ -49,16 +49,9 @@ const slimAuthStorageAdapter = {
   },
   setItem: (name: string, value: { state: PersistedAuth; version?: number }) => {
     if (typeof window === 'undefined') return;
-    const isRemember = storage.getRememberMe();
-
     const payload = JSON.stringify({ ...value, version: AUTH_PERSIST_VERSION });
-    if (isRemember) {
-      localStorage.setItem(name, payload);
-      sessionStorage.removeItem(name);
-    } else {
-      sessionStorage.setItem(name, payload);
-      localStorage.removeItem(name);
-    }
+    localStorage.setItem(name, payload);
+    sessionStorage.setItem(name, payload);
   },
   removeItem: (name: string) => {
     if (typeof window === 'undefined') return;
@@ -142,11 +135,8 @@ const useAuthStore = create<AuthStore>()(
         },
         version: AUTH_PERSIST_VERSION,
       });
-      if (isRemember) {
-        localStorage.setItem('ars-auth-storage', payload);
-      } else {
-        sessionStorage.setItem('ars-auth-storage', payload);
-      }
+      localStorage.setItem('ars-auth-storage', payload);
+      sessionStorage.setItem('ars-auth-storage', payload);
       // Make sure the live token is in the secureToken module's
       // module-scope. (The AuthContext normally writes the envelope
       // before calling `login`; this is a defensive back-stop for
