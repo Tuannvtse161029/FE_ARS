@@ -172,6 +172,26 @@ class SignalRService {
       this.emit('ForumCommentAdded', data, 'ars:forum-comment-added');
     });
 
+    conn.on('ForumPostLiked', (data: unknown) => {
+      console.info('[SignalR ⚡] ForumPostLiked:', data);
+      this.emit('ForumPostLiked', data, 'ars:forum-post-liked');
+    });
+
+    conn.on('PostLikeUpdated', (data: unknown) => {
+      console.info('[SignalR ⚡] PostLikeUpdated:', data);
+      this.emit('ForumPostLiked', data, 'ars:forum-post-liked');
+    });
+
+    conn.on('ForumCommentUpvoted', (data: unknown) => {
+      console.info('[SignalR ⚡] ForumCommentUpvoted:', data);
+      this.emit('ForumCommentUpvoted', data, 'ars:forum-comment-upvoted');
+    });
+
+    conn.on('CommentVoteUpdated', (data: unknown) => {
+      console.info('[SignalR ⚡] CommentVoteUpdated:', data);
+      this.emit('ForumCommentUpvoted', data, 'ars:forum-comment-upvoted');
+    });
+
     conn.on('MedalAwarded', (data: unknown) => {
       console.info('[SignalR ⚡] MedalAwarded:', data);
       this.emit('MedalAwarded', data, 'ars:medal-awarded');

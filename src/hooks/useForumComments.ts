@@ -106,8 +106,35 @@ export function useForumComments(postId: number): UseForumCommentsResult {
       }
     });
 
+    const unsubVote = signalrService.on('ForumCommentUpvoted', (data: unknown) => {
+      if (data && typeof data === 'object') {
+        const commentId = Number(
+          (data as { forumCommentId?: unknown }).forumCommentId ??
+          (data as { commentId?: unknown }).commentId ??
+          (data as { id?: unknown }).id ?? 0
+        );
+        const newUpvoteCount = (data as { upvoteCount?: unknown }).upvoteCount != null
+          ? Number((data as { upvoteCount: unknown }).upvoteCount)
+          : null;
+        if (commentId) {
+          setComments((prev) =>
+            prev.map((c) => {
+              if ((c.id || c.forumCommentId) === commentId) {
+                return {
+                  ...c,
+                  upvoteCount: newUpvoteCount ?? (c.upvoteCount ?? 0) + 1,
+                };
+              }
+              return c;
+            })
+          );
+        }
+      }
+    });
+
     return () => {
       unsub();
+      unsubVote();
       void signalrService.leavePostGroup(postId);
     };
   }, [postId]);

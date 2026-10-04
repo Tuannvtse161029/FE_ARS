@@ -19,6 +19,7 @@ import { useForumComments } from '../../hooks/useForumComments';
 import { useCanInteractInForum } from '../../hooks/useCanInteractInForum';
 import { useI18n } from '../../i18n/I18nContext';
 import { forumPostService } from '../../services/forumPost.service';
+import { signalrService } from '../../services/signalr.service';
 import { buildForumPostViewModel } from '../../types/forumPostViewModel';
 import type { ForumPost } from '../../types/forum.types';
 import { initialsFromName, formatRelativeTime } from '../../pages/Forum/forum.utils';
@@ -107,6 +108,31 @@ export const ForumPostCard = ({
     setIsLiked(Boolean(post.isLiked ?? post.isLikedByCurrentUser));
     setLikesCount(Number(post.likes ?? post.likeCount ?? 0));
   }, [post.isLiked, post.isLikedByCurrentUser, post.likes, post.likeCount]);
+
+  // Real-time post likes update via SignalR
+  useEffect(() => {
+    if (!post.id) return;
+    const unsub = signalrService.on('ForumPostLiked', (data: unknown) => {
+      if (data && typeof data === 'object') {
+        const rawId = Number(
+          (data as { forumPostId?: unknown; postId?: unknown; id?: unknown }).forumPostId ??
+          (data as { postId?: unknown }).postId ??
+          (data as { id?: unknown }).id ?? 0
+        );
+        if (rawId === Number(post.id)) {
+          const nextLikes =
+            (data as { likes?: unknown; likeCount?: unknown }).likes ??
+            (data as { likeCount?: unknown }).likeCount;
+          if (typeof nextLikes === 'number') {
+            setLikesCount(nextLikes);
+          }
+        }
+      }
+    });
+    return () => {
+      unsub();
+    };
+  }, [post.id]);
 
   const {
     comments,
