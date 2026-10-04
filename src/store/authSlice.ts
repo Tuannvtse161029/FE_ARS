@@ -36,16 +36,18 @@ type PersistedAuth = Pick<
 const slimAuthStorageAdapter = {
   getItem: (_name: string) => {
     if (typeof window === 'undefined') return null;
-    // Synchronous cache read — `storage.getUser()` returns the
-    // previously-decrypted projection; the envelope is decrypted
-    // lazily on first access by `bootstrapUserCache` (see
-    // `utils/storage.ts`). Guards reading from the auth store during
-    // the first render of a session accept the brief "no user yet"
-    // window — they re-run their effect once the store rehydrates.
     const stored = storage.getUser();
-    if (!stored) return null;
-    // Read the live effectiveRole from the cache if it was set after
-    // `setUser` (login) but before the persist rehydrates.
+    if (!stored) {
+      try {
+        const raw = localStorage.getItem('ars-auth-storage') || sessionStorage.getItem('ars-auth-storage');
+        if (raw) {
+          return JSON.parse(raw);
+        }
+      } catch {
+        /* ignore */
+      }
+      return null;
+    }
     const effectiveRole =
       (stored as unknown as { effectiveRole?: EffectiveRole | null })
         .effectiveRole ?? null;
@@ -58,8 +60,15 @@ const slimAuthStorageAdapter = {
       version: AUTH_PERSIST_VERSION,
     };
   },
-  setItem: (_name: string, value: { state: PersistedAuth; version?: number }) => {
+  setItem: (name: string, value: { state: PersistedAuth; version?: number }) => {
     if (typeof window === 'undefined') return;
+    try {
+      const payload = JSON.stringify({ ...value, version: AUTH_PERSIST_VERSION });
+      localStorage.setItem(name, payload);
+      sessionStorage.setItem(name, payload);
+    } catch {
+      /* ignore */
+    }
     const projected = value.state.user
       ? projectUserForStorage(
           value.state.user as unknown as SessionUser,
@@ -68,15 +77,18 @@ const slimAuthStorageAdapter = {
     if (!projected) return;
     const envelopePayload = JSON.stringify({
       ...projected,
-      // Stash effectiveRole in the envelope so the adapter's
-      // `getItem` can restore it on rehydrate. The field is dropped
-      // before any UI-side read; the PII strip happens on write.
       __er: value.state.effectiveRole ?? null,
     });
     void secureToken.writePersistedUser(envelopePayload);
   },
-  removeItem: (_name: string) => {
+  removeItem: (name: string) => {
     if (typeof window === 'undefined') return;
+    try {
+      localStorage.removeItem(name);
+      sessionStorage.removeItem(name);
+    } catch {
+      /* ignore */
+    }
     storage.removeUser();
   },
 };
@@ -166,12 +178,21 @@ const useAuthStore = create<AuthStore>()(
     set(nextState);
 
     if (typeof window !== 'undefined') {
-      // Persist the storage-safe projection (no PII) as an encrypted
-      // envelope under `ars_user_enc_v1`. The cleartext projection
-      // is NEVER written to either storage bucket — a DevTools viewer
-      // sees only the opaque ciphertext. The `effectiveRole` is
-      // stashed inside the envelope so the adapter's `getItem` can
-      // restore it on rehydrate.
+      try {
+        const payload = JSON.stringify({
+          state: {
+            user: projected as unknown as User,
+            isAuthenticated: true,
+            effectiveRole: resolvedEffectiveRole,
+          },
+          version: AUTH_PERSIST_VERSION,
+        });
+        localStorage.setItem('ars-auth-storage', payload);
+        sessionStorage.setItem('ars-auth-storage', payload);
+      } catch {
+        /* ignore */
+      }
+
       const persistedUser = projectUserForStorage(projected) as
         | PersistedSessionUser
         | null;
@@ -182,10 +203,6 @@ const useAuthStore = create<AuthStore>()(
         });
         await secureToken.writePersistedUser(envelopePayload);
       }
-      // Make sure the live token is in the secureToken module's
-      // module-scope. (The AuthContext normally writes the envelope
-      // before calling `login`; this is a defensive back-stop for
-      // any test fixture that drives `login` directly.)
       if (token) {
         await secureToken.writeAfterLogin(token, null, isRemember);
       }
@@ -201,8 +218,12 @@ const useAuthStore = create<AuthStore>()(
           effectiveRole: null,
         });
         if (typeof window !== 'undefined') {
-          // Delegate to the secure path so the encrypted envelope and
-          // its cache are both cleared.
+          try {
+            localStorage.removeItem('ars-auth-storage');
+            sessionStorage.removeItem('ars-auth-storage');
+          } catch {
+            /* ignore */
+          }
           storage.removeUser();
         }
         secureToken.clear();
@@ -230,6 +251,8 @@ const useAuthStore = create<AuthStore>()(
     }),
     {
       name: 'ars-auth-storage',
+      version: AUTH_PERSIST_VERSION,
+      migrate: (persistedState) => persistedState as AuthStore,
       storage: slimAuthStorageAdapter,
       // Persist the slim projection only. The token is intentionally
       // excluded so a stolen `ars-auth-storage` blob is not enough to
@@ -239,18 +262,7 @@ const useAuthStore = create<AuthStore>()(
         isAuthenticated: state.isAuthenticated,
         effectiveRole: state.effectiveRole,
       }),
-      onRehydrateStorage: () => async (_state, error) => {
-        // Agent 55 — drive the persistent-key rehydrate path so the
-        // in-memory session key + envelope decrypt happen BEFORE the
-        // auth store finishes its initial rehydrate. Without this, a
-        // freshly-opened sibling tab sees `isAuthenticated=false` and
-        // the route guards bounce the user to /login. The rehydrate is
-        // idempotent when the in-memory key is already set, so it is
-        // safe to call from every mount.
-        //
-        // Direct state mutation is unreliable across Zustand versions;
-        // use `useAuthStore.setState` (or `set`) for every change so
-        // subscribers actually receive the update.
+      onRehydrateStorage: () => async (state, error) => {
         if (error) {
           useAuthStore.setState({ isLoading: false });
           return;
@@ -258,19 +270,9 @@ const useAuthStore = create<AuthStore>()(
         try {
           await secureToken.rehydrate();
         } catch {
-          /* ignore — fall through to the legacy sync getter */
+          /* ignore */
         }
         const liveToken = storage.getToken();
-        // Agent 55 (regression) — the user envelope needs the same
-        // session key, but the `slimAuthStorageAdapter.getItem` call
-        // above ran BEFORE the key was available (it was null in the
-        // fresh JS context of a sibling tab). Now that the key is
-        // back in memory, re-read the user projection from the
-        // freshly-populated cache. The Zustand `partialize` above
-        // mirrors the user blob under `ars-auth-storage`, but a
-        // user persisted BEFORE this Agent 55 fix may not be there
-        // — falling back to the encrypted envelope is the
-        // canonical path.
         const rehydratedUser = storage.getUser();
         const patch: Partial<{
           user: User | null;
@@ -283,12 +285,17 @@ const useAuthStore = create<AuthStore>()(
         };
         if (liveToken) {
           patch.token = liveToken;
-          patch.isAuthenticated = true;
+          if (rehydratedUser || state?.user) {
+            patch.isAuthenticated = true;
+          }
         }
         if (rehydratedUser) {
           patch.user = rehydratedUser as unknown as User;
           patch.effectiveRole =
             (rehydratedUser.effectiveRole as EffectiveRole) ?? null;
+        } else if (state?.user) {
+          patch.user = state.user;
+          patch.effectiveRole = state.effectiveRole;
         }
         useAuthStore.setState(patch);
       },

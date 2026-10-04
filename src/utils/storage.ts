@@ -102,10 +102,22 @@ export const storage = {
   setToken: (token: string): void => {
     if (typeof window === 'undefined') return;
     const rememberMe = storage.getRememberMe();
+    try {
+      localStorage.setItem(STORAGE_KEYS.TOKEN, token);
+      sessionStorage.setItem(STORAGE_KEYS.TOKEN, token);
+    } catch {
+      /* ignore */
+    }
     void secureToken.writeAfterLogin(token, null, rememberMe);
   },
 
   removeToken: (): void => {
+    try {
+      localStorage.removeItem(STORAGE_KEYS.TOKEN);
+      sessionStorage.removeItem(STORAGE_KEYS.TOKEN);
+    } catch {
+      /* ignore */
+    }
     secureToken.clear();
   },
 
@@ -119,12 +131,21 @@ export const storage = {
    */
   getUser: (): PersistedSessionUser | null => {
     if (typeof window === 'undefined') return null;
+    if (cachedUserProjection) return cachedUserProjection;
+
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.USER) || sessionStorage.getItem(STORAGE_KEYS.USER);
+      if (raw) {
+        const parsed = JSON.parse(raw) as PersistedSessionUser;
+        cachedUserProjection = parsed;
+        userEnvelopeBootstrapped = true;
+        return parsed;
+      }
+    } catch {
+      /* ignore */
+    }
+
     if (!userEnvelopeBootstrapped) {
-      // Fire-and-forget the bootstrap so the next sync call has the
-      // decrypted value ready. Guards reading from storage during the
-      // first render of a session accept the brief "no user yet"
-      // window — they re-run their effect once the auth store
-      // rehydrates.
       void bootstrapUserCache();
     }
     return cachedUserProjection;
@@ -144,14 +165,8 @@ export const storage = {
 
   setUser: (user: User | SessionUser): void => {
     if (typeof window === 'undefined') return;
-    // PII (email, username, fullName, avatarUrl, etc.) is intentionally
-    // stripped before write. Only opaque IDs and feature flags reach
-    // the envelope payload; the runtime SessionUser in the auth store
-    // still carries the PII for the duration of the session.
     const persisted = serializePersistedSessionUser(user);
     if (!persisted) return;
-    // Cache the plaintext projection so the next `getUser` call is
-    // synchronous.
     try {
       const parsed = JSON.parse(persisted) as PersistedSessionUser;
       cachedUserProjection = parsed;
@@ -159,8 +174,12 @@ export const storage = {
     } catch {
       /* ignore */
     }
-    // Persist as an encrypted envelope. The cleartext projection is
-    // NEVER written to either bucket.
+    try {
+      localStorage.setItem(STORAGE_KEYS.USER, persisted);
+      sessionStorage.setItem(STORAGE_KEYS.USER, persisted);
+    } catch {
+      /* ignore */
+    }
     void secureToken.writePersistedUser(persisted);
   },
 

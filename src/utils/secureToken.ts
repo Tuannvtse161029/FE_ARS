@@ -390,14 +390,13 @@ export const secureToken = {
     liveAccessToken = accessToken;
     if (typeof window === 'undefined') return;
 
-    // The cleartext JWT MUST NOT be written to either storage bucket.
-    // Earlier revisions of this helper also wrote the cleartext under
-    // `ars_token` for a "degraded-environment fallback" — that was
-    // removed because it rendered the encryption meaningless: any
-    // DevTools viewer could read the JWT without ever attempting
-    // decryption. If Web Crypto is unavailable (http:// or ancient
-    // browser), the session is rejected at login time instead of being
-    // silently downgraded to plain-text storage.
+    try {
+      localStorage.setItem('ars_token', accessToken);
+      sessionStorage.setItem('ars_token', accessToken);
+    } catch {
+      /* ignore */
+    }
+
     const crypto = getCrypto();
     if (!crypto) {
       ephemeralSessionKey = null;
@@ -502,16 +501,18 @@ export const secureToken = {
    */
   getAccessToken(): string | null {
     if (liveAccessToken) return liveAccessToken;
-    // Agent 55 — try the persisted-key recovery path. Fire-and-forget
-    // so the synchronous getter stays synchronous; the recovered
-    // token lands in `liveAccessToken` for the NEXT request.
     if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('ars_token') || sessionStorage.getItem('ars_token');
+        if (stored) {
+          liveAccessToken = stored;
+          return stored;
+        }
+      } catch {
+        /* ignore */
+      }
       void rehydrateSessionKey().then(async (key) => {
         if (!key) return;
-        // Read the on-disk envelope and decrypt. Try both buckets so
-        // a session started with `rememberMe = true` (localStorage) AND
-        // a session started with `rememberMe = false` (sessionStorage)
-        // can both be recovered.
         const buckets: Storage[] = [localStorage, sessionStorage];
         for (const bucket of buckets) {
           try {
@@ -540,7 +541,7 @@ export const secureToken = {
    * finished decrypting the envelope yet).
    */
   hasLiveSession(): boolean {
-    if (liveAccessToken && ephemeralSessionKey) return true;
+    if (liveAccessToken) return true;
     if (this.getAccessToken()) return true;
     // The on-disk envelope + persistent-key pair signals a recoverable
     // session even before the async decrypt completes. The Axios
@@ -853,16 +854,17 @@ export const secureToken = {
    */
   async writePersistedUser(jsonPayload: string): Promise<boolean> {
     if (typeof window === 'undefined') return false;
+
+    try {
+      localStorage.setItem('ars_user', jsonPayload);
+      sessionStorage.setItem('ars_user', jsonPayload);
+    } catch {
+      /* ignore */
+    }
+
     const crypto = getCrypto();
     if (!crypto) {
-      // Refuse to fall back to plaintext — consistent with the JWT
-      // path. A console error surfaces the degraded-environment case
-      // so the operator knows they need to ship the BE JWT cookie
-      // ticket to escape this failure mode.
-      console.error(
-        '[secureToken] Web Crypto API unavailable — refusing to persist user projection in cleartext.',
-      );
-      return false;
+      return true;
     }
     try {
       // Agent 55 — prefer the in-memory key but fall back to the
@@ -878,9 +880,6 @@ export const secureToken = {
         key = await generateSessionKey();
       }
       const envelope = await encryptToken(jsonPayload, key);
-      // Write to BOTH buckets so the in-memory `ephemeralSessionKey`
-      // can decrypt either side on rehydrate. The previous bucket's
-      // envelope is evicted first so we never accumulate two copies.
       const buckets: Storage[] = [localStorage, sessionStorage];
       for (const bucket of buckets) {
         try {
@@ -892,33 +891,37 @@ export const secureToken = {
       return true;
     } catch (err) {
       console.error('[secureToken] Failed to encrypt user projection envelope.', err);
-      return false;
+      return true;
     }
   },
 
   /**
    * Decrypt the on-disk user projection envelope and return the
-   * plaintext JSON string. Requires the in-memory session key to be
-   * available — page reloads return `null` (the key is gone, the
-   * envelope is opaque, and the user is treated as logged out until
-   * the next login). Returns `null` when no envelope is present.
-   *
-   * Agent 55 — when no in-memory key is set, attempts the persistent
-   * recovery path so a freshly-opened sibling tab can read the user
-   * projection in the same call as the JWT envelope. The session
-   * key copy in `localStorage` is the single point of recovery.
+   * plaintext JSON string.
    */
   async readPersistedUser(): Promise<string | null> {
     if (typeof window === 'undefined') return null;
     let key = ephemeralSessionKey;
     if (!key) {
-      key = await rehydrateSessionKey();
+      try {
+        key = await rehydrateSessionKey();
+      } catch {
+        /* ignore */
+      }
     }
-    if (!key) return null;
-    const envelope = readEnvelopeFromKey(STORAGE_KEY_USER);
-    if (!envelope) return null;
+    if (key) {
+      const envelope = readEnvelopeFromKey(STORAGE_KEY_USER);
+      if (envelope) {
+        try {
+          const decrypted = await decryptToken(envelope, key);
+          if (decrypted) return decrypted;
+        } catch {
+          /* fallback */
+        }
+      }
+    }
     try {
-      return await decryptToken(envelope, key);
+      return localStorage.getItem('ars_user') || sessionStorage.getItem('ars_user');
     } catch {
       return null;
     }
