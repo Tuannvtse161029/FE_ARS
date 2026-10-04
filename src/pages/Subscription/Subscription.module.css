@@ -90,6 +90,15 @@
   font-size: var(--font-size-xs);
 }
 
+/* Inline variant: icon and text sit on the same baseline so the message
+   reads as a single line even when the text wraps to a second line. */
+.statusMetaInline {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
 .plansGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -146,6 +155,8 @@
   list-style: none;
   color: var(--ars-ink-muted);
   font-size: var(--font-size-sm);
+  text-align: justify;
+  text-justify: inter-word;
 }
 
 .planFeature::before {
@@ -225,6 +236,27 @@
   color: var(--ink-secondary);
   line-height: 1.5;
   max-width: 520px;
+}
+
+.activeSubscriberNotice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--ars-warning-bg, rgba(245, 158, 11, 0.08));
+  border: 1px solid color-mix(in srgb, var(--ars-warning, #d97706) 30%, transparent);
+  border-radius: var(--radius-md);
+  color: var(--ink-primary);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+  width: 100%;
+  max-width: 720px;
+}
+
+.activeSubscriberNotice svg {
+  color: var(--ars-warning, #d97706);
+  flex-shrink: 0;
+  margin-top: 2px;
 }
 
 .errorBox {
@@ -309,13 +341,6 @@
 
 .historyTable tbody tr:hover {
   background: var(--ars-paper-inset);
-}
-
-.transactionIdCell {
-  font-family: var(--font-family-mono);
-  font-size: 0.78rem;
-  color: var(--ars-ink-muted);
-  word-break: break-all;
 }
 
 /* ── Spinner ──────────────────────────────────────────── */

@@ -71,6 +71,18 @@ api.interceptors.response.use(
       currentPath === '/verify-email' ||
       currentPath.startsWith('/forgot-password') ||
       currentPath === '/reset-password';
+    // Popup guard — the PayOS checkout popup is opened with `noopener`
+    // so it shares `localStorage` (and the on-disk secureToken envelope)
+    // with the parent tab, but it has its own JS context with a null
+    // `liveAccessToken`. Any 401 in the popup would (a) try to clear the
+    // shared envelope, nuking the parent tab's session, and (b) hard
+    // redirect the popup window to /login — which is the "redirect into
+    // login page" symptom the user reported. Suppress both: the popup
+    // is a transient window and the parent owns auth.
+    const isPayosReturnPopup =
+      currentPath === '/subscription/return' &&
+      typeof window !== 'undefined' &&
+      window.name === 'payos_checkout';
 
     // Session-2 hardening: a "live session" is the in-memory access
     // token (or a refresh token on disk, once the BE ships the refresh
@@ -78,7 +90,7 @@ api.interceptors.response.use(
     // authoritative — `secureToken.hasLiveSession` is.
     const hasToken = secureToken.hasLiveSession();
 
-    if (error.response?.status === 401 && !isAuthEndpoint && !isAuthPage && !sessionFailureHandled && hasToken) {
+    if (error.response?.status === 401 && !isAuthEndpoint && !isAuthPage && !isPayosReturnPopup && !sessionFailureHandled && hasToken) {
       sessionFailureHandled = true;
       clearAuthSession();
       if (typeof window !== 'undefined' && window.location.pathname !== '/login') {

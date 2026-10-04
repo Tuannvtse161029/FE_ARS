@@ -19,7 +19,7 @@
  * state.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   AlertTriangle,
@@ -29,7 +29,6 @@ import {
   FileText,
   Loader,
   XCircle,
-  Clock,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSubscription, clearSubscriptionCache } from '../../hooks/useSubscription';
@@ -46,7 +45,6 @@ import type {
   AnnualFee,
   AnnualFeeBillingCycle,
   AnnualFeePurchase,
-  AnnualFeePurchaseStatus,
 } from '../../types/annualFee';
 import styles from './Subscription.module.css';
 
@@ -87,18 +85,117 @@ const formatDateTime = (
   });
 };
 
-const STATUS_LABEL: Record<AnnualFeePurchaseStatus, string> = {
-  Pending: 'Pending payment',
-  Paid: 'Paid',
-  Failed: 'Failed',
-  Cancelled: 'Cancelled',
+// The BE serialises `AnnualFeePurchaseResponse.status` as a plain `string`
+// (nullable) rather than a strict enum, so the value can arrive in any
+// casing — e.g. "Paid", "paid", "PAID", or even strings the BE team added
+// later ("Active", "Refunded", "Completed"). The maps below are
+// case-insensitive lookups; anything we don't recognise falls through to
+// `STATUS_DEFAULT_LABEL` so the row never renders an empty status cell.
+// The BE serialises `AnnualFeePurchaseResponse.status` as a plain `string`
+// (nullable) rather than a strict enum, so the value can arrive in any
+// casing or shape — e.g. "Paid", "paid", "PAID", "PENDING_PAYMENT",
+// "Active", "Refunded", etc. From the user's perspective there are only
+// two outcomes that matter: payment succeeded (green) or it didn't (red).
+// The maps below are case-insensitive lookups; any non-success value
+// (including the `PENDING_PAYMENT` raw value the BE returns when the
+// user cancels a PayOS checkout) collapses to "Payment Fail".
+const SUCCESS_STATUS_KEYS = new Set([
+  'paid',
+  'active',
+  'success',
+  'completed',
+  'succeeded',
+]);
+const STATUS_LABEL: Record<string, string> = {
+  Paid: 'Payment Success',
+  Active: 'Payment Success',
+  Success: 'Payment Success',
+  Completed: 'Payment Success',
+  Succeeded: 'Payment Success',
+  Pending: 'Payment Fail',
+  Pending_Payment: 'Payment Fail',
+  PendingPayment: 'Payment Fail',
+  Failed: 'Payment Fail',
+  Cancelled: 'Payment Fail',
+  Canceled: 'Payment Fail',
+  Expired: 'Payment Fail',
+  Refunded: 'Payment Fail',
 };
-
-const STATUS_ICON: Record<AnnualFeePurchaseStatus, React.ReactNode> = {
-  Pending: <Clock size={14} aria-hidden />,
+const STATUS_ICON: Record<string, React.ReactNode> = {
   Paid: <CheckCircle2 size={14} aria-hidden />,
+  Active: <CheckCircle2 size={14} aria-hidden />,
+  Success: <CheckCircle2 size={14} aria-hidden />,
+  Completed: <CheckCircle2 size={14} aria-hidden />,
+  Succeeded: <CheckCircle2 size={14} aria-hidden />,
+  Pending: <XCircle size={14} aria-hidden />,
+  Pending_Payment: <XCircle size={14} aria-hidden />,
+  PendingPayment: <XCircle size={14} aria-hidden />,
   Failed: <XCircle size={14} aria-hidden />,
   Cancelled: <XCircle size={14} aria-hidden />,
+  Canceled: <XCircle size={14} aria-hidden />,
+  Expired: <XCircle size={14} aria-hidden />,
+  Refunded: <XCircle size={14} aria-hidden />,
+};
+// CSS modifier per status — collapses to either "success" (green) or
+// "fail" (red) regardless of which non-success variant the BE sent.
+const STATUS_CLASS: Record<string, string> = {
+  Paid: 'statusTagActive',
+  Active: 'statusTagActive',
+  Success: 'statusTagActive',
+  Completed: 'statusTagActive',
+  Succeeded: 'statusTagActive',
+  Pending: 'statusTagExpired',
+  Pending_Payment: 'statusTagExpired',
+  PendingPayment: 'statusTagExpired',
+  Failed: 'statusTagExpired',
+  Cancelled: 'statusTagExpired',
+  Canceled: 'statusTagExpired',
+  Expired: 'statusTagExpired',
+  Refunded: 'statusTagExpired',
+};
+
+/**
+ * Resolve the display label / icon / modifier for a status value coming
+ * from the BE. The lookup normalises casing and tolerates unknown
+ * values: anything in the success set maps to "Payment Success" (green),
+ * anything else — including null/empty, raw PayOS strings like
+ * `PENDING_PAYMENT`, or future non-success states — maps to
+ * "Payment Fail" (red) so the cell is never blank or raw.
+ */
+const resolveStatusDisplay = (
+  raw: string | null | undefined,
+): { label: string; icon: React.ReactNode; modifier: string } => {
+  const key = (raw ?? '').trim();
+  if (!key) {
+    return {
+      label: 'Payment Fail',
+      icon: <XCircle size={14} aria-hidden />,
+      modifier: 'statusTagExpired',
+    };
+  }
+  // Direct lookup first (covers PascalCase + SCREAMING_SNAKE variants).
+  if (STATUS_LABEL[key]) {
+    return {
+      label: STATUS_LABEL[key],
+      icon: STATUS_ICON[key] ?? <XCircle size={14} aria-hidden />,
+      modifier: STATUS_CLASS[key] ?? 'statusTagExpired',
+    };
+  }
+  // Case-insensitive fallback for "paid" / "PAID" / "Paid" / etc.
+  const lower = key.toLowerCase();
+  if (SUCCESS_STATUS_KEYS.has(lower)) {
+    return {
+      label: 'Payment Success',
+      icon: <CheckCircle2 size={14} aria-hidden />,
+      modifier: 'statusTagActive',
+    };
+  }
+  // Unknown / non-success — surface as Payment Fail so the cell is never blank.
+  return {
+    label: 'Payment Fail',
+    icon: <XCircle size={14} aria-hidden />,
+    modifier: 'statusTagExpired',
+  };
 };
 
 const billingCycleMonths = (cycle: AnnualFeeBillingCycle): number => {
@@ -130,7 +227,6 @@ const ROLE_FEATURES = {
 export const Subscription = () => {
   const { user, effectiveRole } = useAuth();
   const location = useLocation();
-  const navigate = useNavigate();
   const locale = useLocale();
   const {
     current,
@@ -310,13 +406,22 @@ export const Subscription = () => {
       }
 
       if (active) {
+        // Refetch the recent-purchases table so the new Paid row shows up
+        // immediately. The history fetch is decoupled from the
+        // subscription fetch so a slow /api/AnnualFees/my-purchases call
+        // doesn't block the toast or the UI update.
+        void fetchHistory();
         toast.success(
           locale === 'vi'
-            ? 'Thanh toán thành công! Đang chuyển đến không gian làm việc của bạn.'
-            : 'Payment confirmed! Taking you back to your workspace.',
+            ? 'Thanh toán thành công! Đăng ký của bạn đã được kích hoạt.'
+            : 'Payment confirmed! Your subscription is now active.',
         );
-        navigate(ROUTES.HOME, { replace: true });
       } else {
+        // Webhook hasn't propagated yet — keep the user on this page so
+        // they can see the table refresh once the BE catches up. We
+        // also kick off a history fetch in case the BE has the row but
+        // the current-subscription endpoint is lagging.
+        void fetchHistory();
         toast.warning(
           locale === 'vi'
             ? 'Chúng tôi vẫn đang xác nhận thanh toán của bạn. Bạn sẽ nhận được thông báo khi đăng ký được kích hoạt.'
@@ -329,14 +434,29 @@ export const Subscription = () => {
       void tick();
     }, POLL_MS);
 
+    // Defensive guard: while the PayOS popup is open, prompt the user
+    // before they close the parent tab or navigate away. Closing the
+    // parent mid-payment would terminate the in-memory session and the
+    // user would have to log back in to see their refreshed expiry.
+    // The browser ignores the custom message — only the prompt itself
+    // is enforced, which is enough to prevent accidental closure.
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      // eslint-disable-next-line no-param-reassign
+      event.returnValue =
+        'A payment is in progress. Closing this tab will cancel it. Are you sure?';
+    };
+    window.addEventListener('beforeunload', beforeUnload);
+
     return () => {
       if (checkoutWatchdogRef.current !== null) {
         window.clearInterval(checkoutWatchdogRef.current);
         checkoutWatchdogRef.current = null;
       }
+      window.removeEventListener('beforeunload', beforeUnload);
       checkoutPopupRef.current = null;
     };
-  }, [refetchSubscription, navigate, location.pathname, locale]);
+  }, [refetchSubscription, fetchHistory, location.pathname, locale]);
 
   const selectedPlan = useMemo<AnnualFee | null>(
     () => plans.find((plan) => plan.id === selectedPlanId) ?? null,
@@ -355,8 +475,9 @@ export const Subscription = () => {
   // `/subscription/return` page and the user dismisses it after seeing
   // the confirmation), the `checkoutWatchdog` effect below calls
   // `refetchSubscription()` to pull the BE's authoritative state and
-  // either navigates the parent to `/home` on success or surfaces a
-  // toast + stays on `/subscription` if the webhook hasn't propagated.
+  // updates the subscription card + history table in place. The user
+  // stays on this page so they can see the new expiry date and the new
+  // row in "Recent purchases" without losing context.
   const openPayosCheckoutPopup = useCallback((checkoutUrl: string): Window | null => {
     if (typeof window === 'undefined') return null;
     // `noopener,noreferrer` keeps the popup from gaining a reference back
@@ -383,33 +504,36 @@ export const Subscription = () => {
           userId: authenticatedUserId,
           returnUrl:
             typeof window !== 'undefined'
-              ? `${window.location.origin}${ROUTES.SUBSCRIPTION_RETURN}?status=success`
+              ? `${window.location.origin}${ROUTES.SUBSCRIPTION_RETURN}?status=success&popup=1`
               : null,
           cancelUrl:
             typeof window !== 'undefined'
-              ? `${window.location.origin}${ROUTES.SUBSCRIPTION_RETURN}?status=cancelled`
+              ? `${window.location.origin}${ROUTES.SUBSCRIPTION_RETURN}?status=cancelled&popup=1`
               : null,
         });
         if (order.checkoutUrl && typeof order.checkoutUrl === 'string') {
           // Primary path — popup-based checkout. The popup is what PayOS
-          // returns the user to (via our `/subscription/return` URL). The
-          // popup's "Go to workspace" button works inside the popup, but
-          // the parent SPA also independently polls the BE on popup close
-          // so the user gets a smooth in-place redirect even if they just
-          // dismiss the popup.
+          // returns the user to (via our `/subscription/return` URL with
+          // `&popup=1`). The popup renders a tiny self-contained splash
+          // and auto-closes — it never makes authenticated BE calls, so
+          // the parent tab's session is preserved. On popup close the
+          // parent polls the BE and updates the subscription card +
+          // history table in place.
           const popup = openPayosCheckoutPopup(order.checkoutUrl);
           if (popup) {
             return;
           }
-          // Popup blocked — fall back to a top-level redirect. This is the
-          // legacy behaviour and known to drop the in-memory auth session
-          // (the user will land on /login if the BE hasn't yet activated
-          // the subscription). We surface a toast so the user understands
-          // why they're being redirected and can re-login if needed.
-          toast.warning(
-            'Popup blocked — finishing checkout in this tab. Allow popups next time to keep your session signed in.',
+          // Popup blocked. The parent MUST stay on this page so the in-memory
+          // JWT and secureToken session key survive the PayOS round-trip —
+          // a top-level redirect to `checkoutUrl` would re-evaluate the JS
+          // bundle on return, drop the session, and bounce the user to
+          // /login. Instead we surface a clear error and let the user
+          // retry after enabling popups for this origin.
+          setOrderError(
+            new Error(
+              'Your browser blocked the PayOS payment window. Please allow popups for this site and try again — the page will not redirect you away.',
+            ),
           );
-          window.location.assign(order.checkoutUrl);
           return;
         }
         throw new Error('Backend did not return a PayOS checkout URL.');
@@ -482,8 +606,8 @@ export const Subscription = () => {
           data-testid="subscription-feature-disabled"
         >
           Annual subscription is temporarily unavailable. {roleLabel}
-          features are fully accessible. Subscription payment integration will
-          resume once the backend APIs are ready.
+          features are fully accessible. Subscription payments will resume
+          once this service is back online.
         </div>
       )}
 
@@ -547,50 +671,63 @@ export const Subscription = () => {
               >
                 {current.isExpired ? 'EXPIRED' : 'ACTIVE'}
               </span>
-              <span className={styles.statusMeta}>
-                {current.daysRemaining > 0
-                  ? `${current.daysRemaining} days remaining`
-                  : 'Expired'}
-              </span>
             </div>
-            {/* Show dates only when the BE surfaces them or derived */}
+            {/* Show dates only when the BE surfaces them or derived. The
+                calendar + expiry text sits on one row (icon inline with
+                text) so the user sees when their subscription ends at a
+                glance. We intentionally don't show a "days remaining"
+                countdown — for plans like 6 months users would do the
+                arithmetic and then argue the number is "wrong", which is
+                a worse experience than just showing the expiry directly. */}
             {(current.purchase?.createdAt ||
               current.expiresAt ||
               current.purchase?.expiryDate) && (
-              <div className={styles.statusMeta}>
+              <div className={`${styles.statusMeta} ${styles.statusMetaInline}`}>
                 <Calendar size={14} aria-hidden />
-                {current.purchase?.createdAt
-                  ? ` Started ${formatDate(current.purchase.createdAt, locale)} · `
-                  : ' '}
-                Expires{' '}
-                {formatDate(
-                  current.expiresAt ?? current.purchase?.expiryDate ?? null,
-                  locale,
-                )}
+                <span>
+                  Expires on{' '}
+                  {formatDate(
+                    current.expiresAt ?? current.purchase?.expiryDate ?? null,
+                    locale,
+                  )}
+                  {current.purchase?.createdAt && (
+                    <>
+                      {' · started '}
+                      {formatDate(current.purchase.createdAt, locale)}
+                    </>
+                  )}
+                </span>
               </div>
             )}
           </>
         )}
         {!current && !isSubscriptionLoading && (
-          <div className={styles.statusMeta}>
+          <div className={`${styles.statusMeta} ${styles.statusMetaInline}`}>
             <AlertTriangle size={14} aria-hidden /> You don't have an active
             annual subscription. Pick a plan below to get started.
           </div>
         )}
       </section>
 
-      {/* PLAN CATALOGUE — hidden for users with an active subscription and while loading */}
-      {!featureDisabled && !isSubscriptionLoading && !hasActiveSubscription && (
+      {/* PLAN CATALOGUE — shown to everyone (active subscribers included)
+          so users can compare prices and prepare a budget for renewal. For
+          users with an active subscription the section header explicitly
+          says the pay button below is disabled until expiry. */}
+      {!featureDisabled && !isSubscriptionLoading && (
         <section aria-labelledby="subscription-plans-title">
           <div className={styles.headerBlock}>
-            <span className={styles.eyebrow}>Choose a plan</span>
+            <span className={styles.eyebrow}>
+              {hasActiveSubscription
+                ? 'Plans & pricing'
+                : 'Choose a plan'}
+            </span>
             <h2 id="subscription-plans-title" className={styles.title}>
               Subscription plans
             </h2>
             <p className={styles.description}>
-              Prices are configured by the platform. The values below are
-              sourced from the backend; we never hardcode a VND amount on
-              this page.
+              {hasActiveSubscription
+                ? 'Your current subscription is still active. The prices below are shown so you can plan your renewal budget — payment is unlocked automatically when your current plan expires.'
+                : 'Pick a plan to start your subscription. You can compare options side by side before paying.'}
             </p>
           </div>
 
@@ -639,7 +776,7 @@ export const Subscription = () => {
                     <span className={styles.planRolePill}>{plan.userRole}</span>
                     <ul className={styles.planFeatures}>
                       <li className={styles.planFeature}>
-                        Full {roleLabel} workspace access for{' '}
+                        Full workspace access for{' '}
                         {billingCycleMonths(plan.billingCycle)} month
                         {billingCycleMonths(plan.billingCycle) !== 1 ? 's' : ''}
                       </li>
@@ -658,14 +795,43 @@ export const Subscription = () => {
         </section>
       )}
 
-      {/* ACTION ROW — hidden for users with an active subscription and while loading */}
-      {!featureDisabled && !isSubscriptionLoading && !hasActiveSubscription && (
+      {/* ACTION ROW — shown to everyone (active subscribers included). For
+          users with an active subscription the pay button stays visible but
+          disabled, with a clear notice explaining that payment unlocks when
+          the current plan expires. The "Read full policy" link is still
+          available so users can review the terms while planning their budget. */}
+      {!featureDisabled && !isSubscriptionLoading && (
         <div className={styles.actionRow}>
+          {hasActiveSubscription && (
+            <div
+              className={styles.activeSubscriberNotice}
+              role="status"
+              data-testid="active-subscriber-notice"
+            >
+              <AlertTriangle size={16} aria-hidden />
+              <span>
+                You already have an active subscription
+                {current?.expiresAt
+                  ? ` until ${formatDate(current.expiresAt, locale)}`
+                  : current?.purchase?.expiryDate
+                    ? ` until ${formatDate(current.purchase.expiryDate, locale)}`
+                    : ''}
+                . Payment is locked until your current plan expires so we
+                don't double-charge you. Use this page to compare prices and
+                prepare your renewal budget — the pay button will unlock
+                automatically when your subscription is up for renewal.
+              </span>
+            </div>
+          )}
           <div className={styles.actionRowButtons}>
             <Button
               onClick={() => void handleProceedToPay()}
               disabled={
-                !selectedPlan || isOrdering || plansLoading || plansError !== null
+                !selectedPlan ||
+                isOrdering ||
+                plansLoading ||
+                plansError !== null ||
+                hasActiveSubscription
               }
               data-testid="proceed-to-pay"
             >
@@ -673,6 +839,10 @@ export const Subscription = () => {
                 <>
                   <Loader size={14} className={styles.spinningIcon} aria-hidden />{' '}
                   Starting PayOS checkout…
+                </>
+              ) : hasActiveSubscription ? (
+                <>
+                  <CreditCard size={14} aria-hidden /> Pay with PayOS (unlocks at renewal)
                 </>
               ) : (
                 <>
@@ -702,8 +872,9 @@ export const Subscription = () => {
             </button>
           </div>
           <p className={styles.policyHint}>
-            By continuing, you confirm that all annual subscription payments are final and
-            non-refundable once processed.
+            {hasActiveSubscription
+              ? 'You can still review the payment policy now — it only takes effect when you actually start a new purchase.'
+              : 'By continuing, you confirm that all annual subscription payments are final and non-refundable once processed.'}
           </p>
         </div>
       )}
@@ -747,39 +918,36 @@ export const Subscription = () => {
                 <tr>
                   <th>Status</th>
                   <th>Amount</th>
-                  <th>Transaction</th>
-                  <th>Created</th>
+                  <th>Purchase Date</th>
                   <th>Expires</th>
                 </tr>
               </thead>
               <tbody>
-                {history.map((purchase) => (
-                  <tr
-                    key={purchase.transactionId}
-                    data-testid="history-row"
-                  >
-                    <td>
-                      <span
-                        className={`${styles.statusTag} ${
-                          purchase.status === 'Paid'
-                            ? styles.statusTagActive
-                            : purchase.status === 'Pending'
-                              ? styles.statusTagPending
-                              : styles.statusTagExpired
-                        }`}
-                      >
-                        {STATUS_ICON[purchase.status]}
-                        {STATUS_LABEL[purchase.status]}
-                      </span>
-                    </td>
-                    <td>{formatVnd(purchase.amount)} VND</td>
-                    <td className={styles.transactionIdCell}>
-                      {purchase.transactionId}
-                    </td>
-                    <td>{formatDateTime(purchase.createdAt, locale)}</td>
-                    <td>{formatDate(purchase.expiryDate ?? null, locale)}</td>
-                  </tr>
-                ))}
+                {history.map((purchase) => {
+                  const status = resolveStatusDisplay(purchase.status);
+                  return (
+                    <tr
+                      key={purchase.transactionId}
+                      data-testid="history-row"
+                    >
+                      <td>
+                        <span
+                          className={`${styles.statusTag} ${
+                            styles[status.modifier] ?? styles.statusTagExpired
+                          }`}
+                          data-testid="history-status"
+                          data-status={purchase.status ?? ''}
+                        >
+                          {status.icon}
+                          {status.label}
+                        </span>
+                      </td>
+                      <td>{formatVnd(purchase.amount)} VND</td>
+                      <td>{formatDateTime(purchase.createdAt, locale)}</td>
+                      <td>{formatDate(purchase.expiryDate ?? null, locale)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

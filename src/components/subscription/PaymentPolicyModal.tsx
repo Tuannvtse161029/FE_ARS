@@ -19,7 +19,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, ShieldCheck, AlertTriangle, ExternalLink } from 'lucide-react';
+import { X, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { useT } from '../../i18n/I18nContext';
 import { policyService } from '../../services/policy.service';
 import type { PolicySnapshot } from '../../types/policy';
@@ -217,19 +217,6 @@ export const PaymentPolicyModal = ({
                   {t('subscription.paymentPolicy.versionLabel', 'Policy version')}{' '}
                   v{snapshot.version}
                 </span>
-                <a
-                  className={styles.adminLink}
-                  href="/admin/policies"
-                  onClick={(event) => {
-                    // Best-effort SPA navigation. The link works as a
-                    // plain anchor for non-admin users; admins land on
-                    // the editable copy.
-                    event.stopPropagation();
-                  }}
-                >
-                  {t('subscription.paymentPolicy.viewAdmin', 'View in admin policy page')}{' '}
-                  <ExternalLink size={12} aria-hidden="true" />
-                </a>
               </div>
               <pre className={styles.policyText} data-testid="payment-policy-text">
                 {snapshot.content}

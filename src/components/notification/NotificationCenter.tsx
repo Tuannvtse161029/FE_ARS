@@ -409,6 +409,14 @@ function titleForKind(kind: ReturnType<typeof inferNotificationKind>, t: (key: s
     case 'topic-learning-material-removed':
       return t('notif.topicLearningMaterialRemoved', 'Shared material removed');
 
+    // Subscription payment events. The title is short so the user
+    // immediately recognises the kind in the dropdown list — the body
+    // line carries the plan name + transaction code.
+    case 'subscription-payment-success':
+      return t('notif.subscriptionPaymentSuccess', 'Subscription payment received');
+    case 'subscription-payment-failed':
+      return t('notif.subscriptionPaymentFailed', 'Subscription payment failed');
+
     case 'unknown':
     default:
       return t('notif.notification', 'Notification');
@@ -478,6 +486,13 @@ const KIND_BODY_KEY: Readonly<Partial<Record<NotificationKind, string>>> = {
   // Research Topic learning-material events
   'topic-learning-material-added': 'notif.body.topicLearningMaterialAdded',
   'topic-learning-material-removed': 'notif.body.topicLearningMaterialRemoved',
+  // Subscription payment events. The English template takes the plan
+  // name as `{suffix}` — the `extractNotificationDynamicSuffix` helper
+  // pulls the quoted plan name out of the BE message ("Lecturer Six
+  // Months") and substitutes it in. The Vietnamese UI renders the BE
+  // message verbatim and never consults this map.
+  'subscription-payment-success': 'notif.body.subscriptionPaymentSuccess',
+  'subscription-payment-failed': 'notif.body.subscriptionPaymentFailed',
 };
 
 // Render a notification message in the active locale.

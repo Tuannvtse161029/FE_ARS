@@ -93,6 +93,16 @@ export type NotificationKind =
   | 'paper-authorship-rejected'
   // Graduate Student topic completion
   | 'topic-completed'
+  // Subscription payment events — the BE fires one of these the moment
+  // PayOS confirms a purchase. The message is fully Vietnamese prose
+  // (e.g. "(Thanh toán) Thanh toán phí hội viên 'Lecturer Six Months'
+  // thành công (Mã giao dịch: ...)"). We classify by that pattern so the
+  // notification routes the user to /subscription instead of falling
+  // through to the /forum safe-fallback (which would be unreachable
+  // without an active session and would log the user out via the auth
+  // guard).
+  | 'subscription-payment-success'
+  | 'subscription-payment-failed'
   | 'unknown';
 
 interface NotificationRouteSpec {
@@ -565,10 +575,54 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
       'Researcher', 'Reviewer', 'Lecturer', 'Graduate Student', 'Admin',
     ] },
   },
+  // Subscription payment events. The BE tags the message with a parenthesised
+  // "(Thanh toán)" prefix (e.g. "(Thanh toán) Thanh toán phí hội viên
+  // 'Lecturer Six Months' thành công (Mã giao dịch: ...)"). We match the
+  // tag prefix here so the kind can be classified without first stripping
+  // it, then route the user to /subscription. The dropdown closes and the
+  // user lands on their subscription page; previously the message fell
+  // through to `unknown`, the resolver returned the /forum safe-fallback,
+  // and the auth guard kicked the user back to /login (the same
+  // redirect-to-login symptom users reported).
+  {
+    kind: 'subscription-payment-success',
+    prefix: '(Thanh toán)',
+    spec: { path: ROUTES.SUBSCRIPTION, roles: ['Researcher', 'Lecturer'] },
+  },
+  {
+    kind: 'subscription-payment-failed',
+    prefix: '(Thanh toán)',
+    spec: { path: ROUTES.SUBSCRIPTION, roles: ['Researcher', 'Lecturer'] },
+  },
 ];
 
 export function inferNotificationKind(message: string): NotificationKind {
   const normalized = (message ?? '').trim().toLowerCase();
+  const stripped = stripNotificationTagPrefix(normalized);
+
+  // Subscription payment — detected by the body keyword "phí hội viên"
+  // (membership fee). This is independent of the tag bracket style so
+  // the BE can switch between `[Thanh toán]` and `(Thanh toán)` without
+  // breaking classification. Both flavours route to /subscription so
+  // the user can see their current plan + history.
+  //
+  // Must run BEFORE the ROUTE_SPECS prefix loop so the failed flavour
+  // can win over the (Thanh toán) prefix that ROUTE_SPECS has wired up
+  // as the success default. Real BE shapes we've seen:
+  //   [Thanh toán] Thanh toán phí hội viên "Lecturer Six Months" thành công (Mã giao dịch: ...). Gói của bạn có hiệu lực đến ngày 04/04/2027.
+  //   (Thanh toán) Thanh toán phí hội viên 'Lecturer Six Months' thành công (Mã giao dịch: ...)
+  //   (Thanh toán) Thanh toán phí hội viên 'Researcher Six Months' thất bại (Số tiền không đủ)
+  if (stripped.includes('phí hội viên')) {
+    if (
+      stripped.includes('thất bại') ||
+      stripped.includes('đã hủy') ||
+      stripped.includes('bị hủy')
+    ) {
+      return 'subscription-payment-failed';
+    }
+    return 'subscription-payment-success';
+  }
+
   for (const { kind, prefix } of ROUTE_SPECS) {
     if (normalized.startsWith(prefix.toLowerCase())) {
       return kind;
@@ -737,10 +791,15 @@ export function extractNotificationDynamicSuffix(stripped: string): string | nul
   const text = (stripped ?? '').trim();
   if (!text) return null;
 
-  // Strategy 1: a quoted entity name — straight OR curly quotes. Covers
-  // virtually every modern BE notification: seminar title, group name,
-  // topic title, etc.
-  const quoted = text.match(/["“”«»]([^"“”«»]{1,200})["“”«»]/u);
+  // Strategy 1: a quoted entity name — single quotes ('), straight
+  // double quotes ("), smart double quotes (“”), or guillemets («»).
+  // Covers virtually every modern BE notification: seminar title,
+  // group name, topic title, plan name, etc. The BE has shipped the
+  // plan name in both 'Lecturer Six Months' and "Lecturer Six Months"
+  // styles, so we accept either.
+  const quoted = text.match(
+    /['"“”«»]([^'"“”«»]{1,200})['"“”«»]/u,
+  );
   if (quoted && quoted[1].trim()) {
     return quoted[1].trim();
   }
