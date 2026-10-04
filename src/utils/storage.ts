@@ -36,11 +36,32 @@ let userEnvelopeBootstrapped = false;
  * to `getUser()` return the cache without round-tripping Web Crypto.
  * Called from `getUser` on first invocation in a session; idempotent
  * so it's safe to call multiple times.
+ *
+ * Agent 55 — the in-memory session key is wiped on every page reload
+ * / new tab, so the bootstrap must rehydrate the key BEFORE it can
+ * decrypt the user envelope. Without this step the cache stays null
+ * on a freshly-opened sibling tab and the auth store initializes
+ * with `user: null`, which causes `usePermissions` / `useVerifiedGuard`
+ * to render the Guest / pending state for an already-authenticated
+ * user. The rehydrate is idempotent: subsequent calls return the
+ * cached projection without touching the key.
  */
 const bootstrapUserCache = async (): Promise<PersistedSessionUser | null> => {
   if (userEnvelopeBootstrapped) return cachedUserProjection;
   userEnvelopeBootstrapped = true;
   if (typeof window === 'undefined') return null;
+  // Step 1: recover the in-memory session key from `localStorage` so
+  // the user envelope below is decryptable. The same key recovers
+  // the JWT envelope inside `secureToken.rehydrate()` — by the time
+  // the Zustand `onRehydrateStorage` callback awaits
+  // `secureToken.rehydrate()` the user envelope is already in the
+  // cache and the store's first render sees the correct user blob.
+  try {
+    await secureToken.rehydrate();
+  } catch {
+    /* ignore — the user envelope read below will just return null */
+  }
+  // Step 2: decrypt the user envelope with the now-available key.
   const json = await secureToken.readPersistedUser();
   if (!json) {
     cachedUserProjection = null;

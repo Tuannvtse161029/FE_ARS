@@ -109,15 +109,33 @@ const getInitialAuthState = () => {
       effectiveRole: null,
     };
   }
-  const initialUser = storage.getUser();
-  const initialToken = storage.getToken();
-  const isAuth = Boolean(initialUser && initialToken);
+  // Agent 55 — start in the loading state so route guards and
+  // permission hooks wait for the encrypted envelope rehydrate to
+  // complete before reading the auth state. The previous
+  // implementation set `isLoading: false` synchronously and then
+  // fired-and-forgot the rehydrate, which caused a brief
+  // `isAuthenticated=false` window on a freshly-opened sibling tab.
+  // During that window the user is authenticated on disk (the
+  // envelope + key are both present) but the in-memory `liveAccessToken`
+  // is null, so the synchronous `getToken()` returns null and the
+  // `useAuth().user` reads as `null` — the page renders the
+  // Guest/pending state for a user who is actually already
+  // authenticated. The `onRehydrateStorage` callback below sets
+  // `isLoading: false` once the envelope has been decrypted and the
+  // user projection has been pushed into the store.
+  //
+  // We still fire `secureToken.rehydrate()` here so the first
+  // protected Axios call from the freshly-mounted app can carry the
+  // recovered JWT without waiting for the awaited rehydrate in the
+  // callback. The two paths converge on the same `liveAccessToken`
+  // write at the end of `secureToken.rehydrate()`.
+  void secureToken.rehydrate().catch(() => undefined);
   return {
-    user: (initialUser as unknown as User) ?? null,
-    token: initialToken,
-    isAuthenticated: isAuth,
-    isLoading: false,
-    effectiveRole: (initialUser?.effectiveRole as EffectiveRole) ?? null,
+    user: null,
+    token: null,
+    isAuthenticated: false,
+    isLoading: true, // wait for `onRehydrateStorage` to flip this off
+    effectiveRole: null,
   };
 };
 
@@ -221,17 +239,58 @@ const useAuthStore = create<AuthStore>()(
         isAuthenticated: state.isAuthenticated,
         effectiveRole: state.effectiveRole,
       }),
-      onRehydrateStorage: () => (state) => {
-        if (state) {
-          const liveToken = storage.getToken();
-          if (liveToken) {
-            state.token = liveToken;
-            state.isAuthenticated = true;
-          }
-          state.isLoading = false;
-        } else {
+      onRehydrateStorage: () => async (_state, error) => {
+        // Agent 55 — drive the persistent-key rehydrate path so the
+        // in-memory session key + envelope decrypt happen BEFORE the
+        // auth store finishes its initial rehydrate. Without this, a
+        // freshly-opened sibling tab sees `isAuthenticated=false` and
+        // the route guards bounce the user to /login. The rehydrate is
+        // idempotent when the in-memory key is already set, so it is
+        // safe to call from every mount.
+        //
+        // Direct state mutation is unreliable across Zustand versions;
+        // use `useAuthStore.setState` (or `set`) for every change so
+        // subscribers actually receive the update.
+        if (error) {
           useAuthStore.setState({ isLoading: false });
+          return;
         }
+        try {
+          await secureToken.rehydrate();
+        } catch {
+          /* ignore — fall through to the legacy sync getter */
+        }
+        const liveToken = storage.getToken();
+        // Agent 55 (regression) — the user envelope needs the same
+        // session key, but the `slimAuthStorageAdapter.getItem` call
+        // above ran BEFORE the key was available (it was null in the
+        // fresh JS context of a sibling tab). Now that the key is
+        // back in memory, re-read the user projection from the
+        // freshly-populated cache. The Zustand `partialize` above
+        // mirrors the user blob under `ars-auth-storage`, but a
+        // user persisted BEFORE this Agent 55 fix may not be there
+        // — falling back to the encrypted envelope is the
+        // canonical path.
+        const rehydratedUser = storage.getUser();
+        const patch: Partial<{
+          user: User | null;
+          token: string | null;
+          isAuthenticated: boolean;
+          effectiveRole: EffectiveRole | null;
+          isLoading: boolean;
+        }> = {
+          isLoading: false,
+        };
+        if (liveToken) {
+          patch.token = liveToken;
+          patch.isAuthenticated = true;
+        }
+        if (rehydratedUser) {
+          patch.user = rehydratedUser as unknown as User;
+          patch.effectiveRole =
+            (rehydratedUser.effectiveRole as EffectiveRole) ?? null;
+        }
+        useAuthStore.setState(patch);
       },
     }
   )
