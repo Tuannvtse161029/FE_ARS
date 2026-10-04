@@ -36,10 +36,7 @@ import { SkeletonRow } from '../SkeletonRow';
 import { SeminarFeedbackModal } from './SeminarFeedbackModal';
 import { ConfirmModal } from '../lecturer/ConfirmModal';
 import { ErrorBanner } from '../ErrorBanner';
-import {
-  deriveEffectiveStatus,
-  type EffectiveSeminarStatus,
-} from '../../services/seminar.service';
+import type { EffectiveSeminarStatus } from '../../services/seminar.service';
 import {
   formatDisplayDate,
   formatDisplayTime,
@@ -105,26 +102,67 @@ export const ParticipationTable = ({ embedded }: ParticipationTableProps) => {
 
   // Effective (computed) status + start/end parsed once per row, reused
   // for the disabled-state predicate, status pill, and time cell.
+  //
+  // `missedRsvp` is true when the seminar is currently in progress but
+  // the participant never answered Accept/Reject while the RSVP window
+  // was still open. The FE auto-treats these rows as declined: the
+  // Accept/Reject/Participate buttons are hidden, the status pill reads
+  // "Missed RSVP", and the row is excluded from the "All" filter so the
+  // participant's normal participation list is not cluttered with rows
+  // they can no longer act on. The DB row stays PENDING until the BE
+  // decides how to surface this; the FE is purely a display projection.
+  //
+  // The participation hook does not return the BE-computed
+  // `effectiveStatus` (only `startTime` / `endTime`), so we re-derive
+  // it here. `deriveEffectiveStatus(rawStatus, endTime)` is designed for
+  // seminar cards that already have a rawStatus from the BE; passing
+  // the hard-coded `'Upcoming'` would never surface `IN PROGRESS`. We
+  // therefore build the effective status from the wall-clock window
+  // directly:
+  //   • startTime <= now < endTime  → IN PROGRESS
+  //   • now < startTime             → UPCOMING
+  //   • now >= endTime              → COMPLETED
   const enrichedRows = useMemo(() => {
     return rows.map((row) => {
       const start = parseApiDateTimeAsUtc(row.startTime);
       const end = parseApiDateTimeAsUtc(row.endTime);
-      const effective = deriveEffectiveStatus('Upcoming', row.endTime);
+      const startMs = start?.getTime() ?? null;
+      const endMs = end?.getTime() ?? null;
+      const now = Date.now();
+      let effective: EffectiveSeminarStatus;
+      if (startMs != null && endMs != null && now >= startMs && now < endMs) {
+        effective = 'IN PROGRESS';
+      } else if (endMs != null && now >= endMs) {
+        effective = 'COMPLETED';
+      } else {
+        effective = 'UPCOMING';
+      }
+      const missedRsvp = row.invitationStatus === 'PENDING' && effective === 'IN PROGRESS';
       return {
         row,
         start,
         end,
         effective,
-        startMs: start?.getTime() ?? Number.POSITIVE_INFINITY,
+        startMs: startMs ?? Number.POSITIVE_INFINITY,
+        missedRsvp,
       };
     });
   }, [rows]);
 
   // Counts per status tab. "Invitations" is its own bucket because it
   // overlaps with both Upcoming and In Progress; we keep it distinct.
+  // Missed-RSVP rows are still counted under "Invitations" (so the
+  // participant can find them) but are excluded from the other tabs
+  // and from "All" to match the auto-declined filter behaviour below.
   const counts = useMemo(() => {
-    const init = { all: rows.length, invitations: 0, upcoming: 0, inProgress: 0, completed: 0 };
-    for (const { row, effective } of enrichedRows) {
+    const init = { all: 0, invitations: 0, upcoming: 0, inProgress: 0, completed: 0 };
+    for (const { row, effective, missedRsvp } of enrichedRows) {
+      // Treat missed-RSVP as declined everywhere except "Invitations".
+      if (missedRsvp) {
+        init.invitations += 1;
+        continue;
+      }
+      init.all += 1;
       if (row.invitationStatus === 'PENDING') {
         init.invitations += 1;
       }
@@ -133,14 +171,20 @@ export const ParticipationTable = ({ embedded }: ParticipationTableProps) => {
       if (effective === 'COMPLETED') init.completed += 1;
     }
     return init;
-  }, [enrichedRows, rows.length]);
+  }, [enrichedRows]);
 
   // Search + filter pipeline.
   const filtered = useMemo(() => {
-    return enrichedRows.filter(({ row, effective }) => {
+    return enrichedRows.filter(({ row, effective, missedRsvp }) => {
       if (searchQuery) {
         const haystack = `${row.title} ${row.detail} ${row.organizerName ?? ''}`.toLowerCase();
         if (!haystack.includes(searchQuery)) return false;
+      }
+      // Missed-RSVP rows are still reachable under "Invitations" so the
+      // participant can find the record, but they are excluded from
+      // every other tab — the same shape as an explicit DECLINED row.
+      if (missedRsvp) {
+        return statusFilter === 'invitations';
       }
       switch (statusFilter) {
         case 'invitations':
@@ -222,7 +266,21 @@ export const ParticipationTable = ({ embedded }: ParticipationTableProps) => {
   };
 
   // Render helpers
-  const renderStatusPill = (effective: EffectiveSeminarStatus, invitation: ParticipationRow['invitationStatus']) => {
+  const renderStatusPill = (
+    effective: EffectiveSeminarStatus,
+    invitation: ParticipationRow['invitationStatus'],
+    missedRsvp: boolean,
+  ) => {
+    if (missedRsvp) {
+      return (
+        <span
+          className={`${styles.statusPill} ${styles.statusPillMissedRsvp}`}
+          data-testid="seminar-status-missed-rsvp"
+        >
+          {copy('Missed RSVP', 'Đã lỡ phản hồi')}
+        </span>
+      );
+    }
     if (invitation === 'PENDING') {
       return (
         <span className={`${styles.statusPill} ${styles.statusPillPending}`}>
@@ -255,10 +313,34 @@ export const ParticipationTable = ({ embedded }: ParticipationTableProps) => {
     );
   };
 
-  const renderActions = (row: ParticipationRow, effective: EffectiveSeminarStatus, startMs: number) => {
+  const renderActions = (row: ParticipationRow, effective: EffectiveSeminarStatus, startMs: number, missedRsvp: boolean) => {
     const now = Date.now();
     const started = now >= startMs;
     const isBusy = busyRowId === row.seminarId || isAccepting || isDeclining;
+
+    // Missed-RSVP → read-only. The seminar is already in progress and
+    // the participant never accepted / declined while the window was
+    // open. The FE auto-treats them as declined: no Accept / Reject /
+    // Participate / Submit-feedback affordances, just a short message
+    // explaining what happened so they know why the row is locked.
+    // This branch MUST run before the PENDING branch below — otherwise
+    // a PENDING + IN PROGRESS row would still show the Accept/Reject
+    // buttons even though the RSVP window has closed.
+    if (missedRsvp) {
+      return (
+        <div className={styles.actionsCell}>
+          <span
+            className={styles.cellSub}
+            data-testid="seminar-actions-missed-rsvp"
+          >
+            {copy(
+              'You missed the RSVP window. The seminar is already in progress and you can no longer join.',
+              'Bạn đã lỡ phản hồi lời mời. Hội thảo đang diễn ra và bạn không thể tham gia.'
+            )}
+          </span>
+        </div>
+      );
+    }
 
     // DECLINED → read-only "you've declined this seminar" row.
     if (row.invitationStatus === 'DECLINED') {
@@ -556,7 +638,7 @@ export const ParticipationTable = ({ embedded }: ParticipationTableProps) => {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(({ row, effective, start }) => (
+              {filtered.map(({ row, effective, start, missedRsvp }) => (
                 <tr key={row.seminarId}>
                   <td>
                     <span className={styles.cellTitle}>{row.title}</span>
@@ -584,12 +666,13 @@ export const ParticipationTable = ({ embedded }: ParticipationTableProps) => {
                       </span>
                     </span>
                   </td>
-                  <td>{renderStatusPill(effective, row.invitationStatus)}</td>
+                  <td>{renderStatusPill(effective, row.invitationStatus, missedRsvp)}</td>
                   <td>
                     {renderActions(
                       row,
                       effective,
                       start?.getTime() ?? Number.POSITIVE_INFINITY,
+                      missedRsvp,
                     )}
                   </td>
                 </tr>

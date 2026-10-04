@@ -104,24 +104,64 @@ interface DisplayRow {
  * that share a research topic (or topic + group). The first row in each
  * consecutive run renders the cell; subsequent rows skip it so HTML's
  * rowSpan renders a single tall cell visually centred across them.
+ *
+ * Rows whose `topicTitle` is missing/empty are treated as their OWN
+ * topic run keyed by `topicId` (instead of the literal "" used in the
+ * previous version). Without this guard, a single row with a missing
+ * topic title would (a) extend an earlier topic's rowSpan over a row
+ * the table can't render the topic cell into, causing the next
+ * column's data to shift left into the wrong column, OR (b) collapse
+ * multiple unrelated missing-topic rows under a single empty topic
+ * cell that looks like a real topic but isn't. Pinning each
+ * missing-title row to its own run keeps the column count honest for
+ * every `<tr>`.
+ *
+ * Note on multi-group topics: when a topic spans multiple research
+ * groups, the outer loop re-enters once per group within the topic
+ * (because the group-run only walks the current group). The first
+ * outer iteration of a topic claims `isFirstOfTopic=true`; any later
+ * iterations for the SAME topic key are marked `isFirstOfTopic=false`
+ * so they don't render a second topic cell on top of the spanning
+ * one that the first iteration already produced.
  */
-const buildDisplayRows = (rows: PhasedReport[]): DisplayRow[] => {
+const TOPIC_KEY_MISSING = '__missing_topic__';
+const topicKeyOf = (r: PhasedReport): string => {
+  const t = r.topicTitle?.trim();
+  if (t && t.length > 0) return t;
+  // Fall back to the BE topicId so two rows with the same missing-title
+  // topic still merge — they almost certainly belong to the same group.
+  return `${TOPIC_KEY_MISSING}:${r.topicId ?? ''}`;
+};
+
+const buildDisplayRowsInternal = (rows: PhasedReport[]): DisplayRow[] => {
   const result: DisplayRow[] = [];
   let i = 0;
+  // Track the topic key the previous outer iteration was processing so
+  // we only mark isFirstOfTopic=true on the very first iteration that
+  // opens a new topic run. Subsequent outer iterations that re-enter
+  // the same topic run (because the inner group-run stopped early)
+  // stay marked as `isFirstOfTopic=false` and rely on the spanning
+  // topic cell from the first iteration.
+  let lastTopicKey: string | null = null;
+
   while (i < rows.length) {
     const r = rows[i];
-    const topic = r.topicTitle ?? '';
+    const topic = topicKeyOf(r);
     const group = r.researchGroupId ?? -1;
+    const opensNewTopic = topic !== lastTopicKey;
 
-    // Topic run
+    // Topic run — count how many consecutive rows share this topic.
     let topicEnd = i + 1;
-    while (
-      topicEnd < rows.length &&
-      (rows[topicEnd].topicTitle ?? '') === topic
-    ) {
+    while (topicEnd < rows.length && topicKeyOf(rows[topicEnd]) === topic) {
       topicEnd++;
     }
-    // Topic + group run (within the topic run)
+    // Only the very first outer iteration that opens this topic run
+    // should claim the topic cell. If the group-run stops inside the
+    // topic run, the outer loop re-enters; those re-entries must NOT
+    // claim another topic cell.
+    const topicRowSpan = opensNewTopic ? topicEnd - i : 1;
+
+    // Topic + group run (within the topic run).
     let groupEnd = i + 1;
     while (
       groupEnd < topicEnd &&
@@ -130,14 +170,13 @@ const buildDisplayRows = (rows: PhasedReport[]): DisplayRow[] => {
       groupEnd++;
     }
 
-    const topicRowSpan = topicEnd - i;
     const groupRowSpan = groupEnd - i;
 
     result.push({
       report: r,
       topicRowSpan,
       groupRowSpan,
-      isFirstOfTopic: true,
+      isFirstOfTopic: opensNewTopic,
       isFirstOfGroup: true,
     });
 
@@ -150,10 +189,20 @@ const buildDisplayRows = (rows: PhasedReport[]): DisplayRow[] => {
         isFirstOfGroup: false,
       });
     }
+    lastTopicKey = topic;
     i = groupEnd;
   }
   return result;
 };
+
+/**
+ * Public alias so the row-span logic can be pinned by a unit test
+ * without mounting the whole PhaseReports page (which drags in
+ * React Router, Auth, ResearchGroups, ResearchTopics, etc.). The
+ * internal name keeps the analytics-friendly comment block colocated
+ * with the implementation.
+ */
+export const buildDisplayRows = buildDisplayRowsInternal;
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -318,7 +367,7 @@ export const PhaseReports = () => {
 
   // Compute rowSpan metadata for visual merging.
   const displayRows = useMemo(
-    () => buildDisplayRows(displayedReports),
+    () => buildDisplayRowsInternal(displayedReports),
     [displayedReports],
   );
 
