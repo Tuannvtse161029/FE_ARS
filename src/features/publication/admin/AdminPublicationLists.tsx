@@ -539,8 +539,9 @@ const AdminList = ({
                           <strong>{paper.title}</strong>
                           <small>
                             {paperTypeLabel(paper.paperType) ? `${paperTypeLabel(paper.paperType)} · ` : ''}
-                            {paper.version != null ? `v${paper.version}` : ''} ·{' '}
-                            {paper.authors.map((author) => author.name).join(', ')}
+                            {paper.version != null ? `v${paper.version}` : ''}
+                            {paper.researcherName ? ` · ${paper.researcherName}` : ''}
+                            {paper.authors.length > 0 ? ` · ${paper.authors.map((author) => author.name).join(', ')}` : ''}
                           </small>
                         </div>
                       </td>

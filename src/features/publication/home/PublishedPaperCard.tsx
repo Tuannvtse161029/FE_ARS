@@ -122,7 +122,17 @@ export const PublishedPaperCard = ({
       </header>
 
       <section className={card.section} aria-label="Authors">
+        {(paper.researcherName || paper.submitterName) && (
+          <div className={card.researcherBadge} data-testid="public-paper-researcher">
+            <UserCheck size={14} aria-hidden="true" />
+            <span className={card.researcherLabel}>{copy('Researcher:', 'Nhà nghiên cứu:')}</span>
+            <strong className={card.researcherName}>{paper.researcherName || paper.submitterName}</strong>
+          </div>
+        )}
         <p className={card.authorsList}>
+          {orderedAuthors.length > 0 && (paper.researcherName || paper.submitterName) && (
+            <span className={card.coAuthorsLabel}>{copy('Authors:', 'Tác giả:')}</span>
+          )}
           {orderedAuthors.map((author, index) => (
             <span key={author.id} className={card.authorWrap}>
               <AuthorChip author={author} />
@@ -205,6 +215,12 @@ export const PublishedPaperCard = ({
               <span className={card.detailLabel}>{copy('Field', 'Ngành')}</span>
               <FieldPath paper={paper} />
             </div>
+            {(paper.researcherName || paper.submitterName) && (
+              <div className={card.detailRow}>
+                <span className={card.detailLabel}>{copy('Researcher', 'Nhà nghiên cứu')}</span>
+                <span className={card.identifierPlain}>{paper.researcherName || paper.submitterName}</span>
+              </div>
+            )}
           </section>
 
           <section className={card.reviewerRow} aria-label="Editorial review">

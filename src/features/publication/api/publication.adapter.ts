@@ -229,7 +229,13 @@ const toPublicationPaper = async (
     authors: paper.authors?.length ? paper.authors.map((author) => ({
       id: String(author.paperAuthorId), name: author.authorName,
       orcid: author.orcidId ?? undefined, order: author.authorOrder, institutionIds: [],
-    })) : [],
+    })) : (paper.researcherName || paper.authorName) ? [{
+      id: `creator-${paper.authorId ?? 'unknown'}`,
+      name: (paper.researcherName || paper.authorName)!.trim(),
+      orcid: paper.authorOrcidId ?? undefined,
+      order: 1,
+      institutionIds: [],
+    }] : [],
     institutions: [],
     paperType: paper.paperType ?? 'Not supplied',
     // domain / field / subfield are intentionally NOT backfilled from

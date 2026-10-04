@@ -375,6 +375,36 @@
   outline-offset: 2px;
 }
 
+.researcherBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 4px var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--ars-paper-alt);
+  border: 1px solid var(--ars-network);
+  color: var(--ars-ink);
+  font-size: var(--font-size-sm);
+  width: fit-content;
+}
+
+.researcherLabel {
+  color: var(--ars-ink-muted);
+  font-weight: var(--font-weight-medium);
+}
+
+.researcherName {
+  color: var(--ars-researcher, #0d9488);
+  font-weight: var(--font-weight-semibold);
+}
+
+.coAuthorsLabel {
+  color: var(--ars-ink-muted);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  margin-right: 4px;
+}
+
 @media (max-width: 720px) {
   .paper {
     padding: var(--space-4);
