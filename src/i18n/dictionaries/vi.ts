@@ -3496,6 +3496,7 @@ export const dictionary: Dictionary = {
     'profile.subtitle.admin': 'Bề mặt danh tính hành chính hiển thị trên toàn nền tảng.',
     'profile.eyebrow.publicShowcase': 'Hồ sơ học thuật công khai',
     'profile.title.publicDescription': 'Sự hiện diện học thuật công khai với các chi tiết hồ sơ mà thành viên này chọn chia sẻ.',
+    'profile.title.publicEyebrow': 'Hồ sơ công khai',
     'profile.view.yourProfile': 'Hồ sơ của bạn',
     'profile.view.publicBreadcrumbSuffix': '\'s Hồ sơ',
     'profile.view.title': 'Chi tiết hồ sơ',

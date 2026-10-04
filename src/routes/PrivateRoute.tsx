@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { DelayedLoadingOverlay } from '../components/DelayedLoadingOverlay';
@@ -15,8 +16,20 @@ export const PrivateRoute = () => {
 };
 
 export const PublicRoute = () => {
-  const { user, isAuthenticated, isLoading, effectiveRole } = useAuth();
+  const { user, isAuthenticated, isLoading, effectiveRole, handleSessionFailure } = useAuth();
   const location = useLocation();
+
+  // Loop guard: if `resolvePostAuthRoute` returns the very route the
+  // visitor is already on (e.g. /login ↔ /login because the snapshot
+  // is malformed and falls through to Priority 4), React will keep
+  // mounting PublicRoute, <Navigate replace> will fire, the URL won't
+  // change, and the user sees a permanently blank page. Track how
+  // many times we have bounced to the same path within this mount of
+  // PublicRoute and, on the second bounce, treat the session as
+  // unrecoverable: clear it via handleSessionFailure() and render the
+  // <Outlet /> so the login form actually mounts.
+  const bounceCountRef = useRef(0);
+  const lastDestinationRef = useRef<string | null>(null);
 
   if (isLoading) {
     return <DelayedLoadingOverlay isLoading label="Loading..." />;
@@ -75,6 +88,41 @@ export const PublicRoute = () => {
       destination,
     });
   }
+
+  // Loop guard: if the destination is the same path the user is already
+  // on, redirecting again will produce no URL change. This typically
+  // happens for malformed persisted sessions (Priority 4 → /login) or
+  // a `/login` user whose snapshot incorrectly reports them as
+  // authenticated. In either case, the session is unusable — clear it
+  // and render the public <Outlet /> so the login form mounts.
+  const destinationMatchesCurrentPath =
+    destination === location.pathname ||
+    (destination === ROUTES.LOGIN && location.pathname === ROUTES.LOGIN);
+
+  if (destinationMatchesCurrentPath) {
+    bounceCountRef.current += 1;
+    if (bounceCountRef.current > 1 && lastDestinationRef.current === destination) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        '[PublicRoute] Bounce loop detected on',
+        location.pathname,
+        '— clearing session and rendering public outlet.',
+        { snapshot, destination },
+      );
+      handleSessionFailure();
+      // Return the outlet immediately. The state update from
+      // handleSessionFailure will flip isAuthenticated to false on the
+      // next render, after which the top-level `if (!isAuthenticated)`
+      // branch takes over and continues to render the outlet.
+      return <Outlet />;
+    }
+  } else {
+    // Destination is a different route — reset the bounce counter so
+    // a future legitimate snapshot fallback to the same path on a
+    // later render does not immediately trip the guard.
+    bounceCountRef.current = 0;
+  }
+  lastDestinationRef.current = destination;
 
   return <Navigate to={destination} replace />;
 };

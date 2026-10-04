@@ -35,6 +35,14 @@ export interface ResearcherPublicViewProps {
   avatarInitials?: string;
   topMedals?: import('./shared/PublicSectionShell').PublicSectionShellProps['topMedals'];
   showPrivacyFootnote: boolean;
+  /**
+   * When the viewer is the owner of this profile, the full set of
+   * professional metrics (H-Index / Citations / Active since) and the
+   * research-area chips are surfaced as an at-a-glance preview. Visitors
+   * see only the public profile content (identity, publications, forum)
+   * to keep the surface focused on authorship signals.
+   */
+  isOwner?: boolean;
 }
 
 const formatYear = (year: number | null): string => (year == null ? '—' : String(year));
@@ -59,6 +67,7 @@ export const ResearcherPublicView = ({
   avatarInitials,
   topMedals,
   showPrivacyFootnote,
+  isOwner = false,
 }: ResearcherPublicViewProps) => {
   const { t } = useI18n();
   const roleData = data.researcher;
@@ -126,60 +135,97 @@ export const ResearcherPublicView = ({
         </div>
       </PublicSectionShell>
 
-      {/* ── Research record tiles ────────────────────────────── */}
-      <PublicSectionShell
-        eyebrow={t('profile.publicView.section.contribution', 'RESEARCH RECORD')}
-        title={t('profile.publicView.researcher.recordTitle', 'Verified research metrics')}
-        subtitle={t(
-          'profile.publicView.researcher.recordSubtitle',
-          'Metrics shown here are managed by the editorial Admin team via /api/ProfessionalProfile.',
-        )}
-        data-testid="researcher-record"
-      >
-        <div className={styles.metricsRow}>
-          <MetricTile
-            label={t('profile.publicView.metric.publishedPapers', 'PUBLISHED PAPERS')}
-            value={roleData?.publicationCount ?? '—'}
-            caption={t(
-              'profile.publicView.researcher.publishedPapersCaption',
-              'Total papers on the ARS catalog.',
+      {/* ── Research record tiles (owner-only preview) ─────── */}
+      {/* Visitors see only the public profile (identity + publications
+          + forum). The professional metrics (H-Index / Citations /
+          Active since) and research-area chips stay on the owner's
+          preview so editors can verify their own record without
+          exposing quantitative signals to other members. */}
+      {isOwner ? (
+        <>
+          <PublicSectionShell
+            eyebrow={t('profile.publicView.section.contribution', 'RESEARCH RECORD')}
+            title={t('profile.publicView.researcher.recordTitle', 'Verified research metrics')}
+            subtitle={t(
+              'profile.publicView.researcher.recordSubtitle',
+              'Metrics shown here are managed by the editorial Admin team via /api/ProfessionalProfile.',
             )}
-            icon={<Library size={18} aria-hidden="true" />}
-            data-testid="researcher-metric-publications"
-          />
-          <MetricTile
-            label={t('profile.publicView.metric.hindex', 'H-INDEX')}
-            value={roleData?.hindex ?? '—'}
-            caption={t('profile.publicView.reviewer.hindexCaption', 'Author-level citation impact.')}
-            icon={<BookOpenText size={18} aria-hidden="true" />}
-            data-testid="researcher-metric-hindex"
-          />
-          <MetricTile
-            label={t('profile.publicView.metric.citations', 'CITATIONS')}
-            value={
-              typeof roleData?.totalCitations === 'number'
-                ? roleData.totalCitations.toLocaleString()
-                : '—'
-            }
-            caption={t(
-              'profile.publicView.researcher.citationsFootnote',
-              'Display only when sourced from an approved external integration.',
+            data-testid="researcher-record"
+          >
+            <div className={styles.metricsRow}>
+              <MetricTile
+                label={t('profile.publicView.metric.publishedPapers', 'PUBLISHED PAPERS')}
+                value={roleData?.publicationCount ?? '—'}
+                caption={t(
+                  'profile.publicView.researcher.publishedPapersCaption',
+                  'Total papers on the ARS catalog.',
+                )}
+                icon={<Library size={18} aria-hidden="true" />}
+                data-testid="researcher-metric-publications"
+              />
+              <MetricTile
+                label={t('profile.publicView.metric.hindex', 'H-INDEX')}
+                value={roleData?.hindex ?? '—'}
+                caption={t('profile.publicView.reviewer.hindexCaption', 'Author-level citation impact.')}
+                icon={<BookOpenText size={18} aria-hidden="true" />}
+                data-testid="researcher-metric-hindex"
+              />
+              <MetricTile
+                label={t('profile.publicView.metric.citations', 'CITATIONS')}
+                value={
+                  typeof roleData?.totalCitations === 'number'
+                    ? roleData.totalCitations.toLocaleString()
+                    : '—'
+                }
+                caption={t(
+                  'profile.publicView.researcher.citationsFootnote',
+                  'Display only when sourced from an approved external integration.',
+                )}
+                icon={<Quote size={18} aria-hidden="true" />}
+                data-testid="researcher-metric-citations"
+              />
+              <MetricTile
+                label={t('profile.publicView.metric.activeSince', 'ACTIVE SINCE')}
+                value={roleData?.activeSinceYear ?? '—'}
+                caption={t(
+                  'profile.publicView.researcher.activeSinceCaption',
+                  'Year the researcher joined ARS.',
+                )}
+                icon={<CalendarClock size={18} aria-hidden="true" />}
+                data-testid="researcher-metric-active-since"
+              />
+            </div>
+          </PublicSectionShell>
+
+          {/* ── Research areas chips (owner-only preview) ──────── */}
+          <PublicSectionShell
+            eyebrow={t('profile.publicView.section.expertise', 'RESEARCH AREAS')}
+            title={t('profile.publicView.researcher.areasTitle', 'Where to place this work')}
+            subtitle={t(
+              'profile.publicView.researcher.areasSubtitle',
+              'Major field, subfield, and keyword tags help the catalog match this researcher to readers.',
             )}
-            icon={<Quote size={18} aria-hidden="true" />}
-            data-testid="researcher-metric-citations"
-          />
-          <MetricTile
-            label={t('profile.publicView.metric.activeSince', 'ACTIVE SINCE')}
-            value={roleData?.activeSinceYear ?? '—'}
-            caption={t(
-              'profile.publicView.researcher.activeSinceCaption',
-              'Year the researcher joined ARS.',
+            data-testid="researcher-areas"
+          >
+            {researchAreaChips.length === 0 ? (
+              <p className={styles.empty}>
+                {t(
+                  'profile.publicView.researcher.areasEmpty',
+                  'No research area tags set yet. Add them on the Professional Profile page.',
+                )}
+              </p>
+            ) : (
+              <ul className={styles.chips} aria-label={t('profile.publicView.section.expertise', 'Research areas')}>
+                {researchAreaChips.map((chip) => (
+                  <li key={chip} className={styles.chip}>
+                    {chip}
+                  </li>
+                ))}
+              </ul>
             )}
-            icon={<CalendarClock size={18} aria-hidden="true" />}
-            data-testid="researcher-metric-active-since"
-          />
-        </div>
-      </PublicSectionShell>
+          </PublicSectionShell>
+        </>
+      ) : null}
 
       {/* ── Publication register table ────────────────────────── */}
       <PublicSectionShell
@@ -262,34 +308,6 @@ export const ResearcherPublicView = ({
           emptyLabel={t('profile.publicView.reviewer.streamEmpty', 'No publication years on record yet.')}
           data-testid="researcher-year-stream"
         />
-      </PublicSectionShell>
-
-      {/* ── Research areas chips ────────────────────────────── */}
-      <PublicSectionShell
-        eyebrow={t('profile.publicView.section.expertise', 'RESEARCH AREAS')}
-        title={t('profile.publicView.researcher.areasTitle', 'Where to place this work')}
-        subtitle={t(
-          'profile.publicView.researcher.areasSubtitle',
-          'Major field, subfield, and keyword tags help the catalog match this researcher to readers.',
-        )}
-        data-testid="researcher-areas"
-      >
-        {researchAreaChips.length === 0 ? (
-          <p className={styles.empty}>
-            {t(
-              'profile.publicView.researcher.areasEmpty',
-              'No research area tags set yet. Add them on the Professional Profile page.',
-            )}
-          </p>
-        ) : (
-          <ul className={styles.chips} aria-label={t('profile.publicView.section.expertise', 'Research areas')}>
-            {researchAreaChips.map((chip) => (
-              <li key={chip} className={styles.chip}>
-                {chip}
-              </li>
-            ))}
-          </ul>
-        )}
       </PublicSectionShell>
 
       {/* ── Publications detail list (re-uses existing section) ─── */}
