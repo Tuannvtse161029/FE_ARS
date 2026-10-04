@@ -7,6 +7,7 @@ import {
 } from '@microsoft/signalr';
 import { API_BASE_URL, API_ENDPOINTS } from '../utils/constants';
 import { storage } from '../utils/storage';
+import { secureToken } from '../utils/secureToken';
 
 export interface NotificationPayload {
   notificationId?: number;
@@ -96,16 +97,29 @@ class SignalRService {
 
     const builder = new HubConnectionBuilder()
       .withUrl(hubUrl, {
-        accessTokenFactory: () => {
-          const token = storage.getToken();
+        accessTokenFactory: async () => {
+          let token = storage.getToken();
+          if (!token) {
+            try {
+              await secureToken.rehydrate();
+              token = storage.getToken();
+            } catch {
+              /* ignore */
+            }
+          }
+          if (!token && typeof window !== 'undefined') {
+            try {
+              token = localStorage.getItem('ars_token') || sessionStorage.getItem('ars_token');
+            } catch {
+              /* ignore */
+            }
+          }
           return token || '';
         },
         transport: HttpTransportType.WebSockets | HttpTransportType.LongPolling,
       })
       .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
-      .configureLogging(
-        import.meta.env.DEV ? LogLevel.Information : LogLevel.Warning,
-      );
+      .configureLogging(LogLevel.Information);
 
     const conn = builder.build();
 
@@ -139,19 +153,15 @@ class SignalRService {
     });
 
     conn.onreconnecting((error) => {
-      if (import.meta.env.DEV) {
-        console.warn('[SignalR] Connection lost, reconnecting...', error);
-      }
+      console.warn('[SignalR] Connection lost, reconnecting...', error);
     });
 
     conn.onreconnected((connectionId) => {
-      if (import.meta.env.DEV) {
-        console.info('[SignalR] Reconnected successfully. ConnectionId:', connectionId);
-      }
+      console.info('[SignalR] Reconnected successfully. ConnectionId:', connectionId);
     });
 
     conn.onclose((error) => {
-      if (import.meta.env.DEV && error) {
+      if (error) {
         console.warn('[SignalR] Connection closed with error:', error);
       }
       this.startPromise = null;
@@ -203,9 +213,24 @@ class SignalRService {
    * Prevents duplicate connections during React re-renders or concurrent callers.
    */
   public async start(): Promise<void> {
-    const token = storage.getToken();
+    let token = storage.getToken();
     if (!token) {
-      // User not authenticated, do not establish connection
+      try {
+        await secureToken.rehydrate();
+        token = storage.getToken();
+      } catch {
+        /* ignore */
+      }
+    }
+    if (!token && typeof window !== 'undefined') {
+      try {
+        token = localStorage.getItem('ars_token') || sessionStorage.getItem('ars_token');
+      } catch {
+        /* ignore */
+      }
+    }
+    if (!token) {
+      console.info('[SignalR] Skipping connection start: user is not authenticated (no token).');
       return;
     }
 
@@ -225,14 +250,10 @@ class SignalRService {
     this.startPromise = this.connection
       .start()
       .then(() => {
-        if (import.meta.env.DEV) {
-          console.info('[SignalR] Connected to notifications hub.');
-        }
+        console.info(`[SignalR] Connected to notifications hub: ${this.getHubUrl()}`);
       })
       .catch((err) => {
-        if (import.meta.env.DEV) {
-          console.warn('[SignalR] Connection start failed:', err);
-        }
+        console.warn('[SignalR] Connection start failed:', err);
         this.connection = null;
         throw err;
       })
