@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { forumPostService } from '../services/forumPost.service';
+import { signalrService } from '../services/signalr.service';
+import { inferNotificationKind } from '../utils/notificationRouteMap';
 import type {
   ForumPost,
   ForumPostCreateRequest,
@@ -118,6 +120,40 @@ export function useForumPosts(filters?: ForumPostFilters): UseForumPostsResult {
 
   useEffect(() => {
     void refetch();
+  }, [refetch]);
+
+  // Real-time forum posts / likes sync via SignalR
+  useEffect(() => {
+    const unsubNotif = signalrService.onReceiveNotification((raw) => {
+      let msg = '';
+      if (typeof raw === 'string') msg = raw;
+      else if (raw && typeof raw === 'object' && 'message' in raw) msg = String((raw as { message?: unknown }).message ?? '');
+
+      const kind = inferNotificationKind(msg);
+      if (
+        kind === 'forum-post-liked' ||
+        kind === 'forum-post-commented' ||
+        kind === 'forum-comment-upvoted' ||
+        kind === 'forum-comment-replied' ||
+        kind === 'forum-reply'
+      ) {
+        void refetch();
+      }
+    });
+
+    const unsubPostLiked = signalrService.on('ForumPostLiked', () => {
+      void refetch();
+    });
+
+    const unsubCommentAdded = signalrService.on('ForumCommentAdded', () => {
+      void refetch();
+    });
+
+    return () => {
+      unsubNotif();
+      unsubPostLiked();
+      unsubCommentAdded();
+    };
   }, [refetch]);
 
   return { posts, isLoading, error, refetch };

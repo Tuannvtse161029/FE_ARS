@@ -30,7 +30,7 @@ export function useSignalR(options: UseSignalROptions = {}): {
   start: () => Promise<void>;
   stop: () => Promise<void>;
 } {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, isLoading } = useAuth();
   const { t } = useI18n();
   const locale = useLocale();
   const { onNotification, onPaperStatusUpdated, autoConnect = true } = options;
@@ -43,21 +43,39 @@ export function useSignalR(options: UseSignalROptions = {}): {
 
   useEffect(() => {
     if (!autoConnect) return;
+    if (isLoading) return;
 
     const token = storage.getToken();
-    const hasAuth = Boolean(token && (isAuthenticated || Boolean(user?.userId)));
+    const hasStoredAuth = typeof window !== 'undefined' && Boolean(
+      localStorage.getItem('ars_token') ||
+      sessionStorage.getItem('ars_token') ||
+      localStorage.getItem('ars_token_enc_v1') ||
+      localStorage.getItem('ars_session_key_v1')
+    );
+    const hasAuth = Boolean(isAuthenticated || user || token || hasStoredAuth);
 
     if (!hasAuth) {
       void signalrService.stop();
       return;
     }
 
-    // Connect to SignalR hub
-    void signalrService.start().catch((err) => {
-      if (import.meta.env.DEV) {
+    let isMounted = true;
+    let retryTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    const connectWithRetry = (retries = 3, delayMs = 3000) => {
+      signalrService.start().catch((err) => {
         console.warn('[useSignalR] Failed to start connection:', err);
-      }
-    });
+        if (isMounted && retries > 0) {
+          retryTimeout = setTimeout(() => {
+            if (isMounted) {
+              connectWithRetry(retries - 1, delayMs * 1.5);
+            }
+          }, delayMs);
+        }
+      });
+    };
+
+    connectWithRetry();
 
     // Event listener: ReceiveNotification
     const unsubNotification = signalrService.onReceiveNotification((data: unknown) => {
@@ -79,9 +97,7 @@ export function useSignalR(options: UseSignalROptions = {}): {
           duration: 5000,
         });
       } catch (err) {
-        if (import.meta.env.DEV) {
-          console.error('[useSignalR] Error presenting notification toast:', err);
-        }
+        console.error('[useSignalR] Error presenting notification toast:', err);
       }
 
       onNotificationRef.current?.(data);
@@ -93,10 +109,12 @@ export function useSignalR(options: UseSignalROptions = {}): {
     });
 
     return () => {
+      isMounted = false;
+      if (retryTimeout) clearTimeout(retryTimeout);
       unsubNotification();
       unsubPaperStatus();
     };
-  }, [autoConnect, isAuthenticated, user, t]);
+  }, [autoConnect, isLoading, isAuthenticated, user, t, locale]);
 
   return {
     connectionState: signalrService.getState(),

@@ -12,8 +12,25 @@ function normalizeComment(raw: unknown): ForumComment {
     author?: unknown;
     fullName?: unknown;
     authorAvatar?: unknown;
+    parentId?: unknown;
+    parentCommentId?: unknown;
+    parent_comment_id?: unknown;
+    replyToId?: unknown;
+    replyToCommentId?: unknown;
   };
   const resolvedId = Number(record.forumCommentId ?? record.id ?? 0);
+  const rawReply =
+    record.replyId ??
+    record.parentId ??
+    record.parentCommentId ??
+    record.parent_comment_id ??
+    record.replyToId ??
+    record.replyToCommentId;
+  const resolvedReplyId =
+    rawReply != null && !isNaN(Number(rawReply)) && Number(rawReply) > 0
+      ? Number(rawReply)
+      : null;
+
   return {
     id: resolvedId,
     forumCommentId: resolvedId,
@@ -24,7 +41,7 @@ function normalizeComment(raw: unknown): ForumComment {
     paperId: record.paperId != null ? Number(record.paperId) : null,
     forumPostId: record.forumPostId != null ? Number(record.forumPostId) : null,
     content: typeof record.content === 'string' ? record.content : '',
-    replyId: record.replyId != null ? Number(record.replyId) : null,
+    replyId: resolvedReplyId,
     upvoteCount: record.upvoteCount != null ? Number(record.upvoteCount) : 0,
     createdAt: typeof record.createdAt === 'string' ? record.createdAt : undefined,
     updatedAt: typeof record.updatedAt === 'string' ? record.updatedAt : undefined,
@@ -70,11 +87,24 @@ export const forumCommentService = {
 
   // POST /api/ForumComment
   create: async (data: ForumCommentCreateRequest): Promise<ForumComment> => {
+    const parentId = data.replyId != null ? Number(data.replyId) : null;
+    const payload = {
+      ...data,
+      ...(parentId ? {
+        replyId: parentId,
+        parentId: parentId,
+        parentCommentId: parentId,
+      } : {}),
+    };
     const response = await api.post<ForumComment>(
       API_ENDPOINTS.FORUM_COMMENT.CREATE,
-      data,
+      payload,
     );
-    return normalizeComment(response.data);
+    const normalized = normalizeComment(response.data);
+    if (parentId && !normalized.replyId) {
+      normalized.replyId = parentId;
+    }
+    return normalized;
   },
 
   // PUT /api/ForumComment/{id}
