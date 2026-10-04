@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { forumCommentService } from '../services/forumComment.service';
 import { signalrService, type ForumCommentAddedPayload } from '../services/signalr.service';
+import { inferNotificationKind } from '../utils/notificationRouteMap';
 import type {
   ForumComment,
   ForumCommentCreateRequest,
@@ -132,12 +133,29 @@ export function useForumComments(postId: number): UseForumCommentsResult {
       }
     });
 
+    const unsubNotif = signalrService.onReceiveNotification((raw) => {
+      let msg = '';
+      if (typeof raw === 'string') msg = raw;
+      else if (raw && typeof raw === 'object' && 'message' in raw) msg = String((raw as { message?: unknown }).message ?? '');
+
+      const kind = inferNotificationKind(msg);
+      if (
+        kind === 'forum-comment-upvoted' ||
+        kind === 'forum-post-commented' ||
+        kind === 'forum-comment-replied' ||
+        kind === 'forum-reply'
+      ) {
+        void refetch();
+      }
+    });
+
     return () => {
       unsub();
       unsubVote();
+      unsubNotif();
       void signalrService.leavePostGroup(postId);
     };
-  }, [postId]);
+  }, [postId, refetch]);
 
   return { comments, isLoading, error, refetch };
 }

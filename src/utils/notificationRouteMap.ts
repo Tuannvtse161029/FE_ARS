@@ -630,22 +630,44 @@ export function inferNotificationKind(message: string): NotificationKind {
   }
 
   // Fallback keyword inspection for natural language BE notifications
-  if (normalized.includes('thích bài viết') || normalized.includes('liked your post')) {
+  if (
+    normalized.includes('thích bài viết') ||
+    normalized.includes('liked your post') ||
+    normalized.includes('thích bài đăng') ||
+    normalized.includes('thả tim bài viết') ||
+    normalized.includes('thả tim bài') ||
+    normalized.includes('bày tỏ cảm xúc về bài viết') ||
+    normalized.includes('bày tỏ cảm xúc')
+  ) {
     return 'forum-post-liked';
   }
-  if (normalized.includes('ủng hộ bình luận') || normalized.includes('upvoted your comment')) {
+  if (
+    normalized.includes('ủng hộ bình luận') ||
+    normalized.includes('upvoted your comment') ||
+    normalized.includes('thích bình luận') ||
+    normalized.includes('liked your comment') ||
+    normalized.includes('thả tim bình luận') ||
+    normalized.includes('upvote bình luận') ||
+    normalized.includes('thích phản hồi')
+  ) {
     return 'forum-comment-upvoted';
   }
   if (
     normalized.includes('trả lời bình luận') ||
     normalized.includes('replied to your comment') ||
-    normalized.includes('trả lời phản hồi')
+    normalized.includes('trả lời phản hồi') ||
+    normalized.includes('phản hồi bình luận') ||
+    normalized.includes('đã trả lời')
   ) {
     return 'forum-comment-replied';
   }
   if (
     normalized.includes('bình luận vào bài viết') ||
-    normalized.includes('commented on your post')
+    normalized.includes('bình luận về bài viết') ||
+    normalized.includes('bình luận bài viết') ||
+    normalized.includes('bình luận bài đăng') ||
+    normalized.includes('commented on your post') ||
+    normalized.includes('đã bình luận')
   ) {
     return 'forum-post-commented';
   }

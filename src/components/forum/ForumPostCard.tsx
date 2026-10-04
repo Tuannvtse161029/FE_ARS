@@ -21,6 +21,7 @@ import { useI18n } from '../../i18n/I18nContext';
 import { forumPostService } from '../../services/forumPost.service';
 import { signalrService } from '../../services/signalr.service';
 import { buildForumPostViewModel } from '../../types/forumPostViewModel';
+import { inferNotificationKind } from '../../utils/notificationRouteMap';
 import type { ForumPost } from '../../types/forum.types';
 import { initialsFromName, formatRelativeTime } from '../../pages/Forum/forum.utils';
 import styles from './ForumPostCard.module.css';
@@ -112,7 +113,7 @@ export const ForumPostCard = ({
   // Real-time post likes update via SignalR
   useEffect(() => {
     if (!post.id) return;
-    const unsub = signalrService.on('ForumPostLiked', (data: unknown) => {
+    const unsubLike = signalrService.on('ForumPostLiked', (data: unknown) => {
       if (data && typeof data === 'object') {
         const rawId = Number(
           (data as { forumPostId?: unknown; postId?: unknown; id?: unknown }).forumPostId ??
@@ -125,12 +126,39 @@ export const ForumPostCard = ({
             (data as { likeCount?: unknown }).likeCount;
           if (typeof nextLikes === 'number') {
             setLikesCount(nextLikes);
+          } else {
+            void forumPostService.getById(post.id).then((fresh) => {
+              if (fresh && typeof fresh.likes === 'number') {
+                setLikesCount(fresh.likes);
+              } else if (fresh && typeof (fresh as { likeCount?: unknown }).likeCount === 'number') {
+                setLikesCount((fresh as { likeCount: number }).likeCount);
+              }
+            });
           }
         }
       }
     });
+
+    const unsubNotif = signalrService.onReceiveNotification((raw: unknown) => {
+      let msg = '';
+      if (typeof raw === 'string') msg = raw;
+      else if (raw && typeof raw === 'object' && 'message' in raw) msg = String((raw as { message?: unknown }).message ?? '');
+
+      const kind = inferNotificationKind(msg);
+      if (kind === 'forum-post-liked') {
+        void forumPostService.getById(post.id).then((fresh) => {
+          if (fresh && typeof fresh.likes === 'number') {
+            setLikesCount(fresh.likes);
+          } else if (fresh && typeof (fresh as { likeCount?: unknown }).likeCount === 'number') {
+            setLikesCount((fresh as { likeCount: number }).likeCount);
+          }
+        });
+      }
+    });
+
     return () => {
-      unsub();
+      unsubLike();
+      unsubNotif();
     };
   }, [post.id]);
 
