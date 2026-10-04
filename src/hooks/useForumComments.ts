@@ -76,16 +76,27 @@ export function useForumComments(postId: number): UseForumCommentsResult {
 
     const unsub = signalrService.on<ForumCommentAddedPayload>('ForumCommentAdded', (data) => {
       if (data && Number(data.forumPostId) === Number(postId)) {
+        const commentId = Number(data.forumCommentId ?? data.id ?? 0);
+        const resolvedReplyId =
+          data.replyId != null && Number(data.replyId) > 0
+            ? Number(data.replyId)
+            : data.parentId != null && Number(data.parentId) > 0
+            ? Number(data.parentId)
+            : data.parentCommentId != null && Number(data.parentCommentId) > 0
+            ? Number(data.parentCommentId)
+            : null;
+
         setComments((prev) => {
-          if (prev.some((c) => c.id === data.forumCommentId)) return prev;
+          if (prev.some((c) => (c.id || c.forumCommentId) === commentId)) return prev;
           const newComment: ForumComment = {
-            id: data.forumCommentId,
-            forumCommentId: data.forumCommentId,
-            forumPostId: data.forumPostId,
-            userId: data.userId,
-            author: data.authorName || 'Anonymous',
-            fullName: data.authorName || 'Anonymous',
-            content: data.content,
+            id: commentId,
+            forumCommentId: commentId,
+            forumPostId: Number(data.forumPostId),
+            userId: data.userId != null ? Number(data.userId) : null,
+            author: data.authorName || data.author || data.fullName || 'Anonymous',
+            fullName: data.authorName || data.author || data.fullName || 'Anonymous',
+            content: data.content ?? '',
+            replyId: resolvedReplyId,
             createdAt: data.createdAt || new Date().toISOString(),
             upvoteCount: 0,
             isUpvoted: false,

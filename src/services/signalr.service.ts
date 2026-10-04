@@ -41,11 +41,17 @@ export interface GroupJoinRequestUpdatedPayload {
 
 export interface ForumCommentAddedPayload {
   forumPostId: number;
-  forumCommentId: number;
-  userId: number;
-  authorName: string;
+  forumCommentId?: number;
+  id?: number;
+  userId?: number;
+  authorName?: string;
+  author?: string;
+  fullName?: string;
   content: string;
-  createdAt: string;
+  replyId?: number | null;
+  parentId?: number | null;
+  parentCommentId?: number | null;
+  createdAt?: string;
 }
 
 export interface MedalAwardedPayload {

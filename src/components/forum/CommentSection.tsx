@@ -341,7 +341,7 @@ export const CommentSection = ({
 
   const submitReply = async (parentComment: ForumComment) => {
     const trimmed = replyDraft.trim();
-    const parentId = parentComment.id || parentComment.forumCommentId;
+    const parentId = Number(parentComment.id || parentComment.forumCommentId);
     if (!trimmed || !currentUserId || !canInteract || !parentId) return;
 
     setSubmittingReply(true);
@@ -359,7 +359,17 @@ export const CommentSection = ({
     if (result) {
       setReplyDraft('');
       setReplyingToComment(null);
-      setLocalComments((prev) => [...prev, result]);
+      const finalResult: ForumComment = {
+        ...result,
+        replyId: result.replyId ?? parentId,
+      };
+      setLocalComments((prev) => {
+        const targetId = Number(finalResult.id || finalResult.forumCommentId);
+        if (prev.some((c) => Number(c.id || c.forumCommentId) === targetId)) {
+          return prev.map((c) => Number(c.id || c.forumCommentId) === targetId ? finalResult : c);
+        }
+        return [...prev, finalResult];
+      });
       void refetch();
     } else {
       setActionError(t('forum.comment.failedPostReply', 'Failed to post reply. Please try again.'));
@@ -369,7 +379,7 @@ export const CommentSection = ({
   const commentMap = useMemo(() => {
     const map = new Map<number, ForumComment>();
     localComments.forEach((c) => {
-      const cid = c.id || c.forumCommentId || 0;
+      const cid = Number(c.id || c.forumCommentId || 0);
       if (cid) map.set(cid, c);
     });
     return map;
@@ -380,8 +390,8 @@ export const CommentSection = ({
     const repliesByParentId = new Map<number, ForumComment[]>();
 
     localComments.forEach((c) => {
-      const parentId = c.replyId;
-      if (parentId && commentMap.has(parentId)) {
+      const parentId = c.replyId != null ? Number(c.replyId) : null;
+      if (parentId && parentId > 0 && commentMap.has(parentId)) {
         const list = repliesByParentId.get(parentId) ?? [];
         list.push(c);
         repliesByParentId.set(parentId, list);
@@ -393,7 +403,7 @@ export const CommentSection = ({
     const result: ForumComment[] = [];
     const appendThread = (parent: ForumComment) => {
       result.push(parent);
-      const pid = parent.id || parent.forumCommentId || 0;
+      const pid = Number(parent.id || parent.forumCommentId || 0);
       const replies = repliesByParentId.get(pid) ?? [];
       replies.forEach((r) => {
         appendThread(r);
@@ -403,9 +413,9 @@ export const CommentSection = ({
     topLevel.forEach((top) => appendThread(top));
 
     if (result.length < localComments.length) {
-      const seen = new Set(result.map((c) => c.id || c.forumCommentId));
+      const seen = new Set(result.map((c) => Number(c.id || c.forumCommentId)));
       localComments.forEach((c) => {
-        const cid = c.id || c.forumCommentId;
+        const cid = Number(c.id || c.forumCommentId);
         if (!seen.has(cid)) result.push(c);
       });
     }
@@ -647,7 +657,7 @@ export const CommentSection = ({
                 const isOwner =
                   currentUserId != null && comment.userId === currentUserId;
                 const isEditing = editingId === (comment.id || comment.forumCommentId);
-                const parentComment = comment.replyId ? commentMap.get(comment.replyId) : null;
+                const parentComment = comment.replyId ? commentMap.get(Number(comment.replyId)) : null;
                 const isReplyingThis =
                   replyingToComment &&
                   (replyingToComment.id || replyingToComment.forumCommentId) ===
