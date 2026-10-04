@@ -294,4 +294,136 @@ describe('Register Page – Academic Scholarly Identifier', () => {
     expect(payload.openAlexId).toBeNull();
     expect(payload.semanticScholarId).toBeNull();
   });
+
+  // ── Lecturer identifier is optional ──────────────────────────────────
+  //
+  // The role is "Lecturer" — many lecturers don't have OpenAlex or
+  // Semantic Scholar profiles. The FE must NOT show a "required" error
+  // when the field is left blank, and submission must succeed with both
+  // identifier fields set to `null`. The BE's `RegisterRequest` already
+  // allows `openAlexId: null` / `semanticScholarId: null`.
+
+  test('Lecturer: identifier field is shown without "required" error when left blank', async () => {
+    const user = userEvent.setup();
+    renderRegister();
+    await waitForDictionary();
+
+    const roleSelect = screen.getByLabelText(/select your platform role/i);
+    await user.selectOptions(roleSelect, 'Lecturer');
+
+    // The identifier section still renders (Lecturer CAN provide one
+    // if they have a profile), but it must not be required.
+    expect(screen.getByTestId('register-academic-identifier-section')).toBeInTheDocument();
+    const openAlexInput = screen.getByTestId('register-input-openalex');
+    expect(openAlexInput).toBeInTheDocument();
+
+    // Tab in and out without typing — for Researcher this triggers a
+    // "Please enter…" error. For Lecturer the field is optional, so no
+    // error should be surfaced.
+    await user.click(openAlexInput);
+    await user.tab();
+
+    // Give React a tick to commit state, then assert no error.
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.queryByTestId('openalex-error')).not.toBeInTheDocument();
+  });
+
+  test('Lecturer: submits with openAlexId: null when identifier is left blank', async () => {
+    const user = userEvent.setup();
+    renderRegister();
+    await waitForDictionary();
+
+    const roleSelect = screen.getByLabelText(/select your platform role/i);
+    await user.selectOptions(roleSelect, 'Lecturer');
+
+    await user.type(screen.getByLabelText(/full name/i), 'Tran Van D');
+    await user.type(screen.getByLabelText(/^email$/i), 'tranvand@example.com');
+    await user.type(screen.getByLabelText(/phone number/i), '0912345681');
+    await user.type(screen.getByLabelText(/^password$/i), 'Password123');
+    await user.type(screen.getByLabelText(/retype password/i), 'Password123');
+
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const fakeFile = new File(['(PDF content)'], 'verification.pdf', {
+      type: 'application/pdf',
+    });
+    await user.upload(fileInput, fakeFile);
+
+    const consent = screen.getByRole('checkbox');
+    await user.click(consent);
+
+    // Intentionally leave the OpenAlex ID blank.
+
+    const submitBtn = screen.getByRole('button', { name: /create account/i });
+    await user.click(submitBtn);
+
+    await waitFor(() => {
+      expect(registerUserSpy).toHaveBeenCalledTimes(1);
+    });
+
+    const payload = registerUserSpy.mock.calls[0][0];
+    expect(payload.role).toBe('Lecturer');
+    // Both identifier fields are null because the field is optional for
+    // Lecturer. The BE accepts `null` per the RegisterRequest schema.
+    expect(payload.openAlexId).toBeNull();
+    expect(payload.semanticScholarId).toBeNull();
+  });
+
+  test('Lecturer: still submits with a real OpenAlex ID when the field is filled in', async () => {
+    // Optional means OPTIONAL, not forbidden. A Lecturer who happens
+    // to have an OpenAlex profile can still submit it.
+    const user = userEvent.setup();
+    renderRegister();
+    await waitForDictionary();
+
+    const roleSelect = screen.getByLabelText(/select your platform role/i);
+    await user.selectOptions(roleSelect, 'Lecturer');
+
+    await user.type(screen.getByLabelText(/full name/i), 'Tran Van E');
+    await user.type(screen.getByLabelText(/^email$/i), 'tranvane@example.com');
+    await user.type(screen.getByLabelText(/phone number/i), '0912345682');
+    await user.type(screen.getByLabelText(/^password$/i), 'Password123');
+    await user.type(screen.getByLabelText(/retype password/i), 'Password123');
+
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const fakeFile = new File(['(PDF content)'], 'verification.pdf', {
+      type: 'application/pdf',
+    });
+    await user.upload(fileInput, fakeFile);
+
+    const consent = screen.getByRole('checkbox');
+    await user.click(consent);
+
+    await user.type(
+      screen.getByTestId('register-input-openalex'),
+      'https://openalex.org/A5023888391',
+    );
+
+    const submitBtn = screen.getByRole('button', { name: /create account/i });
+    await user.click(submitBtn);
+
+    await waitFor(() => {
+      expect(registerUserSpy).toHaveBeenCalledTimes(1);
+    });
+
+    const payload = registerUserSpy.mock.calls[0][0];
+    expect(payload.role).toBe('Lecturer');
+    expect(payload.openAlexId).toBe('https://openalex.org/A5023888391');
+  });
+
+  test('Researcher: identifier is still required (no regression)', async () => {
+    // Sanity check — flipping Lecturer to optional must not silently
+    // relax Researcher too. This is the original behaviour pinned.
+    const user = userEvent.setup();
+    renderRegister();
+    await waitForDictionary();
+
+    // Default role is Researcher in the test fixture.
+    const openAlexInput = screen.getByTestId('register-input-openalex');
+    await user.click(openAlexInput);
+    await user.tab();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('openalex-error')).toBeInTheDocument();
+    });
+  });
 });

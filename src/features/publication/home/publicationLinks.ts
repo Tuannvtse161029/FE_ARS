@@ -56,6 +56,31 @@ export const resolveAuthorLinks = (author: Pick<PublicationAuthor, 'id' | 'orcid
   return orcid ? [{ authorId: author.id, orcid }] : [];
 };
 
+/**
+ * Build an in-app `/profile/:userId` path for a bibliographic author.
+ *
+ * The BE's `PaperResponse.authors[]` does NOT carry a per-author userId,
+ * so the adapter can only confidently identify one author per paper —
+ * the submitter. For every other author this helper returns null and
+ * the card falls back to rendering the name as plain text. We
+ * deliberately do not URL-encode a bare name into a profile path
+ * (e.g. `/profile/Nguyen-Minh-Anh`) because the route param must be
+ * the user's numeric id for the Profile page to actually load that
+ * user; a name slug would 404.
+ *
+ * Returns null when the author is missing a userId, the userId is not
+ * a positive integer, or the path would resolve to an unsafe URL
+ * component. The card renders the plain-text name in that case.
+ */
+export const buildAuthorProfilePath = (
+  author: Pick<PublicationAuthor, 'id' | 'userId'>,
+): string | null => {
+  const userId = author.userId?.trim();
+  if (!userId) return null;
+  if (!/^[1-9]\d{0,18}$/.test(userId)) return null;
+  return `/profile/${encodeURIComponent(userId)}`;
+};
+
 export const resolvePaperExternalLinks = (
   paper: Pick<PublicationPaper, 'doi' | 'openAlexId' | 'externalIdentifier'>,
 ): {

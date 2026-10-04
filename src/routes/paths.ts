@@ -47,6 +47,11 @@ export const ROUTES = {
   ADMIN_REVIEWER_ASSIGNMENT_DETAIL: '/admin/reviewer-assignments/:id',
   ADMIN_PUBLISHED_PAPERS: '/admin/published-papers',
   PROFILE: '/profile',
+  // Public profile — accessible to any authenticated user from a
+  // deep link (e.g. the published-paper card links an author name to
+  // this URL). The single Profile page handles both the "me" surface
+  // (/profile) and the "someone else" surface (/profile/:userId).
+  PROFILE_PUBLIC: '/profile/:userId',
   PROFESSIONAL_PROFILE: '/reviewer/professional-profile',
   ACCOUNT_SETTINGS: '/account-settings',
   STUDENT_RESEARCH_GROUPS: '/student/research-groups',

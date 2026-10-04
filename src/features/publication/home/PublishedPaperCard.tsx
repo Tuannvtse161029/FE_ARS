@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ChevronDown, ChevronUp, ExternalLink, FileText, ShieldCheck, UserCheck } from 'lucide-react';
 import { paperTypeLabel, type PublicationAuthor, type PublicationPaper } from '../types/publication';
 import { CitationActions } from '../components/CitationActions';
@@ -7,9 +8,10 @@ import {
   buildSafeResourceLink,
   collectPaperExternalLinks,
   resolveAuthorLinks,
+  buildAuthorProfilePath,
 } from './publicationLinks';
 import { OpenAlexBrandLogo } from '../../../components/openalex/OpenAlexBrandLogo';
-import { useLocale } from '../../../i18n/I18nContext';
+import { useLocale, useT } from '../../../i18n/I18nContext';
 import { formatDisplayDate } from '../../../utils/datetime';
 import card from './PublishedPaperCard.module.css';
 
@@ -25,14 +27,38 @@ export interface PublishedPaperCardProps {
 
 /**
  * Author chip — OpenAlex-style scannable row. Renders the author name
- * (always plain text — never a URL built from the name) and a safe ORCID
- * link when one exists. No slug, no profile URL, no Google search link.
+ * as plain text by default; when the adapter was able to confirm the
+ * author is a registered ARS user (today: the paper's submitter, via
+ * the BE's `PaperResponse.authorId` + `authorName`), the name itself
+ * becomes a link to that user's public profile at `/profile/:userId`.
+ * Authors we cannot confidently identify stay as plain text — the
+ * "never build a URL from a bare name" rule is preserved.
+ *
+ * When the author also carries a canonical ORCID, the ORCID chip is
+ * rendered alongside the profile link, as before.
  */
 const AuthorChip = ({ author }: { readonly author: PublicationAuthor }) => {
+  const t = useT();
   const links = resolveAuthorLinks(author);
+  const profilePath = buildAuthorProfilePath(author);
   return (
     <span className={card.author} data-testid="public-paper-author" data-author-id={author.id}>
-      <span className={card.authorName}>{author.name}</span>
+      {profilePath ? (
+        <Link
+          to={profilePath}
+          className={card.authorNameLink}
+          aria-label={t(
+            'home.catalog.author.viewProfile',
+            'View {name}\u2019s profile',
+            { name: author.name },
+          )}
+          data-testid="public-paper-author-profile-link"
+        >
+          <span className={card.authorName}>{author.name}</span>
+        </Link>
+      ) : (
+        <span className={card.authorName}>{author.name}</span>
+      )}
       {links.map((link) => (
         <a
           key={link.authorId}

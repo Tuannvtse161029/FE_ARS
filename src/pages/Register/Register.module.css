@@ -107,6 +107,37 @@
   margin-left: 2px;
 }
 
+/* Optional label — used when the field is shown but is not required
+ * (e.g. the OpenAlex / Semantic Scholar ID for Lecturer registrations).
+ * Renders a subtle "Optional" tag next to the label and removes the
+ * required asterisk. */
+.fieldLabel--optional {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.fieldLabelHint {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink-muted);
+  background-color: var(--surface-muted, #eef0f5);
+  padding: 1px 6px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.fieldHint {
+  font-size: var(--font-size-xs);
+  color: var(--ink-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
 .passwordHelper {
   font-size: var(--font-size-xs);
   color: var(--ink-muted);
@@ -756,6 +787,26 @@
   content: ' *';
   color: var(--status-danger-text);
   margin-left: 2px;
+}
+
+.identifierTitle--optional {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.identifierTitleHint {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink-muted);
+  background-color: var(--surface-muted, #eef0f5);
+  padding: 1px 6px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  line-height: 1.4;
+  white-space: nowrap;
 }
 
 .identifierDesc {

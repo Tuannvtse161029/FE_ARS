@@ -201,7 +201,20 @@ export interface CurrentAnnualFeeSubscription {
    * to `UserSubscriptions`. Use `expiresAt` below as the primary signal.
    */
   purchase: AnnualFeePurchase | null;
-  annualFee: AnnualFee;
+  /**
+   * The annual-fee plan the user is subscribed to. May be `null` when the
+   * BE returns a subscription row without the embedded `annualFee` object
+   * (e.g. the BE migration from `AnnualFeePurchase.annualFeeId` to the
+   * new `UserSubscriptions` table left the join unfilled, or the plan
+   * referenced by the purchase was soft-deleted by an admin).
+   *
+   * Consumers MUST handle `null` and render a generic "Active subscription"
+   * label rather than synthesizing a placeholder name from `daysRemaining`.
+   * Synthesizing a name (e.g. `"249-Day Subscription"`) is misleading —
+   * it implies the user bought a "249-day plan", when in reality we just
+   * have no plan metadata to show.
+   */
+  annualFee: AnnualFee | null;
   /** Days remaining until expiry (negative if already expired). */
   daysRemaining: number;
   /** Authoritative BE-computed expired flag — trust this over client math. */

@@ -134,7 +134,17 @@ export const SubscriptionBadge = () => {
 
   // Primary source: expiresAt from UserSubscriptions (the BE's new canonical
   // expiry field). Fall back to purchase.expiryDate for backward compatibility.
-  const planName = current.annualFee?.name ?? (current.daysRemaining > 0 ? `${current.daysRemaining}d Subscription` : 'Annual Fee');
+  //
+  // Plan name — `current.annualFee` may legitimately be `null` when the
+  // BE has a subscription row but no embedded `annualFee` plan (e.g. an
+  // admin inserted an expiry date directly into the DB without going
+  // through the purchase flow). Synthesizing a name from `daysRemaining`
+  // here used to render "249d Subscription" or similar — misleading,
+  // because the user never bought a "249-day plan". We now fall back to
+  // the generic "Annual subscription" label instead.
+  const planName =
+    current.annualFee?.name?.trim() ||
+    t('subscription.status.genericName', 'Annual subscription');
   const expiresOn = current.expiresAt ?? current.purchase?.expiryDate ?? (current.daysRemaining > 0 ? new Date(Date.now() + current.daysRemaining * 86400000).toISOString() : null);
   const expired = current.isExpired;
 

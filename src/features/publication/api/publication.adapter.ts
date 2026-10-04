@@ -23,6 +23,19 @@ import { userRewardService } from '../../../services/userReward.service';
 import type { FormattedRubricReference, SpecializedCriteriaBundle } from '../reviewer/evaluationCriteriaResolver';
 import { enrichPublicationMetadata } from './publicationMetadata';
 import type { SpecializedEvaluationItem } from '../../../services/detailedEvaluation.service';
+import { demoPublicationPapers } from '../demo/publication.demo';
+
+/**
+ * Read `VITE_USE_PUBLICATION_DEMO` at module evaluation time. When set
+ * to `'true'`, the public-catalog surface returns the local demo
+ * papers instead of calling the BE. The flag is intended for visual
+ * preview / dev work only — the demo userIds (`99001`, `99002`) do
+ * not resolve to a real ARS account, so clicking an author profile
+ * link in demo mode will land on a Profile page that cannot find the
+ * user. The flag is opt-in: production behavior is unchanged.
+ */
+const USE_PUBLICATION_DEMO =
+  String(import.meta.env.VITE_USE_PUBLICATION_DEMO ?? '').toLowerCase() === 'true';
 
 /**
  * Stringify a structured `FormattedRubricReference` for the BE payload.
@@ -213,7 +226,7 @@ const toPublicationPaper = async (
     notes.clarity = evaluation.notesFormatting ?? '';
   }
 
-  return enrichPublicationMetadata({
+  const enriched = await enrichPublicationMetadata({
     id: String(paper.id),
     title: paper.title?.trim() || `Paper #${paper.id}`,
     abstract: paper.abstract?.trim() || 'No abstract was supplied.',
@@ -225,10 +238,32 @@ const toPublicationPaper = async (
     publicationDate: paper.publicationDate ?? undefined,
     sourceName: paper.sourceName ?? undefined,
     issnValue: paper.issnValue ?? undefined,
-    authors: paper.authors?.length ? paper.authors.map((author) => ({
-      id: String(author.paperAuthorId), name: author.authorName,
-      orcid: author.orcidId ?? undefined, order: author.authorOrder, institutionIds: [],
-    })) : [],
+    // The submitter is the only author we can confidently link to an
+    // ARS user profile. The BE's PaperResponse.authors[] does NOT carry
+    // a userId per author, so we match the submitter's display name
+    // against each author name (case + whitespace-insensitive) and
+    // attach the submitter's userId to the matching author(s). For
+    // multi-author papers where the submitter is also a co-author this
+    // gives a link; for papers where the submitter is *not* in the
+    // author list, the adapter leaves every author.userId undefined
+    // and the card falls back to plain text for every author. This
+    // is honest with the BE contract: we never invent userIds, we
+    // never URL-encode an author name to fabricate a profile link.
+    authors: paper.authors?.length ? paper.authors.map((author) => {
+      const submitterName = paper.authorName?.trim() ?? '';
+      const isSubmitterAuthor =
+        submitterName.length > 0 &&
+        author.authorName?.trim().toLowerCase() === submitterName.toLowerCase() &&
+        authorId != null;
+      return {
+        id: String(author.paperAuthorId),
+        name: author.authorName,
+        orcid: author.orcidId ?? undefined,
+        order: author.authorOrder,
+        institutionIds: [],
+        userId: isSubmitterAuthor ? String(authorId) : undefined,
+      };
+    }) : [],
     institutions: [],
     paperType: paper.paperType ?? 'Not supplied',
     // domain / field / subfield are intentionally NOT backfilled from
@@ -343,6 +378,28 @@ const toPublicationPaper = async (
           }]
         : undefined,
   });
+
+  // Second-pass submitter match. The BE's `PaperResponse.authors[]` is
+  // often empty (rawAuthorsCount is 0 for many published papers), in
+  // which case the first-pass matching above did nothing and the
+  // OpenAlex enrichment in `enrichPublicationMetadata` synthesised the
+  // author list. Re-run the submitter-name match against the final
+  // author list so the card can link the submitter's profile to the
+  // matching author row (case + whitespace-insensitive). This honours
+  // the same rule we use everywhere else — we only attach a `userId`
+  // we can prove belongs to that author.
+  if (authorId != null) {
+    const submitterName = paper.authorName?.trim().toLowerCase() ?? '';
+    if (submitterName.length > 0) {
+      enriched.authors = enriched.authors.map((author) =>
+        !author.userId && author.name?.trim().toLowerCase() === submitterName
+          ? { ...author, userId: String(authorId) }
+          : author,
+      );
+    }
+  }
+
+  return enriched;
 };
 
 const listAllPapers = async (): Promise<Paper[]> => {
@@ -426,6 +483,26 @@ const evaluationFor = async (
 
 class ApiPublicationAdapter implements PublicationAdapter {
   async getPublicCatalog(query: CatalogQuery): Promise<PagedPublicationResult> {
+    // Dev/demo fallback — `VITE_USE_PUBLICATION_DEMO=true` returns the
+    // local demo papers instead of calling the live BE. Used for visual
+    // preview of the catalog (and the new author-profile link) without
+    // a live seed. Production callers leave the flag unset and continue
+    // hitting the BE exactly as before.
+    if (USE_PUBLICATION_DEMO) {
+      const start = (query.page - 1) * query.pageSize;
+      const sorted = [...demoPublicationPapers]
+        .filter((paper) => paper.status === 'PUBLISHED' && paper.visibility === 'PUBLIC')
+        .filter((paper) => matchesCatalogQuery(paper, query))
+        .sort((left, right) => compareCatalogPapers(left, right, query.sort));
+      return {
+        items: sorted.slice(start, start + query.pageSize),
+        totalCount: sorted.length,
+        page: query.page,
+        pageSize: query.pageSize,
+        dataSource: 'demo',
+      };
+    }
+
     const catalog = (await Promise.all((await listAllPapers())
       .filter((paper) => paperStatus(paper.status) === 'PUBLISHED')
       .map((paper) => toPublicationPaper(paper))))
