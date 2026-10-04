@@ -2154,6 +2154,7 @@ export const dictionary: Dictionary = {
     'researcher.detail.detail.version': 'Phiên bản',
     'researcher.detail.detail.paperType': 'Loại bài báo',
     'researcher.detail.detail.field': 'Lĩnh vực / Chuyên ngành phụ',
+    'researcher.detail.detail.researcher': 'Nhà nghiên cứu',
     'researcher.detail.detail.authors': 'Tác giả',
     'researcher.detail.detail.institutions': 'Cơ sở',
     'researcher.detail.identifiers.title': 'Mã định danh',

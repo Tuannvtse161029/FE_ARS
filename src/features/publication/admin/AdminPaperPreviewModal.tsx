@@ -99,6 +99,8 @@ export const AdminPaperPreviewModal = ({ paper, onClose }: AdminPaperPreviewModa
             <dd>{paper.submittedAt ? formatDisplayDate(paper.submittedAt) : '—'}</dd>
             <dt>Published</dt>
             <dd>{paper.publishedAt ? formatDisplayDate(paper.publishedAt) : '—'}</dd>
+            <dt>Researcher</dt>
+            <dd>{paper.researcherName || paper.submitterName || '—'}</dd>
             <dt>Manuscript</dt>
             <dd>
               {fileHref

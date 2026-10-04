@@ -524,7 +524,7 @@ export const AdminPaperSubmissions = () => {
                         </div>
                       </td>
                       <td data-label={t('admin.paperIntake.submitterColumn', 'Submitted by')}>
-                        {paper.submitterName || t('admin.paperIntake.submitterMissing', 'Name not supplied')}
+                        {paper.researcherName || paper.submitterName || t('admin.paperIntake.submitterMissing', 'Name not supplied')}
                       </td>
                       <td data-label={t('admin.paperIntake.identityColumn', 'Researcher Identity')}>
                         <div className={adminStyles.verificationActions}>

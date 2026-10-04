@@ -496,6 +496,12 @@ export const ResearcherSubmissionDetail = () => {
                 </dd>
               </div>
             )}
+            {(paper.researcherName || paper.submitterName) && (
+              <div>
+                <dt>{t('researcher.detail.detail.researcher', 'Researcher')}</dt>
+                <dd>{paper.researcherName || paper.submitterName}</dd>
+              </div>
+            )}
             {authorsJoined && (
               <div>
                 <dt>{t('researcher.detail.detail.authors')}</dt>

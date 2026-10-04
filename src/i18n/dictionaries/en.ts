@@ -2653,6 +2653,7 @@ export const dictionary: Dictionary = {
     'researcher.detail.detail.version': 'Version',
     'researcher.detail.detail.paperType': 'Paper type',
     'researcher.detail.detail.field': 'Field / Subfield',
+    'researcher.detail.detail.researcher': 'Researcher',
     'researcher.detail.detail.authors': 'Authors',
     'researcher.detail.detail.institutions': 'Institutions',
     'researcher.detail.identifiers.title': 'Identifiers',
