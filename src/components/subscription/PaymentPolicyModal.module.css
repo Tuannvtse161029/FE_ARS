@@ -185,22 +185,6 @@
   font-weight: var(--font-weight-semibold);
 }
 
-.adminLink {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: var(--font-size-xs);
-  color: var(--ars-admin, #1e293b);
-  text-decoration: none;
-  font-weight: var(--font-weight-semibold);
-  border-bottom: 1px dashed currentColor;
-  padding-bottom: 1px;
-}
-
-.adminLink:hover {
-  color: var(--ink-primary);
-}
-
 .policyText {
   margin: 0;
   padding: var(--space-4);

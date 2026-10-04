@@ -23,6 +23,8 @@ import {
   getSafeFallbackRoute,
   KNOWN_NOTIFICATION_KINDS,
   formatForumNotification,
+  stripNotificationTagPrefix,
+  extractNotificationDynamicSuffix,
 } from '../../../src/utils/notificationRouteMap';
 
 describe('notificationRouteMap', () => {
@@ -240,6 +242,62 @@ describe('notificationRouteMap', () => {
       expect(formatForumNotification(commentRepliedSample, 'en')).toBe(
         'Nguyen Van Trieu Tuan replied to your comment: "hello"',
       );
+    });
+  });
+
+  describe('subscription payment notifications', () => {
+    // Real shapes observed coming from the PayOS webhook. The BE has
+    // shipped two tag bracket variants (square vs. parentheses) and two
+    // quote styles for the plan name (single vs. double) — the matcher
+    // has to tolerate both. The success message may also carry a
+    // trailing "Gói của bạn có hiệu lực đến ngày DD/MM/YYYY" sentence
+    // (your package is valid until ...) which the English template
+    // intentionally drops.
+    const successSample =
+      "(Thanh toán) Thanh toán phí hội viên 'Lecturer Six Months' thành công (Mã giao dịch: 8X92K1)";
+    const successSquareBrackets =
+      '[Thanh toán] Thanh toán phí hội viên "Lecturer Six Months" thành công (Mã giao dịch: 1085210419). Gói của bạn có hiệu lực đến ngày 04/04/2027.';
+    const failedSample =
+      "(Thanh toán) Thanh toán phí hội viên 'Researcher Six Months' thất bại (Số tiền không đủ)";
+
+    it('classifies the (Thanh toán) success variant as subscription-payment-success', () => {
+      expect(inferNotificationKind(successSample)).toBe('subscription-payment-success');
+    });
+
+    it('classifies the [Thanh toán] success variant as subscription-payment-success', () => {
+      // The BE has shipped the tag with square brackets in production —
+      // the matcher must not depend on the bracket style.
+      expect(inferNotificationKind(successSquareBrackets)).toBe('subscription-payment-success');
+    });
+
+    it('classifies the (Thanh toán) failed variant as subscription-payment-failed', () => {
+      expect(inferNotificationKind(failedSample)).toBe('subscription-payment-failed');
+    });
+
+    it('routes subscription notifications to /subscription for the paid roles', () => {
+      expect(resolveNotificationRoute(successSample, 'Researcher')).toBe('/subscription');
+      expect(resolveNotificationRoute(successSample, 'Lecturer')).toBe('/subscription');
+      expect(resolveNotificationRoute(successSquareBrackets, 'Lecturer')).toBe('/subscription');
+      expect(resolveNotificationRoute(failedSample, 'Researcher')).toBe('/subscription');
+    });
+
+    it('falls back to /forum when the role cannot reach /subscription (e.g. Reviewer)', () => {
+      // Reviewer is not in the spec's roles list — the resolver returns
+      // the safe /forum fallback instead of logging the user out.
+      expect(resolveNotificationRoute(successSample, 'Reviewer')).toBe(
+        getSafeFallbackRoute(),
+      );
+    });
+
+    it('extracts the plan name as the dynamic suffix for the body template', () => {
+      // The English body template is "Membership fee for "{suffix}" was
+      // paid successfully." — the {suffix} placeholder must be the plan
+      // name pulled out of the BE message, in whatever quote style the
+      // BE happens to send (single, double, or smart).
+      const stripped = stripNotificationTagPrefix(successSquareBrackets);
+      expect(extractNotificationDynamicSuffix(stripped)).toBe('Lecturer Six Months');
+      const strippedSingle = stripNotificationTagPrefix(successSample);
+      expect(extractNotificationDynamicSuffix(strippedSingle)).toBe('Lecturer Six Months');
     });
   });
 });

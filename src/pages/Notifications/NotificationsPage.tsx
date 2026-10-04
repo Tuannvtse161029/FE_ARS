@@ -138,6 +138,11 @@ const KIND_ICON_MAP: Record<NotificationKind, typeof Inbox> = {
   // Research Topic learning-material events
   'topic-learning-material-added': Inbox,
   'topic-learning-material-removed': AlertTriangle,
+  // Subscription payment events — Inbox for the success state (it's a
+  // routine confirmation) and AlertTriangle for the failed state so the
+  // user can spot a payment problem at a glance.
+  'subscription-payment-success': Inbox,
+  'subscription-payment-failed': AlertTriangle,
   // Forum
   'forum-reply': Inbox,
   'forum-post-liked': Inbox,
@@ -277,6 +282,12 @@ function titleForKind(
     case 'topic-learning-material-removed':
       return t('notif.topicLearningMaterialRemoved', 'Shared material removed');
 
+    // Subscription payment events. Mirror of NotificationCenter.tsx.
+    case 'subscription-payment-success':
+      return t('notif.subscriptionPaymentSuccess', 'Subscription payment received');
+    case 'subscription-payment-failed':
+      return t('notif.subscriptionPaymentFailed', 'Subscription payment failed');
+
     case 'unknown':
     default:
       return t('notif.notification', 'Notification');
@@ -338,6 +349,9 @@ const KIND_BODY_KEY: Partial<Record<NotificationKind, string>> = {
   // Research Topic learning-material events
   'topic-learning-material-added': 'notif.body.topicLearningMaterialAdded',
   'topic-learning-material-removed': 'notif.body.topicLearningMaterialRemoved',
+  // Subscription payment events. Mirror of NotificationCenter.tsx.
+  'subscription-payment-success': 'notif.body.subscriptionPaymentSuccess',
+  'subscription-payment-failed': 'notif.body.subscriptionPaymentFailed',
 };
 
 function renderNotificationMessage(
