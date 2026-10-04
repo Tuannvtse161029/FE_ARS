@@ -93,6 +93,10 @@ export interface SessionUser {
  */
 export interface PersistedSessionUser {
   id: number;
+  username?: string;
+  email?: string;
+  fullName?: string;
+  avatarUrl?: string | null;
   roleId: number | null;
   roleName: string | null;
   roles?: UserRole[];
@@ -106,6 +110,10 @@ export interface PersistedSessionUser {
 
 const PERSISTED_KEYS: ReadonlyArray<keyof PersistedSessionUser> = [
   'id',
+  'username',
+  'email',
+  'fullName',
+  'avatarUrl',
   'roleId',
   'roleName',
   'roles',
@@ -148,8 +156,7 @@ export const projectUser = (user: User | SessionUser | null | undefined): Sessio
 
 /**
  * Project a `SessionUser` down to the storage-safe
- * `PersistedSessionUser`. Strips every PII field — the resulting blob
- * contains only opaque IDs and feature flags the guards need. This is
+ * `PersistedSessionUser`.
  * what actually hits `localStorage` / `sessionStorage`.
  */
 export const projectUserForStorage = (
@@ -158,6 +165,10 @@ export const projectUserForStorage = (
   if (!user) return null;
   const persisted: PersistedSessionUser = {
     id: user.id,
+    username: user.username,
+    email: user.email,
+    fullName: user.fullName,
+    avatarUrl: user.avatarUrl ?? null,
     roleId: user.roleId ?? null,
     roleName: user.roleName ?? null,
     roles: user.roles,
