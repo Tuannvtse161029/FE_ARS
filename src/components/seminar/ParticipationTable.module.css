@@ -326,6 +326,18 @@
   border: 1px solid color-mix(in srgb, var(--status-danger-text) 20%, transparent);
 }
 
+/* Auto-declined state — the seminar reached IN PROGRESS while the
+ * participant was still PENDING, so the FE hides the Accept/Reject/
+ * Participate affordances and renders a read-only "Missed RSVP" pill.
+ * Uses the muted/danger-adjacent palette so the row reads as locked
+ * without leaning into the bright warning or strong-danger treatment
+ * that the in-progress / declined pills already cover. */
+.statusPillMissedRsvp {
+  background: color-mix(in srgb, var(--status-danger-text) 12%, var(--surface-sunken));
+  color: var(--status-danger-text);
+  border: 1px dashed color-mix(in srgb, var(--status-danger-text) 35%, transparent);
+}
+
 /* ── Action buttons (per row) ────────────────────────────────────── */
 .actionsCell {
   display: flex;

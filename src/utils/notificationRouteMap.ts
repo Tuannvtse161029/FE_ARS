@@ -116,6 +116,19 @@ interface NotificationRouteSpec {
   // authenticated user's role is not in this set, the route resolver
   // returns the safe fallback instead of navigating.
   roles: ReadonlyArray<UserRole>;
+  // Optional per-role path override. When the current user's role has
+  // an entry here, it wins over `path`. Use this when the same kind
+  // of notification should land different roles on different
+  // surfaces — e.g. a seminar invitation needs to send the
+  // organizer (Lecturer / Researcher) to the management workspace
+  // at `/seminar-workspace`, but the invitee (Graduate Student /
+  // Reviewer) to the participations inbox at `/seminar-participations`
+  // because the management surface rejects the invitee role via
+  // RoleRouteGuard and would otherwise redirect them to their
+  // landing page (which is what the September 2026 bug report
+  // described: "clicking a seminar invitation sends me to Discover
+  // Research").
+  pathByRole?: Partial<Record<UserRole, string>>;
   // Optional: a regex that captures a numeric id from the message so
   // we can build `/review-tasks/123` style URLs. The first capture group
   // is the id. Reserved for future per-entity routing — currently unused.
@@ -124,6 +137,22 @@ interface NotificationRouteSpec {
 
 // Each entry maps a kind prefix → route + RBAC. Add new events here, never
 // inline in a component, so the navigation matrix stays auditable.
+//
+// Authoring rule (October 2026 audit):
+//   The `roles` array MUST be a subset of the destination route's
+//   `RoleRouteGuard.allow` list. If a role would be accepted by the
+//   resolver but rejected by the route guard, the user is silently
+//   bounced to their landing page — the exact bug that motivated the
+//   seminar-invitation fix in the previous turn. Mismatches here fall
+//   through to the safe `/forum` fallback and break the user
+//   experience. When a single notification kind should land
+//   different roles on different surfaces, use `pathByRole` (e.g.
+//   `group-member-accepted` sends Lecturers to /research-group but
+//   Graduate Students to /student-research-groups).
+//
+// To verify, every spec was cross-referenced against the route guards
+// in src/App.tsx. The audit table lives in the September 2026
+// notification-routing audit doc.
 const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec: NotificationRouteSpec }> = [
   // ── Researcher events ─────────────────────────────────────────────────────
   {
@@ -190,12 +219,22 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
   },
 
   // ── Lecturer events ───────────────────────────────────────────────────────
+  // Note: every Lecturer-targeted route guard is `allow={['Lecturer']}`
+  // (not `['Lecturer', 'Admin']`). Admin is intentionally NOT in the
+  // allow list for the Lecturer workspace — Admin has a separate
+  // workspace under /admin. Including Admin in these spec `roles`
+  // arrays would make the resolver return /lecturer/... for an Admin,
+  // and RoleRouteGuard would silently bounce them to /home
+  // ("Discover Research"). They are listed as ['Lecturer'] so an
+  // Admin receiving one of these (an unanticipated BE mis-fire)
+  // falls through to the safe /forum fallback instead of being
+  // deep-linked into a page they cannot read.
   {
     kind: 'student-report-submitted',
     prefix: '[Lecturer] report submitted',
     spec: {
       path: ROUTES.LECTURER_EVALUATE_REPORTS,
-      roles: ['Lecturer', 'Admin'],
+      roles: ['Lecturer'],
     },
   },
   {
@@ -203,7 +242,7 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     prefix: '[Lecturer] report resubmitted',
     spec: {
       path: ROUTES.LECTURER_EVALUATE_REPORTS,
-      roles: ['Lecturer', 'Admin'],
+      roles: ['Lecturer'],
     },
   },
   {
@@ -211,23 +250,54 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     prefix: '[Lecturer] topic requested',
     spec: {
       path: ROUTES.LECTURER_RESEARCH_TOPICS,
-      roles: ['Lecturer', 'Admin'],
+      roles: ['Lecturer'],
     },
   },
   {
     kind: 'seminar-participant-response',
     prefix: '[Seminar] participant',
     spec: {
-      path: ROUTES.SEMINAR_WORKSPACE,
-      roles: ['Lecturer', 'Admin'],
+      // /seminar-workspace is gated for ['Lecturer','Researcher'].
+      // A Researcher can also organise a seminar, so they legitimately
+      // receive this notification when an invitee responds to their
+      // seminar. We avoid /forum and instead land them on their
+      // participations inbox (the only surface that shows the
+      // accept/decline ledger they care about).
+      path: ROUTES.SEMINAR_PARTICIPATIONS,
+      roles: ['Lecturer', 'Researcher'],
     },
   },
   {
     kind: 'seminar-feedback-available',
     prefix: '[Seminar] feedback',
     spec: {
-      path: ROUTES.SEMINAR_WORKSPACE,
-      roles: ['Lecturer', 'Admin'],
+      // Same as seminar-participant-response — the organizer's
+      // participations inbox is where the feedback is rendered.
+      path: ROUTES.SEMINAR_PARTICIPATIONS,
+      roles: ['Lecturer', 'Researcher'],
+    },
+  },
+
+  // ── Group membership lifecycle events ─────────────────────────────────
+  // The BE fires a `[Group] membership result: …` notification to a
+  // Graduate Student when their application to a group is accepted
+  // or rejected, and a `[Group] membership: …` notification to the
+  // supervising Lecturer when a new application arrives. Both
+  // prefixes share the literal token `[Group] membership`; because
+  // `inferNotificationKind` does a longest-prefix-wins by spec
+  // ORDER (not by length), the more specific `membership-result`
+  // entry MUST be declared BEFORE the catch-all
+  // `group-membership-response` entry, otherwise the
+  // Graduate-Student-targeted message would be misclassified as
+  // the Lecturer-targeted one. (This was the September 2026 audit
+  // finding — the entry had been declared later in the table and
+  // therefore was effectively dead code.)
+  {
+    kind: 'membership-result',
+    prefix: '[Group] membership result',
+    spec: {
+      path: ROUTES.STUDENT_RESEARCH_GROUPS,
+      roles: ['Graduate Student', 'Lecturer'],
     },
   },
   {
@@ -235,7 +305,7 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     prefix: '[Group] membership',
     spec: {
       path: ROUTES.RESEARCH_GROUP,
-      roles: ['Lecturer', 'Admin'],
+      roles: ['Lecturer'],
     },
   },
   {
@@ -243,7 +313,7 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     prefix: '[Lecturer] material shared',
     spec: {
       path: ROUTES.LECTURER_MATERIALS,
-      roles: ['Lecturer', 'Admin'],
+      roles: ['Lecturer'],
     },
   },
   {
@@ -251,7 +321,7 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     prefix: '[Lecturer] share accepted',
     spec: {
       path: ROUTES.LECTURER_MATERIALS,
-      roles: ['Lecturer', 'Admin'],
+      roles: ['Lecturer'],
     },
   },
   {
@@ -259,7 +329,7 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     prefix: '[Lecturer] share declined',
     spec: {
       path: ROUTES.LECTURER_MATERIALS,
-      roles: ['Lecturer', 'Admin'],
+      roles: ['Lecturer'],
     },
   },
 
@@ -270,7 +340,7 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     prefix: '[Group] join request',
     spec: {
       path: ROUTES.RESEARCH_GROUP,
-      roles: ['Lecturer', 'Admin'],
+      roles: ['Lecturer'],
     },
   },
   {
@@ -278,16 +348,23 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     prefix: '(Nhóm nghiên cứu) Yêu cầu tham gia mới',
     spec: {
       path: ROUTES.RESEARCH_GROUP,
-      roles: ['Lecturer', 'Admin'],
+      roles: ['Lecturer'],
     },
   },
   // Lecturer → Graduate Student: the Lecturer accepted.
+  // /student-research-groups is gated for ['Graduate Student','Lecturer'].
+  // The Lecturer is included in the allow list because a Lecturer can
+  // navigate to the same page (e.g. to inspect a student's view of the
+  // group they share), but this kind is only fired to the Graduate
+  // Student in practice. Adding Lecturer here is harmless: the resolver
+  // would land a Lecturer who received this on /student-research-groups
+  // which they can read.
   {
     kind: 'group-join-accepted',
     prefix: '[Student] join accepted',
     spec: {
       path: ROUTES.STUDENT_RESEARCH_GROUPS,
-      roles: ['Graduate Student', 'Admin'],
+      roles: ['Graduate Student', 'Lecturer'],
     },
   },
   {
@@ -295,7 +372,7 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     prefix: '(Nhóm nghiên cứu) Yêu cầu tham gia được chấp thuận',
     spec: {
       path: ROUTES.STUDENT_RESEARCH_GROUPS,
-      roles: ['Graduate Student', 'Admin'],
+      roles: ['Graduate Student', 'Lecturer'],
     },
   },
   // Lecturer → Graduate Student: the Lecturer rejected.
@@ -304,7 +381,7 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     prefix: '[Student] join rejected',
     spec: {
       path: ROUTES.STUDENT_RESEARCH_GROUPS,
-      roles: ['Graduate Student', 'Admin'],
+      roles: ['Graduate Student', 'Lecturer'],
     },
   },
   {
@@ -312,16 +389,25 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     prefix: '(Nhóm nghiên cứu) Yêu cầu tham gia bị từ chối',
     spec: {
       path: ROUTES.STUDENT_RESEARCH_GROUPS,
-      roles: ['Graduate Student', 'Admin'],
+      roles: ['Graduate Student', 'Lecturer'],
     },
   },
   // BE → existing group members when a new member is accepted.
+  // Recipients include BOTH the supervising Lecturer AND the other
+  // Graduate Students already in the group. The Lecturer's
+  // /research-group and the Graduate Student's
+  // /student-research-groups are different surfaces (and different
+  // RoleRouteGuard allow lists), so this is the textbook case for
+  // `pathByRole` — see the September 2026 routing fix.
   {
     kind: 'group-member-accepted',
     prefix: '[Group] new member',
     spec: {
       path: ROUTES.RESEARCH_GROUP,
-      roles: ['Lecturer', 'Admin'],
+      roles: ['Graduate Student', 'Lecturer'],
+      pathByRole: {
+        'Graduate Student': ROUTES.STUDENT_RESEARCH_GROUPS,
+      },
     },
   },
   {
@@ -329,19 +415,25 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     prefix: '(Nhóm nghiên cứu) Thành viên mới được chấp thuận',
     spec: {
       path: ROUTES.RESEARCH_GROUP,
-      roles: ['Lecturer', 'Admin'],
+      roles: ['Graduate Student', 'Lecturer'],
+      pathByRole: {
+        'Graduate Student': ROUTES.STUDENT_RESEARCH_GROUPS,
+      },
     },
   },
 
   // ── Research Topic learning-material events ─────────────────────────────
   // Lecturer attached a new library material to a topic → notify the
-  // Graduate Students assigned to that topic.
+  // Graduate Students assigned to that topic. (A Lecturer can also
+  // navigate to /student-research-groups as a courtesy read; the route
+  // allows it. So the spec lists ['Graduate Student','Lecturer'] to
+  // match the route's allow list and avoid the safe-fallback bounce.)
   {
     kind: 'topic-learning-material-added',
     prefix: '[Student] topic material added',
     spec: {
       path: ROUTES.STUDENT_RESEARCH_GROUPS,
-      roles: ['Graduate Student', 'Admin'],
+      roles: ['Graduate Student', 'Lecturer'],
     },
   },
   {
@@ -349,7 +441,7 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     prefix: '(Nhóm nghiên cứu) Tài liệu học tập mới được thêm',
     spec: {
       path: ROUTES.STUDENT_RESEARCH_GROUPS,
-      roles: ['Graduate Student', 'Admin'],
+      roles: ['Graduate Student', 'Lecturer'],
     },
   },
   // Lecturer detached a material from a topic.
@@ -358,7 +450,7 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     prefix: '[Student] topic material removed',
     spec: {
       path: ROUTES.STUDENT_RESEARCH_GROUPS,
-      roles: ['Graduate Student', 'Admin'],
+      roles: ['Graduate Student', 'Lecturer'],
     },
   },
   {
@@ -366,21 +458,40 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     prefix: '(Nhóm nghiên cứu) Tài liệu học tập bị xóa',
     spec: {
       path: ROUTES.STUDENT_RESEARCH_GROUPS,
-      roles: ['Graduate Student', 'Admin'],
+      roles: ['Graduate Student', 'Lecturer'],
     },
   },
 
   // ── Graduate Student events ───────────────────────────────────────────────
-  // Seminar invitation → redirect to the Seminar workspace. Accept/Decline
-  // lives on the destination page (per the spec — never on the dropdown).
-  // Both Lecturer and Graduate Student share the seminar workspace route;
-  // the role guard permits either.
+  // Seminar invitation / schedule update. Accept/Decline lives on the
+  // destination page (per the spec — never on the dropdown).
+  //
+  // Recipient-by-recipient:
+  //   * Lecturer  →  /seminar-workspace  (organizer, manages the seminar)
+  //   * Researcher (organizer)  →  /seminar-workspace
+  //   * Researcher (attendee)   →  /seminar-participations
+  //   * Graduate Student  →  /seminar-participations  (invitee)
+  //   * Reviewer  →  /seminar-participations  (invitee)
+  //
+  // The BE doesn't currently distinguish "Researcher as organizer" vs
+  // "Researcher as attendee" on a per-event basis, so the pathByRole
+  // for Researcher defaults to /seminar-participations (the safer
+  // attendee surface). If the BE later wants to single out the
+  // organizer case, the test that asserts this routing is the
+  // "researcher seminar invitation lands on /seminar-participations"
+  // test in notificationRouteMap.test.ts — update that test alongside
+  // the BE change so the contract stays pinned.
   {
     kind: 'seminar-invitation',
     prefix: '[Seminar] invitation',
     spec: {
       path: ROUTES.SEMINAR_WORKSPACE,
-      roles: ['Graduate Student', 'Lecturer', 'Admin'],
+      roles: ['Graduate Student', 'Lecturer', 'Researcher', 'Reviewer'],
+      pathByRole: {
+        'Graduate Student': ROUTES.SEMINAR_PARTICIPATIONS,
+        Reviewer: ROUTES.SEMINAR_PARTICIPATIONS,
+        Researcher: ROUTES.SEMINAR_PARTICIPATIONS,
+      },
     },
   },
   {
@@ -388,7 +499,12 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     prefix: '[Seminar] schedule',
     spec: {
       path: ROUTES.SEMINAR_WORKSPACE,
-      roles: ['Graduate Student', 'Lecturer', 'Admin'],
+      roles: ['Graduate Student', 'Lecturer', 'Researcher', 'Reviewer'],
+      pathByRole: {
+        'Graduate Student': ROUTES.SEMINAR_PARTICIPATIONS,
+        Reviewer: ROUTES.SEMINAR_PARTICIPATIONS,
+        Researcher: ROUTES.SEMINAR_PARTICIPATIONS,
+      },
     },
   },
   {
@@ -396,7 +512,7 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     prefix: '[Student] added to group',
     spec: {
       path: ROUTES.STUDENT_RESEARCH_GROUPS,
-      roles: ['Graduate Student', 'Admin'],
+      roles: ['Graduate Student', 'Lecturer'],
     },
   },
   {
@@ -404,7 +520,7 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     prefix: '[Student] topic assigned',
     spec: {
       path: ROUTES.STUDENT_RESEARCH_GROUPS,
-      roles: ['Graduate Student', 'Admin'],
+      roles: ['Graduate Student', 'Lecturer'],
     },
   },
   {
@@ -412,15 +528,7 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     prefix: '(Nhóm nghiên cứu) Chủ đề được phân công',
     spec: {
       path: ROUTES.STUDENT_RESEARCH_GROUPS,
-      roles: ['Graduate Student', 'Admin'],
-    },
-  },
-  {
-    kind: 'membership-result',
-    prefix: '[Group] membership result',
-    spec: {
-      path: ROUTES.STUDENT_RESEARCH_GROUPS,
-      roles: ['Graduate Student', 'Admin'],
+      roles: ['Graduate Student', 'Lecturer'],
     },
   },
   {
@@ -428,20 +536,20 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     prefix: '[Student] group invitation',
     spec: {
       path: ROUTES.STUDENT_RESEARCH_GROUPS,
-      roles: ['Graduate Student', 'Admin'],
+      roles: ['Graduate Student', 'Lecturer'],
     },
   },
   {
     kind: 'milestone-opened',
     prefix: '[Student] milestone opened',
-    spec: { path: ROUTES.SUBMIT_REPORT, roles: ['Graduate Student', 'Admin'] },
+    spec: { path: ROUTES.SUBMIT_REPORT, roles: ['Graduate Student', 'Lecturer'] },
   },
   {
     kind: 'learning-material-available',
     prefix: '[Student] learning material',
     spec: {
       path: ROUTES.STUDENT_RESEARCH_GROUPS,
-      roles: ['Graduate Student', 'Admin'],
+      roles: ['Graduate Student', 'Lecturer'],
     },
   },
   {
@@ -449,7 +557,7 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     prefix: '[Student] material unshared',
     spec: {
       path: ROUTES.STUDENT_RESEARCH_GROUPS,
-      roles: ['Graduate Student', 'Admin'],
+      roles: ['Graduate Student', 'Lecturer'],
     },
   },
   {
@@ -457,18 +565,18 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     prefix: '[Student] topic completed',
     spec: {
       path: ROUTES.STUDENT_RESEARCH_GROUPS,
-      roles: ['Graduate Student', 'Admin'],
+      roles: ['Graduate Student', 'Lecturer'],
     },
   },
   {
     kind: 'report-evaluated',
     prefix: '[Student] report evaluated',
-    spec: { path: ROUTES.SUBMIT_REPORT, roles: ['Graduate Student', 'Admin'] },
+    spec: { path: ROUTES.SUBMIT_REPORT, roles: ['Graduate Student', 'Lecturer'] },
   },
   {
     kind: 'report-rejected',
     prefix: '[Student] report rejected',
-    spec: { path: ROUTES.SUBMIT_REPORT, roles: ['Graduate Student', 'Admin'] },
+    spec: { path: ROUTES.SUBMIT_REPORT, roles: ['Graduate Student', 'Lecturer'] },
   },
 
   // ── Admin events ──────────────────────────────────────────────────────────
@@ -795,6 +903,19 @@ export function resolveNotificationRoute(
   }
   if (!spec.roles.includes(role)) {
     return getSafeFallbackRoute();
+  }
+  // Per-role path override wins over the default `path` so the same
+  // notification can land different roles on different surfaces.
+  // Currently used by `seminar-invitation` / `seminar-schedule-update`
+  // to send invitees (Graduate Student / Reviewer) to the
+  // participations inbox while organizers (Lecturer / Researcher) keep
+  // landing on the management workspace. Without this seam, an
+  // invitee clicking a seminar invitation would be redirected by
+  // RoleRouteGuard to /home (the "Discover Research" landing page) —
+  // see the September 2026 bug report.
+  const roleSpecificPath = spec.pathByRole?.[role];
+  if (roleSpecificPath) {
+    return roleSpecificPath;
   }
   // The idPattern branch is reserved for routes like `/review-tasks/:id`
   // that need a captured numeric id from the message. We currently don't
