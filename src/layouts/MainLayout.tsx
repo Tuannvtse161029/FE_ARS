@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useAuthStore } from '../store';
 import { AvatarVisual } from '../components/profile/AvatarVisual';
 import { ROUTES } from '../routes/paths';
 import { reviewerService } from '../services/reviewer.service';
@@ -532,9 +533,18 @@ export const MainLayout = () => {
   const accountTier = user?.accountTier ?? 'Free';
 
   // Display name and avatar initials are derived from the authenticated user.
-  const displayName = user?.username || user?.email || 'Account';
+  // Priority: fullName > username > email. During the async BE-sync window
+  // (new tab opened while Zustand rehydrates), fall back to the active role
+  // label so the header never shows a generic "Account" string.
+  const { isLoading: authStoreLoading } = useAuthStore();
+  const displayName =
+    user?.fullName ||
+    user?.username ||
+    user?.email ||
+    (authStoreLoading ? '…' : activeRole) ||
+    'Account';
   const avatarUrl = user?.avatarUrl ?? null;
-  const avatarInitials = (user?.username || user?.email || 'U')
+  const avatarInitials = (user?.fullName || user?.username || user?.email || activeRole || 'U')
     .split(/\s+/)
     .map((n) => n[0] ?? '')
     .join('')

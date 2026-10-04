@@ -1049,6 +1049,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // keeps the in-memory store, the persisted `ars-auth-storage`
         // blob, and the legacy `ars_user` blob all in sync.
         authStore.updateUser({
+          username: freshUser.username,
+          email: freshUser.email,
+          fullName: freshUser.fullName,
           isActive: freshUser.isActive,
           verificationStatus: freshUser.verificationStatus,
           accountTier: freshUser.accountTier,
