@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { ExternalLink } from 'lucide-react';
+import { Eye } from 'lucide-react';
 import styles from './ResolveReportModal.module.css';
 import type {
   ViolationReport,
   ViolationResolutionAction,
 } from '../../types/adminAuxiliary';
 import { useI18n, useLocale } from '../../i18n/I18nContext';
+import { ReportViolationPreviewModal } from './ReportViolationPreviewModal';
 
 interface ResolveReportModalProps {
   report: ViolationReport | null;
@@ -37,6 +38,7 @@ export function ResolveReportModal({
     'DISMISS',
   );
   const [note, setNote] = useState('');
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   const isReadOnly = report?.status !== 'PENDING';
 
@@ -46,6 +48,7 @@ export function ResolveReportModal({
     if (isOpen) {
       setSelectedAction('DISMISS');
       setNote('');
+      setIsPreviewOpen(false);
     }
   }, [isOpen, report?.reportId]);
 
@@ -141,26 +144,22 @@ export function ResolveReportModal({
                 <span className={styles.metaLabel}>{t('admin.contentReports.modal.targetContentId', 'Target Content ID')}</span>
                 <span className={styles.metaValue}>
                   #{report.targetContentId}
-                  {report.type === 'FORUM_POST' || report.type === 'FORUM_COMMENT' ? (
-                    <a
-                      href="/forum"
-                      target="_blank"
-                      rel="noopener noreferrer"
+                  {report.targetContentId ? (
+                    <button
+                      type="button"
                       className={styles.viewContentLink}
-                      title={t('admin.contentReports.modal.viewInForum', 'View in Forum')}
+                      onClick={() => setIsPreviewOpen(true)}
+                      title={
+                        report.type === 'RESEARCH_PAPER'
+                          ? t('admin.contentReports.modal.viewPaper', 'View Paper')
+                          : t('admin.contentReports.modal.viewInForum', 'View in Forum')
+                      }
                     >
-                      <ExternalLink size={12} /> {t('admin.contentReports.modal.viewInForum', 'View in Forum')}
-                    </a>
-                  ) : report.type === 'RESEARCH_PAPER' ? (
-                    <a
-                      href={`/admin/paper-submissions/${report.targetContentId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={styles.viewContentLink}
-                      title={t('admin.contentReports.modal.viewPaper', 'View Paper')}
-                    >
-                      <ExternalLink size={12} /> {t('admin.contentReports.modal.viewPaper', 'View Paper')}
-                    </a>
+                      <Eye size={12} />{' '}
+                      {report.type === 'RESEARCH_PAPER'
+                        ? t('admin.contentReports.modal.viewPaper', 'View Paper')
+                        : t('admin.contentReports.modal.viewInForum', 'View in Forum')}
+                    </button>
                   ) : null}
                 </span>
               </div>
@@ -312,6 +311,12 @@ export function ResolveReportModal({
           className={styles.hiddenForm}
         />
       </div>
+
+      <ReportViolationPreviewModal
+        report={report}
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+      />
     </div>
   );
 }
