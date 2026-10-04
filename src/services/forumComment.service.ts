@@ -17,6 +17,7 @@ function normalizeComment(raw: unknown): ForumComment {
     parent_comment_id?: unknown;
     replyToId?: unknown;
     replyToCommentId?: unknown;
+    isUpvoted?: unknown;
   };
   const resolvedId = Number(record.forumCommentId ?? record.id ?? 0);
   const rawReply =
@@ -43,22 +44,24 @@ function normalizeComment(raw: unknown): ForumComment {
     content: typeof record.content === 'string' ? record.content : '',
     replyId: resolvedReplyId,
     upvoteCount: record.upvoteCount != null ? Number(record.upvoteCount) : 0,
+    isUpvoted: typeof record.isUpvoted === 'boolean' ? record.isUpvoted : false,
     createdAt: typeof record.createdAt === 'string' ? record.createdAt : undefined,
     updatedAt: typeof record.updatedAt === 'string' ? record.updatedAt : undefined,
   };
 }
 
 export const forumCommentService = {
-  // GET /api/ForumComment
+  // GET /api/ForumComment?postId={postId}
   getByPostId: async (postId: number): Promise<ForumComment[]> => {
     try {
       const response = await api.get<ForumComment[]>(
         API_ENDPOINTS.FORUM_COMMENT.GET_ALL,
+        { params: { postId } },
       );
       const all = Array.isArray(response.data) ? response.data : [];
       return all
         .map(normalizeComment)
-        .filter((c) => c.forumPostId === postId);
+        .filter((c) => !c.forumPostId || c.forumPostId === postId);
     } catch {
       return [];
     }

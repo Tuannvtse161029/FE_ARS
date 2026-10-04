@@ -40,7 +40,9 @@ export type NotificationKind =
   | 'membership-result'
   | 'forum-reply'
   | 'forum-post-liked'
+  | 'forum-post-unliked'
   | 'forum-comment-upvoted'
+  | 'forum-comment-unvoted'
   | 'forum-post-commented'
   | 'forum-comment-replied'
   // Reviewer
@@ -548,8 +550,22 @@ const ROUTE_SPECS: ReadonlyArray<{ kind: NotificationKind; prefix: string; spec:
     ] },
   },
   {
+    kind: 'forum-post-unliked',
+    prefix: '[Forum] unlike',
+    spec: { path: ROUTES.FORUM, roles: [
+      'Researcher', 'Reviewer', 'Lecturer', 'Graduate Student', 'Admin',
+    ] },
+  },
+  {
     kind: 'forum-comment-upvoted',
     prefix: '[Forum] upvote',
+    spec: { path: ROUTES.FORUM, roles: [
+      'Researcher', 'Reviewer', 'Lecturer', 'Graduate Student', 'Admin',
+    ] },
+  },
+  {
+    kind: 'forum-comment-unvoted',
+    prefix: '[Forum] unvote',
     spec: { path: ROUTES.FORUM, roles: [
       'Researcher', 'Reviewer', 'Lecturer', 'Graduate Student', 'Admin',
     ] },
@@ -631,6 +647,16 @@ export function inferNotificationKind(message: string): NotificationKind {
 
   // Fallback keyword inspection for natural language BE notifications
   if (
+    normalized.includes('bỏ thích bài viết') ||
+    normalized.includes('hủy thích bài viết') ||
+    normalized.includes('bỏ thích bài đăng') ||
+    normalized.includes('bỏ like bài viết') ||
+    normalized.includes('unliked your post') ||
+    normalized.includes('bỏ bày tỏ cảm xúc')
+  ) {
+    return 'forum-post-unliked';
+  }
+  if (
     normalized.includes('thích bài viết') ||
     normalized.includes('liked your post') ||
     normalized.includes('thích bài đăng') ||
@@ -640,6 +666,16 @@ export function inferNotificationKind(message: string): NotificationKind {
     normalized.includes('bày tỏ cảm xúc')
   ) {
     return 'forum-post-liked';
+  }
+  if (
+    normalized.includes('bỏ thích bình luận') ||
+    normalized.includes('hủy thích bình luận') ||
+    normalized.includes('bỏ ủng hộ bình luận') ||
+    normalized.includes('hủy ủng hộ bình luận') ||
+    normalized.includes('bỏ like bình luận') ||
+    normalized.includes('unvoted your comment')
+  ) {
+    return 'forum-comment-unvoted';
   }
   if (
     normalized.includes('ủng hộ bình luận') ||
@@ -849,7 +885,7 @@ export function formatForumNotification(raw: string, locale: Locale): string | n
   const text = (raw ?? '').trim();
   if (!text) return null;
 
-  // 1. Post liked: "[Forum] {Actor} đã thích bài viết của bạn: \"{Title}\""
+  // 1. Post liked / unliked: "[Forum] {Actor} đã thích bài viết của bạn: \"{Title}\""
   const likeMatch = text.match(
     /^(?:\[(?:Forum|Diễn đàn)\]\s*)?([\s\S]+?)\s+đã thích bài viết của bạn:\s*["“”«»]([\s\S]*?)["“”«»]\.?$/u,
   );
@@ -861,7 +897,18 @@ export function formatForumNotification(raw: string, locale: Locale): string | n
       : `${actor} liked your post: "${title}"`;
   }
 
-  // 2. Comment upvoted: "[Forum] {Actor} đã ủng hộ bình luận của bạn: \"{Snippet}\""
+  const unlikeMatch = text.match(
+    /^(?:\[(?:Forum|Diễn đàn)\]\s*)?([\s\S]+?)\s+đã bỏ thích bài viết của bạn:\s*["“”«»]([\s\S]*?)["“”«»]\.?$/u,
+  );
+  if (unlikeMatch) {
+    const actor = unlikeMatch[1].trim();
+    const title = unlikeMatch[2].trim();
+    return locale === 'vi'
+      ? `${actor} đã bỏ thích bài viết của bạn: "${title}"`
+      : `${actor} unliked your post: "${title}"`;
+  }
+
+  // 2. Comment upvoted / unvoted: "[Forum] {Actor} đã ủng hộ bình luận của bạn: \"{Snippet}\""
   const upvoteMatch = text.match(
     /^(?:\[(?:Forum|Diễn đàn)\]\s*)?([\s\S]+?)\s+đã ủng hộ bình luận của bạn:\s*["“”«»]([\s\S]*?)["“”«»]\.?$/u,
   );
@@ -871,6 +918,17 @@ export function formatForumNotification(raw: string, locale: Locale): string | n
     return locale === 'vi'
       ? `${actor} đã ủng hộ bình luận của bạn: "${snippet}"`
       : `${actor} upvoted your comment: "${snippet}"`;
+  }
+
+  const unvoteMatch = text.match(
+    /^(?:\[(?:Forum|Diễn đàn)\]\s*)?([\s\S]+?)\s+đã bỏ thích bình luận của bạn:\s*["“”«»]([\s\S]*?)["“”«»]\.?$/u,
+  );
+  if (unvoteMatch) {
+    const actor = unvoteMatch[1].trim();
+    const snippet = unvoteMatch[2].trim();
+    return locale === 'vi'
+      ? `${actor} đã bỏ thích bình luận của bạn: "${snippet}"`
+      : `${actor} unvoted your comment: "${snippet}"`;
   }
 
   // 3. Comment posted: "[Diễn đàn] {Actor} đã bình luận vào bài viết \"{Title}\" của bạn."
