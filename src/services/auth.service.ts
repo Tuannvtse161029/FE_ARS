@@ -45,6 +45,12 @@ const ARS_AUTH_STORAGE_KEYS = [
   // access token; held only in `localStorage` and only when Remember Me
   // is on. Without the in-memory session key it is unrecoverable.
   'ars_token_refresh_v1',
+  // Agent 55 — persistent session key. Lives in `localStorage` so a
+  // sibling tab / post-reload can decrypt the JWT envelope. Must be
+  // wiped on logout / 401 / clearAuthSession so the recovery path
+  // cannot resurrect a stale session after the user explicitly signed
+  // out. Also stripped by `secureToken.clear()`.
+  'ars_session_key_v1',
   'ars_user',
   'ars_remember',
   'ars-active-role',

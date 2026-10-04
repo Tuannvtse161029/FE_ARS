@@ -1,7 +1,9 @@
+import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { isAdminUser, isGuestUser } from '../utils/roleNormalizer';
-import { readStoredUser } from '../utils/storedUser';
-import type { VerificationStatus } from '../types/auth';
+import { readStoredUser, readStoredUserAsync } from '../utils/storedUser';
+import { secureToken } from '../utils/secureToken';
+import type { AccountTier, VerificationStatus } from '../types/auth';
 
 // Centralised permission flags derived from the auth store.
 //
@@ -30,37 +32,104 @@ export interface Permissions {
   isGuest: boolean;
 }
 
-export const usePermissions = (): Permissions => {
-  const { user, effectiveRole } = useAuth();
-  const stored = readStoredUser();
+/**
+ * Agent 55 — drive the encrypted-envelope recovery on every mount of a
+ * permission-consuming page. The encrypted user projection is in
+ * `localStorage` under `ars_user_enc_v1` and only decryptable once the
+ * in-memory session key has been rehydrated. Without this effect the
+ * freshly-opened sibling tab would render the Guest / pending state
+ * for a user who is already authenticated on disk.
+ */
+const useEncryptedUserBootstrap = () => {
+  const [snapshot, setSnapshot] = useState<{
+    isActive: boolean;
+    roleId: number | null;
+    roleName: string | null;
+    verificationStatus: VerificationStatus | null;
+    accountTier: AccountTier | undefined;
+    effectiveRole: string | null;
+    isNewUser: boolean | null;
+    requiresOnboarding: boolean | null;
+  } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const result = await readStoredUserAsync();
+      if (cancelled) return;
+      if (result) {
+        setSnapshot({
+          isActive: result.isActive,
+          roleId: result.roleId,
+          roleName: result.roleName,
+          verificationStatus:
+            result.verificationStatus === 'Accepted' ||
+            result.verificationStatus === 'Rejected' ||
+            result.verificationStatus === 'Pending'
+              ? result.verificationStatus
+              : null,
+          accountTier: result.accountTier,
+          effectiveRole: result.effectiveRole ?? null,
+          isNewUser: result.isNewUser ?? null,
+          requiresOnboarding: result.requiresOnboarding ?? null,
+        });
+      } else {
+        setSnapshot(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return snapshot;
+};
 
-  const isActive = user?.isActive ?? stored?.isActive ?? false;
-  // Agent 30 (regression) — `verificationStatus` is a tri-state
-  // (`'Pending' | 'Accepted' | 'Rejected' | null`). A `null` value means
-  // the BE has not yet produced a verification result (e.g. a brand-new
-  // first-time Google user that has not been through the role-request
-  // lifecycle). We preserve `null` so the downstream `isVerified`
-  // derivation below sees `false` for both `isActive === false` and
-  // `verificationStatus === null` without falsely implying a submitted
-  // role request is awaiting Admin review.
-  const verificationStatus: VerificationStatus | null =
-    user?.verificationStatus === 'Accepted' ||
-    user?.verificationStatus === 'Rejected'
-      ? user.verificationStatus
-      : user?.verificationStatus === 'Pending'
-        ? 'Pending'
-        : stored?.verificationStatus === 'Accepted' ||
-            stored?.verificationStatus === 'Rejected'
-          ? stored.verificationStatus
-          : stored?.verificationStatus === 'Pending'
-            ? 'Pending'
-            : null;
+export const usePermissions = (): Permissions => {
+  const { user, effectiveRole, isLoading } = useAuth();
+  const stored = readStoredUser();
+  // Agent 55 — also read the encrypted envelope asynchronously. The
+  // sync `readStoredUser` reads the legacy plaintext `ars_user` key,
+  // which is empty for any Session-2+ build. The async path decrypts
+  // the `ars_user_enc_v1` envelope after the in-memory session key
+  // has been rehydrated, so a freshly-opened sibling tab resolves to
+  // the correct user on the very next render. While the async read
+  // is in flight we keep the conservative defaults below (every
+  // flag `false`) so the page does not flash the pending state.
+  const encryptedSnapshot = useEncryptedUserBootstrap();
+
+  // The user object on the auth store is the canonical source — but
+  // in a freshly-opened sibling tab it may be `null` for one render
+  // while the rehydrate is in flight. While `isLoading` is true we
+  // MUST treat the user as "not yet known" so the page does not
+  // mis-classify them. We prefer the async-decrypted envelope as a
+  // tie-breaker so the in-flight rehydrate does not flicker through
+  // the pending state.
+  const authStoreUser = isLoading ? null : user;
+  const mergedIsActive =
+    authStoreUser?.isActive ??
+    encryptedSnapshot?.isActive ??
+    stored?.isActive ??
+    false;
+  const mergedRoleId =
+    (authStoreUser as { roleId?: number | null } | null)?.roleId ??
+    encryptedSnapshot?.roleId ??
+    stored?.roleId ??
+    null;
+  const mergedRoleName =
+    authStoreUser?.role ??
+    encryptedSnapshot?.roleName ??
+    stored?.roleName ??
+    null;
+  const mergedVerificationStatus: VerificationStatus | null =
+    authStoreUser?.verificationStatus ??
+    encryptedSnapshot?.verificationStatus ??
+    stored?.verificationStatus ??
+    null;
 
   // User is fully approved only when all three conditions hold:
-  //   isActive === true  AND  verificationStatus === 'Accepted'  AND  roleId !== 0
+  //   isActive === true  AND  verificationStatus === 'Accepted'
   // Defaults to false (lockout-safe) for any missing fields.
   const isVerified =
-    Boolean(isActive) && verificationStatus === 'Accepted';
+    Boolean(mergedIsActive) && mergedVerificationStatus === 'Accepted';
 
   // All verified users may post in the forum. (If a future ticket restricts
   // specific roles from posting, gate here on roleName/roleId.)
@@ -74,8 +143,8 @@ export const usePermissions = (): Permissions => {
   // — see docs/local-only/admin-suite-be-gap-report.md. This matches what
   // useAdminGuard / useVerifiedGuard do, so the three stay in lock-step.
   const canViewAdminPanel = isAdminUser({
-    roleName: user?.role ?? stored?.roleName ?? null,
-    roleId: stored?.roleId ?? null,
+    roleName: mergedRoleName,
+    roleId: mergedRoleId,
   });
 
   // Agent 39 — single source of truth for the Guest display. Prefers the
@@ -83,12 +152,55 @@ export const usePermissions = (): Permissions => {
   // `!isActive && !isAdmin` heuristic when the BE hasn't surfaced the field.
   const isGuest = isGuestUser({
     effectiveRole: effectiveRole ?? null,
-    isActive,
-    verificationStatus,
-    requiresOnboarding: user?.requiresOnboarding ?? stored?.requiresOnboarding ?? null,
-    isNewUser: user?.isNewUser ?? stored?.isNewUser ?? null,
+    isActive: mergedIsActive,
+    verificationStatus: mergedVerificationStatus,
+    requiresOnboarding:
+      authStoreUser?.requiresOnboarding ??
+      encryptedSnapshot?.requiresOnboarding ??
+      stored?.requiresOnboarding ??
+      null,
+    isNewUser:
+      authStoreUser?.isNewUser ??
+      encryptedSnapshot?.isNewUser ??
+      stored?.isNewUser ??
+      null,
     canViewAdminPanel,
   });
+
+  // Diagnostic only — surfaces a one-shot log so a dev who opens a
+  // fresh tab can see the layered resolution. Disabled in prod to
+  // avoid leaking role info to a console viewer.
+  if (import.meta.env?.DEV) {
+    if (typeof window !== 'undefined') {
+      const w = window as unknown as { __arsLastPermsKey?: string };
+      const key = JSON.stringify({
+        isLoading,
+        hasAuth: Boolean(authStoreUser),
+        isActive: mergedIsActive,
+        roleName: mergedRoleName,
+        vs: mergedVerificationStatus,
+        enc: Boolean(encryptedSnapshot),
+        encHasKey: secureToken.hasLiveSessionSync(),
+      });
+      if (w.__arsLastPermsKey !== key) {
+        w.__arsLastPermsKey = key;
+        // eslint-disable-next-line no-console
+        console.info('[usePermissions] resolved', {
+          isVerified,
+          isGuest,
+          canCreatePost,
+          canViewAdminPanel,
+          source: authStoreUser
+            ? 'auth-store'
+            : encryptedSnapshot
+              ? 'encrypted-envelope'
+              : stored
+                ? 'legacy-ars_user'
+                : 'default-false',
+        });
+      }
+    }
+  }
 
   return {
     isVerified,

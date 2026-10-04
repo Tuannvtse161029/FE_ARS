@@ -117,33 +117,41 @@ describe('Remember Me & Storage Persistence', () => {
     // Envelope must NOT contain the cleartext JWT anywhere — that would
     // defeat the Session-2 hardening that lives in secureToken.ts.
     expect(localEnvelope).not.toContain('header.payload.sig');
+    // Agent 55 — the envelope now ALWAYS lands in `localStorage` so a
+    // sibling tab / post-reload can recover it via the persistent
+    // session key. The historical split (`rememberMe` ⇒ localStorage,
+    // otherwise ⇒ sessionStorage) was removed.
     expect(sessionEnvelope).toBeNull();
   });
 
-  it('routes encrypted token envelope to sessionStorage when Remember Me is disabled', async () => {
+  it('routes encrypted token envelope to localStorage when Remember Me is disabled', async () => {
     storage.setRememberMe(false);
 
     await secureToken.writeAfterLogin('header.payload.sig', null, false);
 
     const localEnvelope = localStorage.getItem('ars_token_enc_v1');
     const sessionEnvelope = sessionStorage.getItem('ars_token_enc_v1');
-    expect(sessionEnvelope).not.toBeNull();
-    expect(sessionEnvelope).not.toContain('header.payload.sig');
-    expect(localEnvelope).toBeNull();
+    // Agent 55 — the envelope ALWAYS lands in `localStorage` so a
+    // sibling tab / post-reload can recover it via the persistent
+    // session key. The bucket no longer depends on `rememberMe`.
+    expect(localEnvelope).not.toBeNull();
+    expect(localEnvelope).not.toContain('header.payload.sig');
+    expect(sessionEnvelope).toBeNull();
   });
 
-  it('removes the encrypted envelope from the previous bucket when Remember Me toggles', async () => {
+  it('does not accumulate stale envelopes when Remember Me toggles', async () => {
     storage.setRememberMe(true);
     await secureToken.writeAfterLogin('token.remembered', null, true);
     expect(localStorage.getItem('ars_token_enc_v1')).not.toBeNull();
 
-    // Simulate the next login with Remember Me turned off. The previous
-    // envelope should be evicted from localStorage so the user does not
-    // end up with two parallel encrypted copies.
+    // Simulate the next login with Remember Me turned off. The
+    // envelope stays in `localStorage` (Agent 55 — always localStorage)
+    // but a legacy `sessionStorage` copy from an earlier build must be
+    // evicted so a parallel encrypted copy cannot accumulate.
     storage.setRememberMe(false);
     await secureToken.writeAfterLogin('token.session-only', null, false);
-    expect(sessionStorage.getItem('ars_token_enc_v1')).not.toBeNull();
-    expect(localStorage.getItem('ars_token_enc_v1')).toBeNull();
+    expect(localStorage.getItem('ars_token_enc_v1')).not.toBeNull();
+    expect(sessionStorage.getItem('ars_token_enc_v1')).toBeNull();
   });
 
   it('cleans up the encrypted user envelope upon logout', async () => {

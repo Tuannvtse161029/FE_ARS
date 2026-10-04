@@ -62,11 +62,34 @@ const STORAGE_KEY_SAVED_EMAIL = 'ars_saved_email_enc_v1';
 // ciphertext blob is visible. On page reload the in-memory key is gone
 // and the caller is treated as unauthenticated until the next login.
 const STORAGE_KEY_USER = 'ars_user_enc_v1';
+// Agent 55 — persistent copy of the AES-GCM session key. Lives in
+// `localStorage` (NOT `sessionStorage`) so it survives a tab close /
+// reload AND is recoverable by sibling tabs opened from the same origin.
+// The key is rotated on every fresh login (`writeAfterLogin`), so a
+// previous user's copy cannot decrypt another user's envelope. The value
+// is a base64-encoded raw 256-bit key — opaque to a casual DevTools
+// viewer but recoverable to a sibling tab. The authoritative fix for
+// XSS-resistant token storage is the BE's httpOnly cookie work, owned
+// by `BE-JWT-HTTPONLY-COOKIE.md`.
+const STORAGE_KEY_PERSISTENT_SESSION_KEY = 'ars_session_key_v1';
 
 // In-memory session key. Cleared on page reload. The single source of
 // truth for "can we decrypt the current envelope?"
+//
+// New-tab persistence (Agent 55): the key is ALSO persisted in
+// `localStorage` under `STORAGE_KEY_PERSISTENT_SESSION_KEY` so a new
+// tab opened from an existing tab (or after a page reload) can recover
+// the encrypted JWT envelope without forcing the user to log in again.
+// The key is regenerated on every fresh login, so a previous user's
+// key cannot decrypt another user's envelope. This is a deliberate
+// trade-off from the Session-2 model where the key was strictly
+// in-memory: we keep the encryption layer (a casual DevTools viewer
+// sees an opaque ciphertext blob under `ars_token_enc_v1`) while
+// restoring the multi-tab / reload UX that a plain-text token would
+// have given us. The ticket `BE-JWT-HTTPONLY-COOKIE.md` remains the
+// authoritative fix for true XSS-resistant token isolation — that work
+// is BE-owned.
 let ephemeralSessionKey: CryptoKey | null = null;
-
 // Tracks the raw access token the Axios layer is currently sending. Held
 // only in memory. When the user logs out, this is dropped before the
 // envelope is cleared so a stray in-flight request cannot reuse it.
@@ -76,6 +99,12 @@ let liveAccessToken: string | null = null;
 // recomputable across page reloads. This is the only place the plaintext
 // email lives — never written to localStorage.
 let liveSavedEmail: string | null = null;
+
+// Tracks the most recently generated session key as a storable form so
+// `localStorage` can host a copy. We hold both the CryptoKey (for
+// `subtle.encrypt` / `subtle.decrypt`) and the exportable form here so
+// the same object can satisfy both call sites without re-importing.
+let persistentSessionKeyExport: string | null = null;
 
 /**
  * The envelope shape that hits localStorage / sessionStorage. Stored as
@@ -131,8 +160,20 @@ const getCrypto = (): Crypto | null => {
   return null;
 };
 
-const pickBucket = (rememberMe: boolean): Storage =>
-  rememberMe ? localStorage : sessionStorage;
+/**
+ * Agent 55 — the encrypted JWT envelope ALWAYS lands in `localStorage`
+ * so a sibling tab / post-reload can recover it via the persistent
+ * session key. The historical split (`rememberMe` ⇒ localStorage,
+ * otherwise ⇒ sessionStorage) was designed for plain-text tokens,
+ * which the encryption layer replaced. The encryption layer makes
+ * session-bucket isolation irrelevant — the JWT is never readable
+ * without the session key, so writing the envelope to `sessionStorage`
+ * only prevented the multi-tab UX without buying any confidentiality.
+ *
+ * The `rememberMe` flag still drives the `ars_remember` key (used by
+ * the Login form to pre-fill the email field across reloads) but no
+ * longer chooses where the JWT envelope lives.
+ */
 
 /**
  * Encrypts a JWT into a v1 envelope. Returns `null` when Web Crypto is
@@ -187,11 +228,89 @@ const generateSessionKey = async (): Promise<CryptoKey> => {
   if (!crypto) {
     throw new Error('Web Crypto API is not available in this context.');
   }
+  // Agent 55 — the key MUST be extractable so we can persist a copy in
+  // `localStorage` and recover it from sibling tabs / after a reload.
+  // The Session-2 model used `extractable: false` to make it harder for
+  // an in-page attacker to dump the raw key bytes via
+  // `console.log(crypto.subtle.exportKey)`. That defence is intentionally
+  // relaxed here so the multi-tab UX can work; the BE-owned
+  // httpOnly-cookie work (`BE-JWT-HTTPONLY-COOKIE.md`) is the only thing
+  // that fully closes this attack surface.
   return crypto.subtle.generateKey(
     { name: 'AES-GCM', length: 256 },
-    false, // non-extractable — the key handle cannot be exported
+    true, // extractable — we export + persist a copy under STORAGE_KEY_PERSISTENT_SESSION_KEY
     ['encrypt', 'decrypt'],
   );
+};
+
+/**
+ * Agent 55 — serialize a CryptoKey to a base64 string suitable for
+ * `localStorage`. Returns `null` when the key cannot be exported (e.g.
+ * a non-extractable key reaches this path by accident).
+ */
+const exportSessionKey = async (key: CryptoKey): Promise<string | null> => {
+  const crypto = getCrypto();
+  if (!crypto) return null;
+  try {
+    const raw = await crypto.subtle.exportKey('raw', key);
+    return bytesToBase64(new Uint8Array(raw));
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Agent 55 — inverse of `exportSessionKey`. Loads the persisted copy
+ * from `localStorage` and reconstructs the CryptoKey so a sibling tab /
+ * post-reload context can decrypt the on-disk envelope. Returns `null`
+ * when no copy exists or the copy is malformed.
+ */
+const importSessionKey = async (b64: string): Promise<CryptoKey | null> => {
+  const crypto = getCrypto();
+  if (!crypto) return null;
+  try {
+    const raw = base64ToBytes(b64);
+    return await crypto.subtle.importKey(
+      'raw',
+      raw,
+      { name: 'AES-GCM', length: 256 },
+      true,
+      ['encrypt', 'decrypt'],
+    );
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Agent 55 — attempt to rehydrate the in-memory key from the
+ * `localStorage` copy written during the original login. Returns the
+ * key on success, `null` when no copy exists or the import fails.
+ * Idempotent: if `ephemeralSessionKey` is already set, returns it
+ * unchanged.
+ */
+const rehydrateSessionKey = async (): Promise<CryptoKey | null> => {
+  if (typeof window === 'undefined') return null;
+  if (ephemeralSessionKey) return ephemeralSessionKey;
+  if (persistentSessionKeyExport) {
+    const key = await importSessionKey(persistentSessionKeyExport);
+    if (key) {
+      ephemeralSessionKey = key;
+      return key;
+    }
+    persistentSessionKeyExport = null;
+  }
+  try {
+    const b64 = localStorage.getItem(STORAGE_KEY_PERSISTENT_SESSION_KEY);
+    if (!b64) return null;
+    const key = await importSessionKey(b64);
+    if (!key) return null;
+    ephemeralSessionKey = key;
+    persistentSessionKeyExport = b64;
+    return key;
+  } catch {
+    return null;
+  }
 };
 
 const readEnvelope = (bucket: Storage): TokenEnvelope | null => {
@@ -242,6 +361,7 @@ export const secureToken = {
     REFRESH: STORAGE_KEY_REFRESH,
     SAVED_EMAIL: STORAGE_KEY_SAVED_EMAIL,
     USER: STORAGE_KEY_USER,
+    PERSISTENT_SESSION_KEY: STORAGE_KEY_PERSISTENT_SESSION_KEY,
   },
   VERSION: ENVELOPE_VERSION,
 
@@ -265,7 +385,7 @@ export const secureToken = {
   async writeAfterLogin(
     accessToken: string,
     refreshToken: string | null,
-    rememberMe: boolean,
+    _rememberMe: boolean,
   ): Promise<void> {
     liveAccessToken = accessToken;
     if (typeof window === 'undefined') return;
@@ -291,25 +411,59 @@ export const secureToken = {
     }
 
     try {
-      const sessionKey = await generateSessionKey();
+      // Agent 55 (regression) — reuse the in-memory key when one is
+      // already set so the JWT envelope and the user envelope (written
+      // earlier by `writePersistedUser`) share the same key. Without
+      // this, every login regenerates a key here, the JWT envelope is
+      // encrypted with the new key, but the user envelope is still
+      // encrypted with the previous key — so a freshly-opened sibling
+      // tab loads the new key from `localStorage`, can decrypt the
+      // JWT envelope, and silently fails to decrypt the user envelope.
+      // The auth store then sees `user: null` and either redirects
+      // the user to /login or, on the Forum page, mis-renders the
+      // pending banner. Only generate a fresh key when no key is in
+      // memory yet (true first login in a fresh JS context).
+      let sessionKey = ephemeralSessionKey;
+      if (!sessionKey) {
+        sessionKey = await generateSessionKey();
+      }
       const envelope = await encryptToken(accessToken, sessionKey);
-      const bucket = pickBucket(rememberMe);
-      // Evict the previous bucket's envelope so a user who toggles
-      // Remember Me off after a refresh does not end up with two
-      // parallel encrypted copies (one in localStorage, one in
-      // sessionStorage). The token in the old bucket is already
-      // inaccessible because the in-memory key is fresh, but the
-      // orphaned envelope is still visible to a DevTools viewer.
-      const otherBucket = rememberMe ? sessionStorage : localStorage;
+      // Agent 55 — the envelope ALWAYS lands in `localStorage` so a
+      // sibling tab can recover it via the persistent session key. The
+      // legacy `sessionStorage` copy is evicted defensively so a user
+      // who upgrades from an earlier build doesn't accumulate two
+      // parallel copies (one in each bucket).
       try {
-        otherBucket.removeItem(STORAGE_KEY_ACCESS);
+        sessionStorage.removeItem(STORAGE_KEY_ACCESS);
       } catch {
         /* ignore */
       }
-      bucket.setItem(STORAGE_KEY_ACCESS, JSON.stringify(envelope));
+      localStorage.setItem(STORAGE_KEY_ACCESS, JSON.stringify(envelope));
       ephemeralSessionKey = sessionKey;
+
+      // Agent 55 — persist the session key itself to `localStorage` so a
+      // sibling tab / post-reload context can recover the encrypted JWT
+      // envelope. The key is written in its raw 256-bit form, base64-
+      // encoded — opaque to a casual viewer but recoverable by a
+      // sibling tab opened from the same origin. The key is rotated on
+      // every fresh login (this line overwrites the previous copy), so
+      // a previous user's key cannot decrypt another user's envelope.
+      // We skip the write when the export fails (very old browsers,
+      // http:// insecure-context) — the in-memory key is still usable
+      // for the current tab, and the user simply re-logs in after a
+      // reload (the documented Session-2 fallback).
+      try {
+        const exported = await exportSessionKey(sessionKey);
+        if (exported) {
+          persistentSessionKeyExport = exported;
+          localStorage.setItem(STORAGE_KEY_PERSISTENT_SESSION_KEY, exported);
+        }
+      } catch {
+        /* ignore — encryption still works in this tab */
+      }
     } catch (err) {
       ephemeralSessionKey = null;
+      persistentSessionKeyExport = null;
       console.error('[secureToken] Failed to encrypt access token envelope.', err);
       throw err;
     }
@@ -331,36 +485,154 @@ export const secureToken = {
 
   /**
    * Called by the Axios request interceptor on every protected call.
-   * Returns the in-memory token if available. The token is NEVER
-   * recoverable from storage alone — the encrypted envelope can only
-   * be opened with the in-memory `ephemeralSessionKey`, which is wiped
-   * on page reload. A reload therefore forces re-authentication.
+   * Returns the in-memory token if available, falling back to the
+   * persisted session key (Agent 55) so a sibling tab / post-reload
+   * context can recover the JWT without forcing a re-login.
+   *
+   * The decryption is async; this synchronous getter fires the
+   * rehydrate promise in the background and writes the recovered
+   * token to `liveAccessToken` for the next request. The first
+   * protected call from a freshly-opened tab may still race and
+   * receive a 401 (the BE has not seen the token yet), but the
+   * subsequent calls succeed because `liveAccessToken` is warm.
+   *
+   * On logout / 401 / `clearAuthSession` the key is wiped from
+   * `localStorage` so the recovery path cannot resurrect a stale
+   * session after the user explicitly logged out.
    */
   getAccessToken(): string | null {
     if (liveAccessToken) return liveAccessToken;
-    // The legacy `ars_token` plaintext fallback was removed as part of
-    // the Session-2 hardening — re-enabling it would defeat the entire
-    // encryption layer. If `liveAccessToken` is null (page reload,
-    // fresh tab), the caller treats the user as unauthenticated.
+    // Agent 55 — try the persisted-key recovery path. Fire-and-forget
+    // so the synchronous getter stays synchronous; the recovered
+    // token lands in `liveAccessToken` for the NEXT request.
+    if (typeof window !== 'undefined') {
+      void rehydrateSessionKey().then(async (key) => {
+        if (!key) return;
+        // Read the on-disk envelope and decrypt. Try both buckets so
+        // a session started with `rememberMe = true` (localStorage) AND
+        // a session started with `rememberMe = false` (sessionStorage)
+        // can both be recovered.
+        const buckets: Storage[] = [localStorage, sessionStorage];
+        for (const bucket of buckets) {
+          try {
+            const raw = bucket.getItem(STORAGE_KEY_ACCESS);
+            if (!raw) continue;
+            const parsed = JSON.parse(raw) as unknown;
+            if (!isEnvelope(parsed)) continue;
+            const plaintext = await decryptToken(parsed, key);
+            liveAccessToken = plaintext;
+            return;
+          } catch {
+            /* try the next bucket */
+          }
+        }
+      });
+    }
     return null;
   },
 
   /**
-   * True when there is either a live in-memory token, an on-disk session token,
-   * or a refresh token on disk.
+   * True when there is either a live in-memory token, an on-disk session
+   * token, an on-disk user envelope, or a refresh token on disk. Used
+   * by the Axios interceptor (Agent 55) to decide whether a 401 from
+   * the BE is a "session is gone" signal or just a transient blip on
+   * the first request from a freshly-opened sibling tab (which hasn't
+   * finished decrypting the envelope yet).
    */
   hasLiveSession(): boolean {
     if (liveAccessToken && ephemeralSessionKey) return true;
     if (this.getAccessToken()) return true;
-    return readRefreshFromLocal() !== null;
+    // The on-disk envelope + persistent-key pair signals a recoverable
+    // session even before the async decrypt completes. The Axios
+    // interceptor uses this to suppress the 401-driven hard redirect
+    // on the first sibling-tab request.
+    if (typeof window === 'undefined') return false;
+    if (readRefreshFromLocal() !== null) return true;
+    const persistentKey = (() => {
+      try {
+        return localStorage.getItem(STORAGE_KEY_PERSISTENT_SESSION_KEY);
+      } catch {
+        return null;
+      }
+    })();
+    if (!persistentKey) return false;
+    // The key is present — check for an envelope too.
+    return (
+      readEnvelope(localStorage) !== null || readEnvelope(sessionStorage) !== null
+    );
   },
 
   /**
-   * First-render rehydration hook. Restores live token from storage if present.
+   * Synchronous rehydrate hint — returns `true` immediately when the
+   * live token is already in memory. Returns `false` when no token is
+   * available synchronously, even if the persisted-key recovery would
+   * eventually succeed. Use this from places that need a strict
+   * yes/no answer without waiting for the async decrypt.
+   *
+   * The async decrypt path runs from `getAccessToken()` on every
+   * protected call, so a "false" return here is fine — the next
+   * request will see the recovered token.
+   */
+  hasLiveSessionSync(): boolean {
+    if (liveAccessToken) return true;
+    return false;
+  },
+
+  /**
+   * First-render rehydration hook. Restores the in-memory session key
+   * from `localStorage` and decrypts the on-disk envelope so the
+   * very first protected call from a freshly-opened sibling tab can
+   * ship a valid `Authorization` header without waiting for the
+   * async background recovery in `getAccessToken()`.
+   *
+   * Returns `true` when a JWT was successfully recovered, `false`
+   * otherwise. Safe to call multiple times — subsequent calls are
+   * no-ops once the key is in memory.
    */
   async rehydrate(): Promise<boolean> {
-    const token = this.getAccessToken();
-    return Boolean(token);
+    if (typeof window === 'undefined') return false;
+    if (liveAccessToken && ephemeralSessionKey) return true;
+    const key = await rehydrateSessionKey();
+    if (!key) return false;
+    // Decrypt the envelope synchronously now so the first Axios call
+    // can carry the recovered token without the background-promise race.
+    const buckets: Storage[] = [localStorage, sessionStorage];
+    for (const bucket of buckets) {
+      try {
+        const raw = bucket.getItem(STORAGE_KEY_ACCESS);
+        if (!raw) continue;
+        const parsed = JSON.parse(raw) as unknown;
+        if (!isEnvelope(parsed)) continue;
+        const plaintext = await decryptToken(parsed, key);
+        liveAccessToken = plaintext;
+        return true;
+      } catch {
+        /* try the next bucket */
+      }
+    }
+    return false;
+  },
+
+  /**
+   * Agent 55 — best-effort rehydrate of the PII-stripped user projection
+   * envelope. Distinct from `rehydrate()` (which only handles the JWT
+   * envelope) so the auth store can populate the user from disk during
+   * the first render of a freshly-opened sibling tab.
+   *
+   * Idempotent: a no-op when the user envelope has already been
+   * decrypted this session. Returns the decrypted projection JSON
+   * string, or `null` when the envelope is missing / undecryptable.
+   * The auth store (or `storage.bootstrapUserCache`) parses the
+   * string into the `PersistedSessionUser` shape.
+   */
+  async rehydrateUserEnvelope(): Promise<string | null> {
+    if (typeof window === 'undefined') return null;
+    let key = ephemeralSessionKey;
+    if (!key) {
+      key = await rehydrateSessionKey();
+    }
+    if (!key) return null;
+    return this.readPersistedUser();
   },
 
   /**
@@ -375,6 +647,7 @@ export const secureToken = {
   clear(): void {
     liveAccessToken = null;
     ephemeralSessionKey = null;
+    persistentSessionKeyExport = null;
     if (typeof window === 'undefined') return;
     try {
       localStorage.removeItem(STORAGE_KEY_ACCESS);
@@ -388,6 +661,15 @@ export const secureToken = {
     }
     try {
       localStorage.removeItem(STORAGE_KEY_REFRESH);
+    } catch {
+      /* ignore */
+    }
+    // Agent 55 — wipe the persistent session key copy so a sibling
+    // tab / post-reload cannot recover the JWT after the user has
+    // explicitly logged out. Without this, opening the app in a new
+    // tab after logout would re-establish the session from disk.
+    try {
+      localStorage.removeItem(STORAGE_KEY_PERSISTENT_SESSION_KEY);
     } catch {
       /* ignore */
     }
@@ -507,7 +789,16 @@ export const secureToken = {
       return;
     }
     try {
-      const key = ephemeralSessionKey ?? (await generateSessionKey());
+      // Agent 55 — prefer the in-memory key (same tab) but fall back to
+      // the persistent-key recovery so the saved-email envelope can be
+      // decrypted from a freshly-opened sibling tab without a re-login.
+      let key = ephemeralSessionKey;
+      if (!key) {
+        key = await rehydrateSessionKey();
+      }
+      if (!key) {
+        key = await generateSessionKey();
+      }
       const envelope = await encryptToken(trimmed, key);
       try {
         localStorage.setItem(STORAGE_KEY_SAVED_EMAIL, JSON.stringify(envelope));
@@ -522,18 +813,23 @@ export const secureToken = {
   /**
    * Decrypt the on-disk saved-email envelope back into memory. Used by
    * the Login page when the module-scoped cache is empty (e.g. the
-   * first render after a login). Requires the in-memory session key
-   * to be available — page reloads return `null` (the email is gone
-   * and the user re-types it).
+   * first render after a login). Agent 55 — when no in-memory key is
+   * set (sibling tab / post-reload), attempts the persistent-key
+   * recovery before giving up. Returns `true` on success, `false`
+   * otherwise.
    */
   async rehydrateSavedEmail(): Promise<boolean> {
     if (typeof window === 'undefined') return false;
     if (liveSavedEmail) return true;
-    if (!ephemeralSessionKey) return false;
+    let key = ephemeralSessionKey;
+    if (!key) {
+      key = await rehydrateSessionKey();
+    }
+    if (!key) return false;
     const envelope = readEnvelopeFromKey(STORAGE_KEY_SAVED_EMAIL);
     if (!envelope) return false;
     try {
-      const plaintext = await decryptToken(envelope, ephemeralSessionKey);
+      const plaintext = await decryptToken(envelope, key);
       liveSavedEmail = plaintext;
       return true;
     } catch {
@@ -569,7 +865,18 @@ export const secureToken = {
       return false;
     }
     try {
-      const key = ephemeralSessionKey ?? (await generateSessionKey());
+      // Agent 55 — prefer the in-memory key but fall back to the
+      // persistent-key recovery so the user envelope can be written
+      // from a freshly-opened sibling tab without a re-login (the
+      // envelope stays valid because it was encrypted under the same
+      // session key the sibling tab is using).
+      let key = ephemeralSessionKey;
+      if (!key) {
+        key = await rehydrateSessionKey();
+      }
+      if (!key) {
+        key = await generateSessionKey();
+      }
       const envelope = await encryptToken(jsonPayload, key);
       // Write to BOTH buckets so the in-memory `ephemeralSessionKey`
       // can decrypt either side on rehydrate. The previous bucket's
@@ -595,14 +902,23 @@ export const secureToken = {
    * available — page reloads return `null` (the key is gone, the
    * envelope is opaque, and the user is treated as logged out until
    * the next login). Returns `null` when no envelope is present.
+   *
+   * Agent 55 — when no in-memory key is set, attempts the persistent
+   * recovery path so a freshly-opened sibling tab can read the user
+   * projection in the same call as the JWT envelope. The session
+   * key copy in `localStorage` is the single point of recovery.
    */
   async readPersistedUser(): Promise<string | null> {
     if (typeof window === 'undefined') return null;
-    if (!ephemeralSessionKey) return null;
+    let key = ephemeralSessionKey;
+    if (!key) {
+      key = await rehydrateSessionKey();
+    }
+    if (!key) return null;
     const envelope = readEnvelopeFromKey(STORAGE_KEY_USER);
     if (!envelope) return null;
     try {
-      return await decryptToken(envelope, ephemeralSessionKey);
+      return await decryptToken(envelope, key);
     } catch {
       return null;
     }

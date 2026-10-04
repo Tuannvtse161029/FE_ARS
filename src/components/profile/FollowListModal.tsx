@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-
+import { createPortal } from 'react-dom';
 
 import { useNavigate } from 'react-router-dom';
-
 
 import { X, Loader2, Inbox } from 'lucide-react';
 
@@ -327,15 +326,9 @@ export const FollowListModal = ({
 
 
 
-  return (
-
-
+  return createPortal(
     <div className={styles.modalOverlay} onClick={onClose}>
-
-
       <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-
-
         <div className={styles.modalHeader}>
 
 
@@ -675,12 +668,9 @@ export const FollowListModal = ({
       </div>
 
 
-    </div>
-
-
+    </div>,
+    document.body,
   );
-
-
 };
 
 
