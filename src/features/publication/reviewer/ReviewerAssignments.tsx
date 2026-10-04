@@ -54,21 +54,70 @@ const REVIEWER_STATUS_TO_VARIANT: Partial<Record<PublicationStatus, string>> = {
   REVIEWER_RECOMMENDED_REJECT: 'pubBucketNeedRevision', // purple
 };
 
-/** Status filter bar options for the reviewer list. */
-type ReviewerStatusFilter = 'ALL' | PublicationStatus;
+/**
+ * Status filter bar options for the reviewer list. Each option may
+ * match one or more `PublicationStatus` values — see the `statuses`
+ * field on each entry. The previous one-pill-per-status layout was
+ * confusing (seven pills for six status values) so the filter was
+ * consolidated to a single lifecycle grouping that maps to the six
+ * states the reviewer actually thinks in:
+ *   • All                 — every visible assignment
+ *   • Assigned            — newly assigned, reviewer has not responded yet
+ *   • Accept Review       — reviewer accepted the task and is reviewing
+ *   • Reject Review       — reviewer submitted a reject recommendation
+ *   • Recommend Publish   — reviewer submitted an accept recommendation
+ *   • Recommend Revision  — paper is in the revision / resubmission cycle
+ */
+type ReviewerStatusFilter =
+  | 'ALL'
+  | 'ASSIGNED'
+  | 'ACCEPT_REVIEW'
+  | 'REJECT_REVIEW'
+  | 'RECOMMEND_PUBLISH'
+  | 'RECOMMEND_REVISION';
 
 const REVIEWER_STATUS_FILTER_OPTIONS: ReadonlyArray<{
   value: ReviewerStatusFilter;
   labelKey: string;
   descriptionKey: string;
+  statuses: ReadonlyArray<PublicationStatus>;
 }> = [
-  { value: 'ALL',                               labelKey: 'reviewer.assignments.filter.all',       descriptionKey: 'reviewer.assignments.filter.desc.all' },
-  { value: 'REVIEWER_ASSIGNED',               labelKey: 'reviewer.assignments.filter.assigned', descriptionKey: 'reviewer.assignments.filter.desc.assigned' },
-  { value: 'UNDER_REVIEW',                    labelKey: 'reviewer.assignments.filter.underReview', descriptionKey: 'reviewer.assignments.filter.desc.underReview' },
-  { value: 'REVISION_REQUIRED',               labelKey: 'reviewer.assignments.filter.revisionRequired', descriptionKey: 'reviewer.assignments.filter.desc.revisionRequired' },
-  { value: 'RESUBMITTED',                     labelKey: 'reviewer.assignments.filter.resubmitted', descriptionKey: 'reviewer.assignments.filter.desc.resubmitted' },
-  { value: 'REVIEWER_RECOMMENDED_ACCEPT',     labelKey: 'reviewer.assignments.filter.recommendedAccept', descriptionKey: 'reviewer.assignments.filter.desc.recommendedAccept' },
-  { value: 'REVIEWER_RECOMMENDED_REJECT',     labelKey: 'reviewer.assignments.filter.recommendedReject', descriptionKey: 'reviewer.assignments.filter.desc.recommendedReject' },
+  {
+    value: 'ALL',
+    labelKey: 'reviewer.assignments.filter.all',
+    descriptionKey: 'reviewer.assignments.filter.desc.all',
+    statuses: [],
+  },
+  {
+    value: 'ASSIGNED',
+    labelKey: 'reviewer.assignments.filter.assigned',
+    descriptionKey: 'reviewer.assignments.filter.desc.assigned',
+    statuses: ['REVIEWER_ASSIGNED'],
+  },
+  {
+    value: 'ACCEPT_REVIEW',
+    labelKey: 'reviewer.assignments.filter.acceptReview',
+    descriptionKey: 'reviewer.assignments.filter.desc.acceptReview',
+    statuses: ['UNDER_REVIEW'],
+  },
+  {
+    value: 'REJECT_REVIEW',
+    labelKey: 'reviewer.assignments.filter.rejectReview',
+    descriptionKey: 'reviewer.assignments.filter.desc.rejectReview',
+    statuses: ['REVIEWER_RECOMMENDED_REJECT'],
+  },
+  {
+    value: 'RECOMMEND_PUBLISH',
+    labelKey: 'reviewer.assignments.filter.recommendPublish',
+    descriptionKey: 'reviewer.assignments.filter.desc.recommendPublish',
+    statuses: ['REVIEWER_RECOMMENDED_ACCEPT'],
+  },
+  {
+    value: 'RECOMMEND_REVISION',
+    labelKey: 'reviewer.assignments.filter.recommendRevision',
+    descriptionKey: 'reviewer.assignments.filter.desc.recommendRevision',
+    statuses: ['REVISION_REQUIRED', 'RESUBMITTED'],
+  },
 ];
 
 const isVisibleReviewerAssignment = (paper: PublicationPaper): boolean =>
@@ -189,8 +238,12 @@ export const ReviewerAssignments = () => {
 
   const visiblePapers = useMemo(() => {
     const term = search.trim().toLowerCase();
+    const activeOption = REVIEWER_STATUS_FILTER_OPTIONS.find(
+      (opt) => opt.value === statusFilter,
+    );
+    const matchingStatuses = activeOption?.statuses ?? [];
     return papers.filter((paper) => {
-      if (statusFilter !== 'ALL' && paper.status !== statusFilter) return false;
+      if (matchingStatuses.length > 0 && !matchingStatuses.includes(paper.status)) return false;
       if (!term) return true;
       const haystack = [
         paper.title,
@@ -234,12 +287,16 @@ export const ReviewerAssignments = () => {
     return groups;
   }, [sortedPapers]);
 
-  /** Per-status totals for the filter pill bar. */
-  const statusCounts = useMemo(() => {
+  /** Per-group totals for the filter pill bar. Each filter group
+   *  counts every paper whose `status` falls inside the group's
+   *  `statuses` array — so a filter that maps to multiple statuses
+   *  (e.g. `RECOMMEND_REVISION` covers both `REVISION_REQUIRED` and
+   *  `RESUBMITTED`) gets the summed total. */
+  const groupCounts = useMemo(() => {
     const counts: Record<string, number> = { ALL: papers.length };
     for (const opt of REVIEWER_STATUS_FILTER_OPTIONS) {
       if (opt.value === 'ALL') continue;
-      counts[opt.value] = papers.filter((p) => p.status === opt.value).length;
+      counts[opt.value] = papers.filter((p) => opt.statuses.includes(p.status)).length;
     }
     return counts;
   }, [papers]);
@@ -426,7 +483,7 @@ export const ReviewerAssignments = () => {
                 onKeyDown={handleTabKeyDown}
               >
                 {REVIEWER_STATUS_FILTER_OPTIONS.map((opt) => {
-                  const count = opt.value === 'ALL' ? papers.length : (statusCounts[opt.value] ?? 0);
+                  const count = opt.value === 'ALL' ? papers.length : (groupCounts[opt.value] ?? 0);
                   const isSelected = statusFilter === opt.value;
                   return (
                     <button
