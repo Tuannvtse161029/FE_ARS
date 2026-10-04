@@ -146,7 +146,9 @@ const KIND_ICON_MAP: Record<NotificationKind, typeof Inbox> = {
   // Forum
   'forum-reply': Inbox,
   'forum-post-liked': Inbox,
+  'forum-post-unliked': Inbox,
   'forum-comment-upvoted': Inbox,
+  'forum-comment-unvoted': Inbox,
   'forum-post-commented': Inbox,
   'forum-comment-replied': Inbox,
   // Fallback
@@ -257,8 +259,12 @@ function titleForKind(
     // Cross-role / Forum interactions
     case 'forum-post-liked':
       return t('notif.forumPostLiked', 'Post liked');
+    case 'forum-post-unliked':
+      return t('notif.forumPostUnliked', 'Post unliked');
     case 'forum-comment-upvoted':
       return t('notif.forumCommentUpvoted', 'Comment upvoted');
+    case 'forum-comment-unvoted':
+      return t('notif.forumCommentUnvoted', 'Comment unvoted');
     case 'forum-post-commented':
       return t('notif.forumPostCommented', 'New comment');
     case 'forum-comment-replied':

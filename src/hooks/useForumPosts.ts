@@ -132,8 +132,10 @@ export function useForumPosts(filters?: ForumPostFilters): UseForumPostsResult {
       const kind = inferNotificationKind(msg);
       if (
         kind === 'forum-post-liked' ||
+        kind === 'forum-post-unliked' ||
         kind === 'forum-post-commented' ||
         kind === 'forum-comment-upvoted' ||
+        kind === 'forum-comment-unvoted' ||
         kind === 'forum-comment-replied' ||
         kind === 'forum-reply'
       ) {

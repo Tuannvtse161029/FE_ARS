@@ -25,6 +25,8 @@ import { useAuth } from '../../context/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
 import { notificationService } from '../../services/notification.service';
 import { forumPostService } from '../../services/forumPost.service';
+import { signalrService } from '../../services/signalr.service';
+import { inferNotificationKind } from '../../utils/notificationRouteMap';
 import { useCanInteractInForum } from '../../hooks/useCanInteractInForum';
 import { useI18n } from '../../i18n/I18nContext';
 import { useShortcuts } from '../../hooks/useShortcuts';
@@ -212,6 +214,57 @@ export const CommentSection = ({
     setLocalComments(comments);
   }, [comments]);
 
+  // Real-time listener for comment upvotes & notifications within CommentSection
+  useEffect(() => {
+    const unsubVote = signalrService.on('ForumCommentUpvoted', (data: unknown) => {
+      if (data && typeof data === 'object') {
+        const commentId = Number(
+          (data as { forumCommentId?: unknown }).forumCommentId ??
+          (data as { commentId?: unknown }).commentId ??
+          (data as { id?: unknown }).id ?? 0
+        );
+        const newUpvoteCount = (data as { upvoteCount?: unknown }).upvoteCount != null
+          ? Number((data as { upvoteCount: unknown }).upvoteCount)
+          : null;
+        if (commentId) {
+          setLocalComments((prev) =>
+            prev.map((c) => {
+              if ((c.id || c.forumCommentId) === commentId) {
+                return {
+                  ...c,
+                  upvoteCount: newUpvoteCount ?? ((c.upvoteCount ?? 0) + 1),
+                };
+              }
+              return c;
+            })
+          );
+        }
+      }
+    });
+
+    const unsubNotif = signalrService.onReceiveNotification((raw) => {
+      let msg = '';
+      if (typeof raw === 'string') msg = raw;
+      else if (raw && typeof raw === 'object' && 'message' in raw) msg = String((raw as { message?: unknown }).message ?? '');
+
+      const kind = inferNotificationKind(msg);
+      if (
+        kind === 'forum-comment-upvoted' ||
+        kind === 'forum-comment-unvoted' ||
+        kind === 'forum-post-commented' ||
+        kind === 'forum-comment-replied' ||
+        kind === 'forum-reply'
+      ) {
+        void refetch();
+      }
+    });
+
+    return () => {
+      unsubVote();
+      unsubNotif();
+    };
+  }, [refetch]);
+
   // Backward-compatible state: the section still works in isolation when
   // no parent opts into controlled mode.
   const [internalCollapsed, setInternalCollapsed] = useState(false);
@@ -269,6 +322,28 @@ export const CommentSection = ({
               : c
           )
         );
+      }
+
+      // Defensive FE notification for comment upvote / unvote
+      if (comment.userId && comment.userId !== currentUserId) {
+        try {
+          const preview = (comment.content ?? '').length > 60
+            ? `${(comment.content ?? '').slice(0, 60).trim()}…`
+            : (comment.content ?? '');
+          if (optimisticIsUpvoted) {
+            await notificationService.create({
+              userId: comment.userId,
+              message: `[Forum] upvote: "${preview}"`,
+            });
+          } else {
+            await notificationService.create({
+              userId: comment.userId,
+              message: `[Forum] unvote: "${preview}"`,
+            });
+          }
+        } catch (notifyErr) {
+          console.warn('Failed to send comment upvote/unvote notification:', notifyErr);
+        }
       }
     } catch {
       // Rollback on error

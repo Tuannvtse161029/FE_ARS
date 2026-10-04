@@ -21,13 +21,15 @@ export function useForumComments(postId: number): UseForumCommentsResult {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const refetch = useCallback(async () => {
+  const refetch = useCallback(async (silent = false) => {
     if (!postId) {
       setComments([]);
       setIsLoading(false);
       return;
     }
-    setIsLoading(true);
+    if (!silent) {
+      setIsLoading(true);
+    }
     setError(null);
     try {
       const [listRes, myVotesRes] = await Promise.allSettled([
@@ -52,7 +54,7 @@ export function useForumComments(postId: number): UseForumCommentsResult {
 
       const enriched = list.map((c) => ({
         ...c,
-        isUpvoted: myVotes.has(c.id),
+        isUpvoted: Boolean(c.isUpvoted) || myVotes.has(c.id),
       }));
 
       setComments(enriched);
@@ -104,6 +106,7 @@ export function useForumComments(postId: number): UseForumCommentsResult {
           };
           return [...prev, newComment];
         });
+        void refetch(true);
       }
     });
 
@@ -130,6 +133,7 @@ export function useForumComments(postId: number): UseForumCommentsResult {
             })
           );
         }
+        void refetch(true);
       }
     });
 
@@ -141,11 +145,12 @@ export function useForumComments(postId: number): UseForumCommentsResult {
       const kind = inferNotificationKind(msg);
       if (
         kind === 'forum-comment-upvoted' ||
+        kind === 'forum-comment-unvoted' ||
         kind === 'forum-post-commented' ||
         kind === 'forum-comment-replied' ||
         kind === 'forum-reply'
       ) {
-        void refetch();
+        void refetch(true);
       }
     });
 

@@ -209,8 +209,12 @@ function resolveNotificationTitle(
       return t('notif.topicCompleted', 'Topic completed');
     case 'forum-post-liked':
       return t('notif.forumPostLiked', 'Post liked');
+    case 'forum-post-unliked':
+      return t('notif.forumPostUnliked', 'Post unliked');
     case 'forum-comment-upvoted':
       return t('notif.forumCommentUpvoted', 'Comment upvoted');
+    case 'forum-comment-unvoted':
+      return t('notif.forumCommentUnvoted', 'Comment unvoted');
     case 'forum-post-commented':
       return t('notif.forumPostCommented', 'New comment');
     case 'forum-comment-replied':

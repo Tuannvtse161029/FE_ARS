@@ -384,8 +384,12 @@ function titleForKind(kind: ReturnType<typeof inferNotificationKind>, t: (key: s
     // Cross-role / Forum interactions
     case 'forum-post-liked':
       return t('notif.forumPostLiked', 'Post liked');
+    case 'forum-post-unliked':
+      return t('notif.forumPostUnliked', 'Post unliked');
     case 'forum-comment-upvoted':
       return t('notif.forumCommentUpvoted', 'Comment upvoted');
+    case 'forum-comment-unvoted':
+      return t('notif.forumCommentUnvoted', 'Comment unvoted');
     case 'forum-post-commented':
       return t('notif.forumPostCommented', 'New comment');
     case 'forum-comment-replied':

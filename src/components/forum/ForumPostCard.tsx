@@ -19,6 +19,7 @@ import { useForumComments } from '../../hooks/useForumComments';
 import { useCanInteractInForum } from '../../hooks/useCanInteractInForum';
 import { useI18n } from '../../i18n/I18nContext';
 import { forumPostService } from '../../services/forumPost.service';
+import { notificationService } from '../../services/notification.service';
 import { signalrService } from '../../services/signalr.service';
 import { buildForumPostViewModel } from '../../types/forumPostViewModel';
 import { inferNotificationKind } from '../../utils/notificationRouteMap';
@@ -145,7 +146,7 @@ export const ForumPostCard = ({
       else if (raw && typeof raw === 'object' && 'message' in raw) msg = String((raw as { message?: unknown }).message ?? '');
 
       const kind = inferNotificationKind(msg);
-      if (kind === 'forum-post-liked') {
+      if (kind === 'forum-post-liked' || kind === 'forum-post-unliked') {
         void forumPostService.getById(post.id).then((fresh) => {
           if (fresh && typeof fresh.likes === 'number') {
             setLikesCount(fresh.likes);
@@ -217,6 +218,26 @@ export const ForumPostCard = ({
         setIsLiked(res.isLiked);
         if (typeof res.likes === 'number') {
           setLikesCount(res.likes);
+        }
+      }
+
+      // Defensive FE notification for like / unlike
+      if (post.authorId && post.authorId !== currentUserId) {
+        try {
+          const postTitle = post.title ?? `Post #${post.id}`;
+          if (nextLiked) {
+            await notificationService.create({
+              userId: post.authorId,
+              message: `[Forum] like: "${postTitle}"`,
+            });
+          } else {
+            await notificationService.create({
+              userId: post.authorId,
+              message: `[Forum] unlike: "${postTitle}"`,
+            });
+          }
+        } catch (notifyErr) {
+          console.warn('Failed to send like/unlike notification:', notifyErr);
         }
       }
     } catch {
