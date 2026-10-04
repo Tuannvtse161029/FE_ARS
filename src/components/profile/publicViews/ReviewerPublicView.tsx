@@ -28,6 +28,15 @@ export interface ReviewerPublicViewProps {
   avatarInitials?: string;
   topMedals?: import('./shared/PublicSectionShell').PublicSectionShellProps['topMedals'];
   showPrivacyFootnote: boolean;
+  /**
+   * When the viewer is the owner of this profile, the full set of
+   * professional metrics (H-Index / Citations / Publications) and the
+   * expertise-area chips are surfaced as an at-a-glance preview.
+   * Visitors see only the public profile content (identity, publication
+   * stream, publications, forum) to keep the surface focused on
+   * authorship signals.
+   */
+  isOwner?: boolean;
 }
 
 export const ReviewerPublicView = ({
@@ -37,6 +46,7 @@ export const ReviewerPublicView = ({
   avatarInitials,
   topMedals,
   showPrivacyFootnote,
+  isOwner = false,
 }: ReviewerPublicViewProps) => {
   const { t } = useI18n();
   const roleData = data.reviewer;
@@ -129,81 +139,91 @@ export const ReviewerPublicView = ({
         </div>
       </PublicSectionShell>
 
-      {/* ── Reviewer contribution ──────────────────────────── */}
-      <PublicSectionShell
-        eyebrow={t('profile.publicView.section.contribution', 'REVIEWER CONTRIBUTION')}
-        title={t('profile.publicView.reviewer.contributionTitle', 'Verified academic signal')}
-        subtitle={t(
-          'profile.publicView.reviewer.contributionSubtitle',
-          'Metrics shown here are managed by the editorial Admin team and sourced from the BE /api/ProfessionalProfile endpoint.',
-        )}
-        data-testid="reviewer-contribution"
-      >
-        <div className={styles.metricsRow}>
-          <MetricTile
-            label={t('profile.publicView.metric.hindex', 'H-INDEX')}
-            value={roleData?.hindex ?? '—'}
-            caption={t(
-              'profile.publicView.reviewer.hindexCaption',
-              'Author-level citation impact.',
+      {/* ── Reviewer contribution (owner-only preview) ──────── */}
+      {/* Visitors see only the public profile (identity + publication
+          stream + publications + forum). The professional metrics
+          (H-Index / Citations / Publications) and expertise-area chips
+          stay on the owner's preview so editors can verify their own
+          record without exposing quantitative signals to other
+          members. */}
+      {isOwner ? (
+        <>
+          <PublicSectionShell
+            eyebrow={t('profile.publicView.section.contribution', 'REVIEWER CONTRIBUTION')}
+            title={t('profile.publicView.reviewer.contributionTitle', 'Verified academic signal')}
+            subtitle={t(
+              'profile.publicView.reviewer.contributionSubtitle',
+              'Metrics shown here are managed by the editorial Admin team and sourced from the BE /api/ProfessionalProfile endpoint.',
             )}
-            icon={<BookOpenCheck size={18} aria-hidden="true" />}
-            data-testid="reviewer-metric-hindex"
-          />
-          <MetricTile
-            label={t('profile.publicView.metric.citations', 'CITATIONS')}
-            value={
-              typeof roleData?.totalCitations === 'number'
-                ? roleData.totalCitations.toLocaleString()
-                : '—'
-            }
-            caption={t(
-              'profile.publicView.reviewer.citationsCaption',
-              'Total citations across the catalog.',
-            )}
-            icon={<ShieldCheck size={18} aria-hidden="true" />}
-            data-testid="reviewer-metric-citations"
-          />
-          <MetricTile
-            label={t('profile.publicView.metric.publicationCount', 'PUBLICATIONS')}
-            value={roleData?.publicationCount ?? '—'}
-            caption={t(
-              'profile.publicView.reviewer.publicationsCaption',
-              'Published papers on ARS.',
-            )}
-            icon={<CalendarCheck2 size={18} aria-hidden="true" />}
-            data-testid="reviewer-metric-publications"
-          />
-        </div>
-      </PublicSectionShell>
+            data-testid="reviewer-contribution"
+          >
+            <div className={styles.metricsRow}>
+              <MetricTile
+                label={t('profile.publicView.metric.hindex', 'H-INDEX')}
+                value={roleData?.hindex ?? '—'}
+                caption={t(
+                  'profile.publicView.reviewer.hindexCaption',
+                  'Author-level citation impact.',
+                )}
+                icon={<BookOpenCheck size={18} aria-hidden="true" />}
+                data-testid="reviewer-metric-hindex"
+              />
+              <MetricTile
+                label={t('profile.publicView.metric.citations', 'CITATIONS')}
+                value={
+                  typeof roleData?.totalCitations === 'number'
+                    ? roleData.totalCitations.toLocaleString()
+                    : '—'
+                }
+                caption={t(
+                  'profile.publicView.reviewer.citationsCaption',
+                  'Total citations across the catalog.',
+                )}
+                icon={<ShieldCheck size={18} aria-hidden="true" />}
+                data-testid="reviewer-metric-citations"
+              />
+              <MetricTile
+                label={t('profile.publicView.metric.publicationCount', 'PUBLICATIONS')}
+                value={roleData?.publicationCount ?? '—'}
+                caption={t(
+                  'profile.publicView.reviewer.publicationsCaption',
+                  'Published papers on ARS.',
+                )}
+                icon={<CalendarCheck2 size={18} aria-hidden="true" />}
+                data-testid="reviewer-metric-publications"
+              />
+            </div>
+          </PublicSectionShell>
 
-      {/* ── Expertise areas ───────────────────────────────── */}
-      <PublicSectionShell
-        eyebrow={t('profile.publicView.section.expertise', 'EXPERTISE AREAS')}
-        title={t('profile.publicView.reviewer.expertiseTitle', 'Matching reviewers with papers')}
-        subtitle={t(
-          'profile.publicView.reviewer.expertiseSubtitle',
-          'Tags surface this reviewer in the Admin queue when matching manuscripts to expertise.',
-        )}
-        data-testid="reviewer-expertise"
-      >
-        {expertiseChips.length === 0 ? (
-          <p className={styles.empty}>
-            {t(
-              'profile.publicView.reviewer.expertiseEmpty',
-              'No expertise tags set yet. Update your Professional Profile to surface relevant papers.',
+          {/* ── Expertise areas (owner-only preview) ────────────── */}
+          <PublicSectionShell
+            eyebrow={t('profile.publicView.section.expertise', 'EXPERTISE AREAS')}
+            title={t('profile.publicView.reviewer.expertiseTitle', 'Matching reviewers with papers')}
+            subtitle={t(
+              'profile.publicView.reviewer.expertiseSubtitle',
+              'Tags surface this reviewer in the Admin queue when matching manuscripts to expertise.',
             )}
-          </p>
-        ) : (
-          <ul className={styles.chips} aria-label={t('profile.publicView.section.expertise', 'Expertise areas')}>
-            {expertiseChips.map((chip) => (
-              <li key={chip} className={styles.chip}>
-                {chip}
-              </li>
-            ))}
-          </ul>
-        )}
-      </PublicSectionShell>
+            data-testid="reviewer-expertise"
+          >
+            {expertiseChips.length === 0 ? (
+              <p className={styles.empty}>
+                {t(
+                  'profile.publicView.reviewer.expertiseEmpty',
+                  'No expertise tags set yet. Update your Professional Profile to surface relevant papers.',
+                )}
+              </p>
+            ) : (
+              <ul className={styles.chips} aria-label={t('profile.publicView.section.expertise', 'Expertise areas')}>
+                {expertiseChips.map((chip) => (
+                  <li key={chip} className={styles.chip}>
+                    {chip}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </PublicSectionShell>
+        </>
+      ) : null}
 
       {/* ── Contribution stream ────────────────────────────── */}
       <PublicSectionShell

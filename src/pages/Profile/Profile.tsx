@@ -1035,51 +1035,54 @@ export const Profile = () => {
 
   return (
     <div className={styles.page} style={accentStyle}>
-      <PageHeader
-        title={isOwner ? roleEyebrow : displayName}
-        description={
-          isOwner
-            ? roleSubtitle
-            : t('profile.title.publicDescription', 'Public academic presence with the profile details this member has chosen to share.')
-        }
-        accent={roleMeta.accentVar}
-        actions={
-          mode === 'view' ? (
-            <>
-              {canRequestAdditionalRole && (
-                <Button
-                  variant={pendingRoleRequest ? 'secondary' : 'outline'}
-                  size="md"
-                  leftIcon={
-                    pendingRoleRequest ? (
-                      <Clock size={14} aria-hidden />
-                    ) : (
-                      <UserPlus size={14} aria-hidden />
-                    )
-                  }
-                  onClick={() => setIsRoleRequestModalOpen(true)}
-                  data-testid="profile-request-role-button"
-                  title={
-                    pendingRoleRequest
+      {/* PageHeader is owner-only. Visitors to `/profile/:userId` only
+          see the role-specific public view content below
+          (ResearcherPublicView, ReviewerPublicView, LecturerPublicView,
+          GraduateStudentPublicView) — they do not need the page-title
+          banner. The Follow/Following + Refresh actions still need to
+          be reachable for visitors, so we render them in a minimal
+          actions bar instead of the full PageHeader. */}
+      {isOwner ? (
+        <PageHeader
+          title={roleEyebrow}
+          description={roleSubtitle}
+          accent={roleMeta.accentVar}
+          actions={
+            mode === 'view' ? (
+              <>
+                {canRequestAdditionalRole && (
+                  <Button
+                    variant={pendingRoleRequest ? 'secondary' : 'outline'}
+                    size="md"
+                    leftIcon={
+                      pendingRoleRequest ? (
+                        <Clock size={14} aria-hidden />
+                      ) : (
+                        <UserPlus size={14} aria-hidden />
+                      )
+                    }
+                    onClick={() => setIsRoleRequestModalOpen(true)}
+                    data-testid="profile-request-role-button"
+                    title={
+                      pendingRoleRequest
+                        ? t('profile.requestPending', 'Role request pending')
+                        : t('profile.requestRole', 'Request additional role')
+                    }
+                  >
+                    {pendingRoleRequest
                       ? t('profile.requestPending', 'Role request pending')
-                      : t('profile.requestRole', 'Request additional role')
-                  }
+                      : t('profile.requestRole', 'Request additional role')}
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="md"
+                  leftIcon={<RefreshCw size={14} />}
+                  onClick={handleRefresh}
+                  disabled={isLoading}
                 >
-                  {pendingRoleRequest
-                    ? t('profile.requestPending', 'Role request pending')
-                    : t('profile.requestRole', 'Request additional role')}
+                  {isLoading ? t('profile.refreshing', 'Refreshing…') : t('profile.refresh', 'Refresh')}
                 </Button>
-              )}
-              <Button
-                variant="outline"
-                size="md"
-                leftIcon={<RefreshCw size={14} />}
-                onClick={handleRefresh}
-                disabled={isLoading}
-              >
-                {isLoading ? t('profile.refreshing', 'Refreshing…') : t('profile.refresh', 'Refresh')}
-              </Button>
-              {isOwner ? (
                 <Button
                   variant="primary"
                   size="md"
@@ -1088,25 +1091,54 @@ export const Profile = () => {
                 >
                   {t('profile.editButton', 'Edit profile')}
                 </Button>
-              ) : authenticatedUserId ? (
-                <Button
-                  variant={isFollowingTarget ? 'outline' : 'primary'}
-                  size="md"
-                  onClick={handleToggleFollowTarget}
-                  disabled={isFollowActionLoading}
-                >
-                  {isFollowActionLoading
-                    ? '…'
-                    : isFollowingTarget
-                      ? t('profile.followingBadge', 'Following')
-                      : t('profile.follow', '+ Follow')}
-                </Button>
-              ) : null}
-            </>
-          ) : null
-        }
-      />
+              </>
+            ) : null
+          }
+        />
+      ) : mode === 'view' ? (
+        <div className={styles.visitorActions} data-testid="profile-visitor-actions">
+          <div className={styles.visitorActionsTitle}>
+            <span className={styles.visitorActionsEyebrow}>
+              {t('profile.title.publicEyebrow', 'Public profile')}
+            </span>
+            <h1 className={styles.visitorActionsName} data-testid="profile-visitor-display-name">
+              {displayName}
+            </h1>
+          </div>
+          <div className={styles.visitorActionsButtons}>
+            <Button
+              variant="outline"
+              size="md"
+              leftIcon={<RefreshCw size={14} />}
+              onClick={handleRefresh}
+              disabled={isLoading}
+            >
+              {isLoading ? t('profile.refreshing', 'Refreshing…') : t('profile.refresh', 'Refresh')}
+            </Button>
+            {authenticatedUserId ? (
+              <Button
+                variant={isFollowingTarget ? 'outline' : 'primary'}
+                size="md"
+                onClick={handleToggleFollowTarget}
+                disabled={isFollowActionLoading}
+              >
+                {isFollowActionLoading
+                  ? '…'
+                  : isFollowingTarget
+                    ? t('profile.followingBadge', 'Following')
+                    : t('profile.follow', '+ Follow')}
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
+      {/* Identity card is owner-only. Visitors see the role-specific
+          public view's identity strip (rendered inside the public view
+          component), which already includes the role badge and
+          account-creation year, so showing the masthead identity card
+          here would just duplicate the same information. */}
+      {isOwner ? (
       <section className={styles.identityCard} aria-label="Account identity">
         {isOwner && mode === 'edit' ? (
           <button type="button" className={styles.avatar} onClick={() => setIsAvatarPickerOpen(true)} aria-label={t('profile.avatar.open', 'Change profile picture')}>
@@ -1203,6 +1235,7 @@ export const Profile = () => {
           </div>
         </div>
       </section>
+      ) : null}
 
       <TopMedalsModal
         isOpen={isTopMedalsModalOpen}
@@ -1305,11 +1338,17 @@ export const Profile = () => {
           their full identity. */}
       {targetUserId && mode === 'view' ? (
         <>
-          <ProfileSectionTabs
-            activeTab={activeTab}
-            onChange={setActiveTab}
-            badgeCount={unlockedBadgeCount}
-          />
+          {/* Tab nav is owner-only. Visitors only have access to the
+              public surface, so the "Profile & Expertise / Public
+              Profile" tab strip is redundant for them and would imply
+              they can switch into the private account panel. */}
+          {isOwner ? (
+            <ProfileSectionTabs
+              activeTab={activeTab}
+              onChange={setActiveTab}
+              badgeCount={unlockedBadgeCount}
+            />
+          ) : null}
 
           {/* ── Account tab (owner only) ─────────────────────────
               Owner's private surface: account contact strip + the
@@ -1394,6 +1433,7 @@ export const Profile = () => {
                     avatarInitials={avatarInitials}
                     topMedals={selectedTopMedals}
                     showPrivacyFootnote={!isOwner}
+                    isOwner={isOwner}
                   />
                 ) : null}
                 {roleName === 'Researcher' ? (
@@ -1404,6 +1444,7 @@ export const Profile = () => {
                     avatarInitials={avatarInitials}
                     topMedals={selectedTopMedals}
                     showPrivacyFootnote={!isOwner}
+                    isOwner={isOwner}
                   />
                 ) : null}
                 {roleName === 'Lecturer' ? (
@@ -1425,6 +1466,7 @@ export const Profile = () => {
                     avatarInitials={avatarInitials}
                     topMedals={selectedTopMedals}
                     showPrivacyFootnote={!isOwner}
+                    isOwner={isOwner}
                   />
                 ) : null}
                 {/* Fallback for Admin or unknown roles — keep the
@@ -1441,18 +1483,34 @@ export const Profile = () => {
                   />
                 ) : null}
 
-                <ProfilePublicationsSection
-                  publications={publications}
-                  isLoading={isExtrasLoading}
-                  error={extrasError}
-                  isOwner={isOwner}
-                />
-                <ProfileForumSection
-                  posts={forumPosts}
-                  isLoading={isExtrasLoading}
-                  error={extrasError}
-                  isOwner={isOwner}
-                />
+                {/* Publications + Forum sections.
+                    The role-specific public views (Researcher, Reviewer,
+                    Graduate Student) each render their own copy of
+                    `ProfilePublicationsSection` and `ProfileForumSection`
+                    from inside `data.extras`, so rendering them again
+                    here would produce duplicate sections. We therefore
+                    gate the parent-level render on roles whose public
+                    view does NOT surface these sections:
+                      - Lecturer: no publications/forum in LecturerPublicView
+                      - Admin / unknown / fallback: no public view at all
+                    Researcher / Reviewer / Graduate Student each own their
+                    own copy of these sections inside their public view. */}
+                {(roleName === 'Lecturer' || roleName === 'Admin' || !roleName) ? (
+                  <>
+                    <ProfilePublicationsSection
+                      publications={publications}
+                      isLoading={isExtrasLoading}
+                      error={extrasError}
+                      isOwner={isOwner}
+                    />
+                    <ProfileForumSection
+                      posts={forumPosts}
+                      isLoading={isExtrasLoading}
+                      error={extrasError}
+                      isOwner={isOwner}
+                    />
+                  </>
+                ) : null}
                 <ProfileBadgesSection
                   userId={targetUserId}
                   isOwner={isOwner}
