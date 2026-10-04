@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ChevronDown, ChevronUp, ExternalLink, FileText, ShieldCheck, UserCheck } from 'lucide-react';
 import { paperTypeLabel, type PublicationAuthor, type PublicationPaper } from '../types/publication';
 import { CitationActions } from '../components/CitationActions';
@@ -25,14 +26,35 @@ export interface PublishedPaperCardProps {
 
 /**
  * Author chip — OpenAlex-style scannable row. Renders the author name
- * (always plain text — never a URL built from the name) and a safe ORCID
- * link when one exists. No slug, no profile URL, no Google search link.
+ * with a link to their ARS platform profile if they are the verified
+ * researcher/author on the platform, plus a safe ORCID link when one exists.
  */
-const AuthorChip = ({ author }: { readonly author: PublicationAuthor }) => {
+const AuthorChip = ({
+  author,
+  isResearcher,
+  researcherId,
+}: {
+  readonly author: PublicationAuthor;
+  readonly isResearcher?: boolean;
+  readonly researcherId?: number | null;
+}) => {
   const links = resolveAuthorLinks(author);
+  const authorNameElement =
+    isResearcher && researcherId ? (
+      <Link
+        to={`/profile/${researcherId}`}
+        className={card.authorProfileLink}
+        title="Xem hồ sơ tác giả"
+      >
+        {author.name}
+      </Link>
+    ) : (
+      <span className={card.authorName}>{author.name}</span>
+    );
+
   return (
     <span className={card.author} data-testid="public-paper-author" data-author-id={author.id}>
-      <span className={card.authorName}>{author.name}</span>
+      {authorNameElement}
       {links.map((link) => (
         <a
           key={link.authorId}
@@ -123,22 +145,49 @@ export const PublishedPaperCard = ({
 
       <section className={card.section} aria-label="Authors">
         {(paper.researcherName || paper.submitterName) && (
-          <div className={card.researcherBadge} data-testid="public-paper-researcher">
-            <UserCheck size={14} aria-hidden="true" />
-            <span className={card.researcherLabel}>{copy('Researcher:', 'Nhà nghiên cứu:')}</span>
-            <strong className={card.researcherName}>{paper.researcherName || paper.submitterName}</strong>
+          <div className={card.researcherRow}>
+            {paper.authorId ? (
+              <Link
+                to={`/profile/${paper.authorId}`}
+                className={card.researcherBadge}
+                data-testid="public-paper-researcher"
+                title={copy('View researcher profile', 'Xem hồ sơ nhà nghiên cứu')}
+              >
+                <UserCheck size={14} aria-hidden="true" />
+                <span className={card.researcherLabel}>{copy('Researcher:', 'Nhà nghiên cứu:')}</span>
+                <strong className={card.researcherName}>{paper.researcherName || paper.submitterName}</strong>
+              </Link>
+            ) : (
+              <div className={card.researcherBadge} data-testid="public-paper-researcher">
+                <UserCheck size={14} aria-hidden="true" />
+                <span className={card.researcherLabel}>{copy('Researcher:', 'Nhà nghiên cứu:')}</span>
+                <strong className={card.researcherName}>{paper.researcherName || paper.submitterName}</strong>
+              </div>
+            )}
           </div>
         )}
         <p className={card.authorsList}>
           {orderedAuthors.length > 0 && (paper.researcherName || paper.submitterName) && (
             <span className={card.coAuthorsLabel}>{copy('Authors:', 'Tác giả:')}</span>
           )}
-          {orderedAuthors.map((author, index) => (
-            <span key={author.id} className={card.authorWrap}>
-              <AuthorChip author={author} />
-              {index < orderedAuthors.length - 1 ? <span className={card.authorSeparator}>, </span> : null}
-            </span>
-          ))}
+          {orderedAuthors.map((author, index) => {
+            const isResearcher = Boolean(
+              paper.authorId &&
+              ((paper.researcherName && author.name.trim().toLowerCase() === paper.researcherName.trim().toLowerCase()) ||
+               (paper.submitterName && author.name.trim().toLowerCase() === paper.submitterName.trim().toLowerCase()) ||
+               orderedAuthors.length === 1)
+            );
+            return (
+              <span key={author.id} className={card.authorWrap}>
+                <AuthorChip
+                  author={author}
+                  isResearcher={isResearcher}
+                  researcherId={paper.authorId}
+                />
+                {index < orderedAuthors.length - 1 ? <span className={card.authorSeparator}>, </span> : null}
+              </span>
+            );
+          })}
         </p>
       </section>
 
@@ -218,7 +267,18 @@ export const PublishedPaperCard = ({
             {(paper.researcherName || paper.submitterName) && (
               <div className={card.detailRow}>
                 <span className={card.detailLabel}>{copy('Researcher', 'Nhà nghiên cứu')}</span>
-                <span className={card.identifierPlain}>{paper.researcherName || paper.submitterName}</span>
+                {paper.authorId ? (
+                  <Link
+                    to={`/profile/${paper.authorId}`}
+                    className={card.profileLink}
+                    title={copy('View profile', 'Xem hồ sơ')}
+                  >
+                    <span>{paper.researcherName || paper.submitterName}</span>
+                    <ExternalLink size={12} aria-hidden="true" />
+                  </Link>
+                ) : (
+                  <span className={card.identifierPlain}>{paper.researcherName || paper.submitterName}</span>
+                )}
               </div>
             )}
           </section>

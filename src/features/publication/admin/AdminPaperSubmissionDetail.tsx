@@ -424,7 +424,15 @@ export const AdminPaperSubmissionDetail = () => {
           <dt>Published</dt>
           <dd>{paper.publishedAt ? formatDisplayDate(paper.publishedAt) : '—'}</dd>
           <dt>Researcher</dt>
-          <dd>{paper.researcherName || paper.submitterName || 'Not supplied'}</dd>
+          <dd>
+            {paper.authorId ? (
+              <Link to={`/profile/${paper.authorId}`} className={adminStyles.fileLink}>
+                {paper.researcherName || paper.submitterName || 'Not supplied'}
+              </Link>
+            ) : (
+              paper.researcherName || paper.submitterName || 'Not supplied'
+            )}
+          </dd>
           <dt>Authors</dt>
           <dd>
             {paper.authors

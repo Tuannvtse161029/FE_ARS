@@ -386,6 +386,19 @@
   color: var(--ars-ink);
   font-size: var(--font-size-sm);
   width: fit-content;
+  text-decoration: none;
+  transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+}
+
+a.researcherBadge {
+  cursor: pointer;
+}
+
+a.researcherBadge:hover {
+  background: var(--ars-paper);
+  border-color: var(--ars-researcher, #0d9488);
+  box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.05));
+  transform: translateY(-1px);
 }
 
 .researcherLabel {
@@ -396,6 +409,34 @@
 .researcherName {
   color: var(--ars-researcher, #0d9488);
   font-weight: var(--font-weight-semibold);
+}
+
+.authorProfileLink {
+  color: var(--ars-ink);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+  border-bottom: 1px dashed var(--ars-ink-muted);
+  transition: color var(--transition-fast), border-bottom-color var(--transition-fast);
+  cursor: pointer;
+}
+
+.authorProfileLink:hover {
+  color: var(--ars-researcher, #0d9488);
+  border-bottom-color: var(--ars-researcher, #0d9488);
+}
+
+.profileLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ars-researcher, #0d9488);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-sm);
+  text-decoration: none;
+}
+
+.profileLink:hover {
+  text-decoration: underline;
 }
 
 .coAuthorsLabel {
