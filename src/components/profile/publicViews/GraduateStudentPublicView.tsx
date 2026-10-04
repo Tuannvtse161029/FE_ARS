@@ -39,6 +39,15 @@ export interface GraduateStudentPublicViewProps {
   avatarInitials?: string;
   topMedals?: import('./shared/PublicSectionShell').PublicSectionShellProps['topMedals'];
   showPrivacyFootnote: boolean;
+  /**
+   * When the viewer is the owner of this profile, the full set of
+   * platform-record metrics (joined year, reports submitted, seminars
+   * attended) and the research-interest chips are surfaced as an
+   * at-a-glance preview. Visitors see only the public profile
+   * content (identity, milestones, forum) to keep the surface focused
+   * on authorship signals.
+   */
+  isOwner?: boolean;
 }
 
 type MilestoneStatusTone = 'muted' | 'positive' | 'attention' | 'rejected';
@@ -95,6 +104,7 @@ export const GraduateStudentPublicView = ({
   avatarInitials,
   topMedals,
   showPrivacyFootnote,
+  isOwner = false,
 }: GraduateStudentPublicViewProps) => {
   const { t } = useI18n();
   const roleData = data.graduateStudent;
@@ -314,39 +324,47 @@ export const GraduateStudentPublicView = ({
         </ul>
       </PublicSectionShell>
 
-      {/* ── Academic snapshot ─────────────────────────────── */}
-      <PublicSectionShell
-        eyebrow={t('profile.publicView.section.snapshot', 'ACADEMIC SNAPSHOT')}
-        title={t('profile.publicView.gradStudent.snapshotTitle', 'Platform record')}
-        data-testid="gradstudent-snapshot"
-      >
-        <div className={styles.metricsRow}>
-          <MetricTile
-            label={t('profile.publicView.metric.joinedYear', 'JOINED YEAR')}
-            value={roleData?.joinedYear ?? '—'}
-            caption={t('profile.publicView.gradStudent.joinedCaption', 'Year joined ARS.')}
-            data-testid="gradstudent-metric-joined"
-          />
-          <MetricTile
-            label={t('profile.publicView.metric.reportsSubmitted', 'REPORTS SUBMITTED')}
-            value={roleData?.reportsSubmittedCount ?? 0}
-            caption={t(
-              'profile.publicView.gradStudent.reportsCaption',
-              'Reports submitted to the supervising lecturer.',
-            )}
-            data-testid="gradstudent-metric-reports"
-          />
-          <MetricTile
-            label={t('profile.publicView.metric.seminarsAttended', 'SEMINARS ATTENDED')}
-            value={roleData?.seminarsAttendedCount ?? 0}
-            caption={t(
-              'profile.publicView.gradStudent.seminarsCaption',
-              'Verified seminar participations.',
-            )}
-            data-testid="gradstudent-metric-seminars"
-          />
-        </div>
-      </PublicSectionShell>
+      {/* ── Academic snapshot (owner-only preview) ──────────── */}
+      {/* Visitors see only the public profile (identity + research
+          path + activity + milestones + forum). The platform-record
+          metrics (joined year, reports submitted, seminars attended)
+          stay on the owner's preview so students can verify their own
+          record without exposing quantitative signals to other
+          members. */}
+      {isOwner ? (
+        <PublicSectionShell
+          eyebrow={t('profile.publicView.section.snapshot', 'ACADEMIC SNAPSHOT')}
+          title={t('profile.publicView.gradStudent.snapshotTitle', 'Platform record')}
+          data-testid="gradstudent-snapshot"
+        >
+          <div className={styles.metricsRow}>
+            <MetricTile
+              label={t('profile.publicView.metric.joinedYear', 'JOINED YEAR')}
+              value={roleData?.joinedYear ?? '—'}
+              caption={t('profile.publicView.gradStudent.joinedCaption', 'Year joined ARS.')}
+              data-testid="gradstudent-metric-joined"
+            />
+            <MetricTile
+              label={t('profile.publicView.metric.reportsSubmitted', 'REPORTS SUBMITTED')}
+              value={roleData?.reportsSubmittedCount ?? 0}
+              caption={t(
+                'profile.publicView.gradStudent.reportsCaption',
+                'Reports submitted to the supervising lecturer.',
+              )}
+              data-testid="gradstudent-metric-reports"
+            />
+            <MetricTile
+              label={t('profile.publicView.metric.seminarsAttended', 'SEMINARS ATTENDED')}
+              value={roleData?.seminarsAttendedCount ?? 0}
+              caption={t(
+                'profile.publicView.gradStudent.seminarsCaption',
+                'Verified seminar participations.',
+              )}
+              data-testid="gradstudent-metric-seminars"
+            />
+          </div>
+        </PublicSectionShell>
+      ) : null}
 
       {/* ── Forum activity (re-uses existing section) ─── */}
       {data.extras.forumPosts.length > 0 ? (

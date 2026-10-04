@@ -3501,6 +3501,7 @@ export const dictionary: Dictionary = {
     'profile.subtitle.admin': 'Administrative identity surface visible across the platform.',
     'profile.eyebrow.publicShowcase': 'Professional Showcase',
     'profile.title.publicDescription': 'Public academic presence with the profile details this member has chosen to share.',
+    'profile.title.publicEyebrow': 'Public profile',
     'profile.view.yourProfile': 'Your profile',
     'profile.view.publicBreadcrumbSuffix': '\'s Profile',
     'profile.view.title': 'Profile details',
