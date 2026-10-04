@@ -474,26 +474,11 @@
 .footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   padding: var(--space-3, 12px) var(--space-5, 20px);
   border-top: 1px solid var(--ars-network, #e2e8f0);
   background: var(--ars-paper-alt, #f8fafc);
   flex-shrink: 0;
-}
-
-.externalForumLink {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ars-admin, #8b5cf6);
-  text-decoration: none;
-}
-
-.externalForumLink:hover {
-  text-decoration: underline;
-  color: var(--ars-admin-mid, #7c3aed);
 }
 
 .closeBtn {

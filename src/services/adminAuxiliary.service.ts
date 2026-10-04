@@ -1,5 +1,6 @@
 import api from './axios';
 import { API_ENDPOINTS, REPORT } from '../utils/constants';
+import { userService } from './user.service';
 import type {
   ViolationReport,
   ViolationReportsQuery,
@@ -18,6 +19,7 @@ export class AdminBackendContractError extends Error {
 interface ReportApiRow {
   reportId: number;
   reporterId?: number | null;
+  reporterName?: string | null;
   targetType?: string | null;
   targetId?: number | null;
   reason?: string | null;
@@ -26,6 +28,8 @@ interface ReportApiRow {
   createdAt?: string | null;
 }
 
+const reporterNameCache = new Map<number, string>();
+
 const mapReport = (row: ReportApiRow): ViolationReport => ({
   reportId: row.reportId,
   type: row.targetType?.toUpperCase().includes('PAPER')
@@ -33,16 +37,19 @@ const mapReport = (row: ReportApiRow): ViolationReport => ({
     : row.targetType?.toUpperCase().includes('POST')
       ? 'FORUM_POST'
       : 'FORUM_COMMENT',
-  // The `/api/Report` contract does not expose target-author or reporter
-  // display names; the placeholder text below keeps the row honest so admins
-  // can tell at a glance which columns the BE hasn't populated yet.
   targetAuthorId: 0,
   targetAuthorName: '—',
   targetContentId: row.targetId ?? 0,
   reportedContent: row.violationNotes?.trim() || '—',
   reason: row.reason?.trim() || '—',
   reportedById: row.reporterId ?? 0,
-  reportedByName: row.reporterId ? `User #${row.reporterId}` : '—',
+  reportedByName:
+    row.reporterName?.trim() ||
+    (row.reporterId && reporterNameCache.has(row.reporterId)
+      ? reporterNameCache.get(row.reporterId)!
+      : row.reporterId
+        ? `User #${row.reporterId}`
+        : '—'),
   date: row.createdAt ?? '',
   status:
     row.status?.toUpperCase() === 'RESOLVED'
@@ -55,7 +62,39 @@ const mapReport = (row: ReportApiRow): ViolationReport => ({
 // ── Violation reports ─────────────────────────────────────────────────────
 async function getViolationReports(query: ViolationReportsQuery = {}): Promise<ViolationReport[]> {
   const response = await api.get<ReportApiRow[]>(REPORT.GET_ALL);
-  return (response.data ?? []).map(mapReport).filter((r) => {
+  const rows = response.data ?? [];
+  const reports = rows.map(mapReport);
+
+  const missingReporterIds = Array.from(
+    new Set(
+      reports
+        .filter((r) => r.reportedById > 0 && (!r.reportedByName || r.reportedByName.startsWith('User #')))
+        .map((r) => r.reportedById)
+    )
+  );
+
+  if (missingReporterIds.length > 0) {
+    await Promise.allSettled(
+      missingReporterIds.map(async (id) => {
+        if (reporterNameCache.has(id)) return;
+        try {
+          const user = await userService.getById(id);
+          const name = user.fullName || user.username || `User #${id}`;
+          reporterNameCache.set(id, name);
+        } catch {
+          /* ignore */
+        }
+      })
+    );
+
+    reports.forEach((r) => {
+      if (r.reportedById > 0 && reporterNameCache.has(r.reportedById)) {
+        r.reportedByName = reporterNameCache.get(r.reportedById)!;
+      }
+    });
+  }
+
+  return reports.filter((r) => {
     if (query.status && query.status !== 'ALL' && r.status !== query.status) return false;
     if (query.type && query.type !== 'ALL' && r.type !== query.type) return false;
     if (query.search) {

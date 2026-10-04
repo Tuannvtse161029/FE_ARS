@@ -7,6 +7,7 @@ import type {
 } from '../../types/adminAuxiliary';
 import { useI18n, useLocale } from '../../i18n/I18nContext';
 import { ReportViolationPreviewModal } from './ReportViolationPreviewModal';
+import { userService } from '../../services/user.service';
 
 interface ResolveReportModalProps {
   report: ViolationReport | null;
@@ -39,6 +40,7 @@ export function ResolveReportModal({
   );
   const [note, setNote] = useState('');
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [reporterDisplayName, setReporterDisplayName] = useState('');
 
   const isReadOnly = report?.status !== 'PENDING';
 
@@ -51,6 +53,29 @@ export function ResolveReportModal({
       setIsPreviewOpen(false);
     }
   }, [isOpen, report?.reportId]);
+
+  // Resolve reporter full name — fall back to userService.getById when the
+  // mapped name is still a raw "User #n" placeholder.
+  useEffect(() => {
+    if (!report) return;
+    const initial =
+      report.reportedByName &&
+      !report.reportedByName.startsWith('User #') &&
+      report.reportedByName !== '—'
+        ? report.reportedByName
+        : '';
+    setReporterDisplayName(initial);
+
+    if (!initial && report.reportedById) {
+      void userService
+        .getById(report.reportedById)
+        .then((u) => {
+          const name = u.fullName || u.username;
+          if (name) setReporterDisplayName(name);
+        })
+        .catch(() => {});
+    }
+  }, [report]);
 
   if (!isOpen || !report) return null;
 
@@ -169,7 +194,9 @@ export function ResolveReportModal({
               </div>
               <div className={styles.metaItem}>
                 <span className={styles.metaLabel}>{t('admin.contentReports.table.reportedBy', 'Reported by')}</span>
-                <span className={styles.metaValue}>{report.reportedByName}</span>
+                <span className={styles.metaValue}>
+                  {reporterDisplayName || report.reportedByName || (report.reportedById ? `User #${report.reportedById}` : '—')}
+                </span>
               </div>
               <div className={styles.metaItem}>
                 <span className={styles.metaLabel}>{t('admin.contentReports.table.date', 'Filed')}</span>

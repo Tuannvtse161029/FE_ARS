@@ -96,6 +96,7 @@ export interface AuthResponse {
   token: string;
   username: string;
   email: string;
+  fullName?: string;
   avatarUrl?: string | null;
   /**
    * BE-derived business-role name. Nullable to accommodate first-time

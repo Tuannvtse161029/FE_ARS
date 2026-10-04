@@ -1049,6 +1049,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // keeps the in-memory store, the persisted `ars-auth-storage`
         // blob, and the legacy `ars_user` blob all in sync.
         authStore.updateUser({
+          username: freshUser.username,
+          email: freshUser.email,
+          fullName: freshUser.fullName,
           isActive: freshUser.isActive,
           verificationStatus: freshUser.verificationStatus,
           accountTier: freshUser.accountTier,
@@ -1068,10 +1071,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // Wait for Zustand persist rehydration before reading authStore.user.
     // The `isLoading` flag flips to false once rehydration completes.
-    if (!authStore.isLoading) {
-      syncUserFromBE();
+    if (!authStore.isLoading && authStore.isAuthenticated && authStore.user?.id) {
+      void syncUserFromBE();
     }
-  }, []); // intentionally empty — run once after first render when store is ready
+  }, [authStore.isLoading, authStore.isAuthenticated, authStore.user?.id]);
 
   const value: AuthContextType = {
     user: authStore.user
@@ -1080,6 +1083,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           userId: authStore.user.id,
           username: authStore.user.username,
           email: authStore.user.email,
+          fullName: authStore.user.fullName,
           avatarUrl: authStore.user.avatarUrl ?? null,
           role: authStore.user.roleName,
           isActive: authStore.user.isActive ?? false,
