@@ -449,6 +449,7 @@ export const dictionary: Dictionary = {
     'register.roleRequirement.Graduate Student': 'Cung cấp thư xác nhận chính thức do cơ sở đào tạo cấp, thể hiện tình trạng đang học, chương trình, khoa, thời gian học và người ký có thẩm quyền. Ứng viên FPT nên dùng thư có nhận diện FPT.',
     'register.academicIdentifierTitle': 'Mã định danh học thuật',
     'register.academicIdentifierDesc': 'Cung cấp mã tác giả học thuật của bạn để liên kết hồ sơ nghiên cứu.',
+    'register.academicIdentifierOptionalDesc': 'Không bắt buộc. Không phải giảng viên nào cũng có hồ sơ OpenAlex hoặc Semantic Scholar. Nếu bạn có, hãy thêm để quản trị viên xác minh nhanh hơn. Nếu không, bạn có thể bỏ trống.',
     'register.identifierTypeOpenAlex': 'Mã OpenAlex',
     'register.identifierTypeOpenAlexRecommended': 'Mã OpenAlex (Khuyên dùng)',
     'register.identifierTypeSemanticScholar': 'Mã Semantic Scholar',
@@ -457,6 +458,8 @@ export const dictionary: Dictionary = {
     'register.semanticScholarLabel': 'Mã Semantic Scholar',
     'register.semanticScholarPlaceholder': '1741101 hoặc https://www.semanticscholar.org/author/...',
     'register.errIdentifierRequired': 'Vui lòng nhập mã định danh tương ứng',
+    'register.identifierOptionalHint': 'Không phải giảng viên nào cũng có hồ sơ OpenAlex. Bạn có thể bỏ trống — quản trị viên sẽ xác minh tư cách giảng dạy của bạn qua thư xác nhận.',
+    'register.optionalTag': 'Không bắt buộc',
     'register.recommended': 'Khuyên dùng',
     'register.roleInfoTag': 'Tổng quan vai trò',
     'register.trialBadge': '7 ngày dùng thử sau khi quản trị viên phê duyệt',
@@ -2020,6 +2023,7 @@ export const dictionary: Dictionary = {
     'home.catalog.subtitle': 'Tìm và đọc các công trình học thuật đã xuất bản',
     'home.catalog.search.placeholder': 'Tìm kiếm tiêu đề, tác giả, DOI hoặc từ khóa',
     'home.catalog.search.ariaLabel': 'Tìm kiếm nghiên cứu đã xuất bản',
+    'home.catalog.author.viewProfile': 'Xem hồ sơ của {name}',
     'home.catalog.sort.label': 'Sắp xếp',
     'home.catalog.sort.ariaLabel': 'Sắp xếp danh mục',
     'home.catalog.sort.newest': 'Mới xuất bản nhất',
@@ -2074,6 +2078,12 @@ export const dictionary: Dictionary = {
     'subscription.subscribe': 'Đăng ký',
     'subscription.perMonth': '/tháng',
     'subscription.badge.openAria': 'Mở trang gói đăng ký',
+    // Generic caption shown when the BE's `/my-subscription` response
+    // carries a subscription row but no embedded `annualFee` plan
+    // (e.g. an admin inserted the expiry date directly into the DB
+    // without going through the purchase flow). Without this, the FE
+    // used to synthesize a misleading name from `daysRemaining`.
+    'subscription.status.genericName': 'Gói đăng ký hằng năm',
     'subscription.paymentPolicy.title': 'Chính sách thanh toán & không hoàn tiền',
     'subscription.paymentPolicy.forPlan': 'Cho gói: {plan}',
     'subscription.paymentPolicy.close': 'Đóng chính sách thanh toán',

@@ -444,6 +444,7 @@ export const dictionary: Dictionary = {
     'register.roleRequirement.Graduate Student': 'Provide an official institution-issued confirmation letter showing current enrollment, programme, department, study period, and authorized signatory. FPT applicants should use an FPT-branded letter.',
     'register.academicIdentifierTitle': 'Academic Scholarly Identifier',
     'register.academicIdentifierDesc': 'Provide your scholarly author ID to link your research profile.',
+    'register.academicIdentifierOptionalDesc': 'Optional. Not every Lecturer has an OpenAlex or Semantic Scholar profile. If you have one, add it to help admins verify your scholarly identity faster. Otherwise leave this blank.',
     'register.identifierTypeOpenAlex': 'OpenAlex ID',
     'register.identifierTypeOpenAlexRecommended': 'OpenAlex ID (Recommended)',
     'register.identifierTypeSemanticScholar': 'Semantic Scholar ID',
@@ -452,6 +453,8 @@ export const dictionary: Dictionary = {
     'register.semanticScholarLabel': 'Semantic Scholar ID',
     'register.semanticScholarPlaceholder': '1741101 or https://www.semanticscholar.org/author/...',
     'register.errIdentifierRequired': 'Please enter the corresponding identifier.',
+    'register.identifierOptionalHint': 'Not every Lecturer has an OpenAlex profile. You can leave this blank and admins will verify your teaching status through the confirmation letter.',
+    'register.optionalTag': 'Optional',
     'register.recommended': 'Recommended',
     'register.roleInfoTag': 'Role at a glance',
     'register.trialBadge': '7-day trial after admin approval',
@@ -2520,6 +2523,7 @@ export const dictionary: Dictionary = {
     'home.catalog.subtitle': 'Find and read published academic work',
     'home.catalog.search.placeholder': 'Search title, author, DOI, or keyword',
     'home.catalog.search.ariaLabel': 'Search published research',
+    'home.catalog.author.viewProfile': 'View {name}\u2019s profile',
     'home.catalog.sort.label': 'Sort',
     'home.catalog.sort.ariaLabel': 'Catalog sort',
     'home.catalog.sort.newest': 'Newest published',
@@ -2574,6 +2578,12 @@ export const dictionary: Dictionary = {
     'subscription.subscribe': 'Subscribe',
     'subscription.perMonth': '/month',
     'subscription.badge.openAria': 'Open subscription page',
+    // Generic caption shown when the BE's `/my-subscription` response
+    // carries a subscription row but no embedded `annualFee` plan
+    // (e.g. an admin inserted the expiry date directly into the DB
+    // without going through the purchase flow). Without this, the FE
+    // used to synthesize a misleading name from `daysRemaining`.
+    'subscription.status.genericName': 'Annual subscription',
     'subscription.paymentPolicy.title': 'Payment & No-Refund Policy',
     'subscription.paymentPolicy.forPlan': 'For plan: {plan}',
     'subscription.paymentPolicy.close': 'Close payment policy',

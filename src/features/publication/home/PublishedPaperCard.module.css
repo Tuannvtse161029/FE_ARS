@@ -141,6 +141,32 @@
   white-space: normal;
 }
 
+/* Profile link around the author name — the name stays visually the
+   same as the plain-text variant; only the underline + color shift on
+   hover/focus make it discoverable as interactive. The link only ever
+   renders for authors the adapter was able to confirm is a registered
+   ARS user, so the link target is always a real profile. */
+.authorNameLink {
+  display: inline;
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px dashed transparent;
+  transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.authorNameLink:hover {
+  color: var(--ars-blue);
+  border-bottom-color: var(--ars-blue);
+  text-decoration: none;
+}
+
+.authorNameLink:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+  border-bottom-color: transparent;
+}
+
 .authorLink {
   display: inline-flex;
   align-items: center;

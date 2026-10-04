@@ -28,6 +28,21 @@ export interface PublicationAuthor {
   institutionIds: string[];
   orcid?: string;
   order: number;
+  /**
+   * Optional ARS user id. Populated by the adapter only when the
+   * adapter can prove this author corresponds to a registered ARS
+   * user. Today the only way to do that is name-matching the author
+   * against the paper's submitter name (`paper.authorName` /
+   * `submitterName`). The BE's `PaperResponse.authors[]` does not
+   * carry a userId per author, so we cannot link every co-author to
+   * a profile — we only ever link the one we can identify.
+   *
+   * The card renders authors with a `userId` as a clickable link to
+   * `/profile/:userId`; authors without one render as plain text.
+   * This keeps the existing "no URL built from a bare name" rule
+   * intact for every author the adapter cannot identify.
+   */
+  userId?: string;
 }
 
 export interface PublicationInstitution {

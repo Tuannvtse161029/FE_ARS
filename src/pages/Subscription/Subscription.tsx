@@ -32,7 +32,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSubscription, clearSubscriptionCache } from '../../hooks/useSubscription';
-import { useLocale } from '../../i18n/I18nContext';
+import { useLocale, useT } from '../../i18n/I18nContext';
 import { annualFeeService } from '../../services/annualFee.service';
 import { PageHeader } from '../../components/PageHeader';
 import { SkeletonRow } from '../../components/SkeletonRow';
@@ -228,6 +228,7 @@ export const Subscription = () => {
   const { user, effectiveRole } = useAuth();
   const location = useLocation();
   const locale = useLocale();
+  const t = useT();
   const {
     current,
     isLoading: isSubscriptionLoading,
@@ -657,7 +658,11 @@ export const Subscription = () => {
             {isSubscriptionLoading
               ? 'Loading subscription…'
               : current
-                ? current.annualFee?.name ?? (current.daysRemaining > 0 ? `${current.daysRemaining}-Day Subscription` : 'Active subscription')
+                ? current.annualFee?.name?.trim() ||
+                  t(
+                    'subscription.status.genericName',
+                    'Annual subscription',
+                  )
                 : 'No active subscription'}
           </h2>
         </div>

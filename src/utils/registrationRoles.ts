@@ -97,4 +97,23 @@ export const ACADEMIC_IDENTIFIER_ROLES: ReadonlyArray<RequestableRole> = [
 export function isAcademicRole(role: string | null | undefined): boolean {
   if (!role) return false;
   return (ACADEMIC_IDENTIFIER_ROLES as ReadonlyArray<string>).includes(role);
-}
+}
+
+/**
+ * True iff the role REQUIRES a non-empty OpenAlex or Semantic Scholar ID
+ * at registration time.
+ *
+ * Researcher and Reviewer always need the identifier so admins can
+ * verify scholarly identity before granting the role. Lecturer is
+ * special-cased: many lecturers teach without an OpenAlex or
+ * Semantic Scholar profile, so the identifier is shown as optional
+ * (the FE still surfaces the input but skips the required check, and
+ * the BE accepts `openAlexId: null` / `semanticScholarId: null`).
+ */
+export function isIdentifierRequiredForRole(role: string | null | undefined): boolean {
+  if (!role) return false;
+  // Researcher and Reviewer must provide the identifier. Lecturer is
+  // exempt — see the doc comment above for the rationale. Other
+  // academic roles that may be added later default to required.
+  return role === 'Researcher' || role === 'Reviewer';
+}

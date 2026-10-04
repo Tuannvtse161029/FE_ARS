@@ -270,15 +270,37 @@ export const getMyCurrentSubscription = async (): Promise<CurrentAnnualFeeSubscr
     expiresAt = new Date(Date.now() + daysRemaining * 86400000).toISOString();
   }
 
-  // Normalize annualFee plan object
-  const annualFee = data.annualFee ?? {
-    id: data.purchase?.annualFeeId ?? 0,
-    name: daysRemaining > 0 ? `${daysRemaining}-Day Subscription` : 'Active Subscription',
-    userRole: 'Researcher',
-    price: data.purchase?.amount ?? 0,
-    billingCycle: 'Annual',
-    status: true,
-  };
+  // Plan object — the BE's `MySubscriptionResponse.annualFee` may legitimately
+  // be missing for two reasons:
+  //   1. The user has an active subscription but the BE joined the plan
+  //      table wrong (BE gap, not user-facing). We used to synthesize a
+  //      fake plan with the name `${daysRemaining}-Day Subscription`, which
+  //      was misleading — users thought they'd bought a "249-day plan".
+  //   2. The plan referenced by `purchase.annualFeeId` was soft-deleted by
+  //      an admin (status=false), in which case the BE legitimately has
+  //      nothing to embed.
+  //
+  // The honest fix is to pass through `null` and let the UI render a generic
+  // "Active subscription" caption rather than fabricating a name. We log a
+  // console warning in dev so the BE gap is visible without affecting the
+  // rendered DOM.
+  let annualFee: AnnualFee | null = null;
+  if (data.annualFee && typeof data.annualFee === 'object') {
+    annualFee = data.annualFee as AnnualFee;
+  } else if (data.purchase?.annualFeeId) {
+    // No embedded plan but we do know the plan id from the purchase row.
+    // We intentionally do NOT synthesize a fake plan from this — the id
+    // alone is not enough to build a user-facing name. The UI should
+    // render a generic caption.
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        '[annualFee] BE /my-subscription returned a subscription row with no embedded `annualFee` plan. ' +
+          'Displaying generic "Active subscription" caption. Plan id from purchase:',
+        data.purchase.annualFeeId,
+      );
+    }
+  }
 
   return {
     purchase: data.purchase ?? null,
@@ -433,14 +455,30 @@ export const getUserCurrentSubscription = async (
         expiresAt = new Date(Date.now() + daysRemaining * 86400000).toISOString();
       }
 
-      return {
-        purchase: null,
-        annualFee: match.annualFee,
-        daysRemaining,
-        isExpired,
-        expiresAt,
-      };
-    }
+  // Plan object — see the matching block in `getMyCurrentSubscription`
+  // for the rationale. The honest answer is `null` when the BE didn't
+  // embed the plan; the UI renders a generic caption rather than
+  // fabricating a name like "249-Day Subscription" from `daysRemaining`.
+  let adminAnnualFee: AnnualFee | null = null;
+  if (match.annualFee && typeof match.annualFee === 'object') {
+    adminAnnualFee = match.annualFee as AnnualFee;
+  } else if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[annualFee] admin subscriptions endpoint returned a row with no embedded `annualFee` plan. ' +
+        'Displaying generic "Active subscription" caption for userId:',
+      userId,
+    );
+  }
+
+  return {
+    purchase: null,
+    annualFee: adminAnnualFee,
+    daysRemaining,
+    isExpired,
+    expiresAt,
+  };
+}
     // If the new endpoint returned no match for this user, fall
     // through to the legacy path so we still try `my-subscription`.
   } catch {
@@ -487,18 +525,24 @@ export const getUserCurrentSubscription = async (
     expiresAt = new Date(Date.now() + daysRemaining * 86400000).toISOString();
   }
 
-  const annualFee = data.annualFee ?? {
-    id: data.purchase?.annualFeeId ?? 0,
-    name: daysRemaining > 0 ? `${daysRemaining}-Day Subscription` : 'Active Subscription',
-    userRole: 'Researcher',
-    price: data.purchase?.amount ?? 0,
-    billingCycle: 'Annual',
-    status: true,
-  };
+  // Plan object — see the matching block in `getMyCurrentSubscription`
+  // for the rationale. Pass through `null` when the BE didn't embed the
+  // plan; the UI renders a generic caption rather than fabricating a
+  // name like `${daysRemaining}-Day Subscription` from the day count.
+  let legacyAnnualFee: AnnualFee | null = null;
+  if (data.annualFee && typeof data.annualFee === 'object') {
+    legacyAnnualFee = data.annualFee as AnnualFee;
+  } else if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[annualFee] legacy my-subscription fallback returned no embedded `annualFee` plan. ' +
+        'Displaying generic caption.',
+    );
+  }
 
   return {
     purchase: data.purchase ?? null,
-    annualFee,
+    annualFee: legacyAnnualFee,
     daysRemaining,
     isExpired,
     expiresAt,

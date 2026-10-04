@@ -13,6 +13,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildArxivBadge,
+  buildAuthorProfilePath,
   buildDoiLink,
   buildOpenAlexLink,
   buildOrcidLink,
@@ -164,5 +165,46 @@ describe('publicationLinks – paper + author aggregation', () => {
     // name. This pins the contract that name → URL is impossible.
     const author: Parameters<typeof resolveAuthorLinks>[0] = { id: 'a-1' };
     expect(resolveAuthorLinks(author)).toEqual([]);
+  });
+});
+
+describe('publicationLinks – author profile path', () => {
+  // The catalog card uses buildAuthorProfilePath() to turn an
+  // `author.userId` into an in-app `/profile/:userId` link. The
+  // helper MUST only return a path when the userId is a positive
+  // integer — never a name, never a slug, never a non-numeric
+  // garbage string. The route param is consumed by the Profile page
+  // and would 404 on a non-numeric value.
+
+  it('returns /profile/:userId when the author carries a numeric userId', () => {
+    expect(buildAuthorProfilePath({ id: 'a-1', userId: '42' })).toBe('/profile/42');
+  });
+
+  it('returns null when the author has no userId', () => {
+    expect(buildAuthorProfilePath({ id: 'a-1' })).toBeNull();
+    expect(buildAuthorProfilePath({ id: 'a-1', userId: undefined })).toBeNull();
+    expect(buildAuthorProfilePath({ id: 'a-1', userId: '' })).toBeNull();
+    expect(buildAuthorProfilePath({ id: 'a-1', userId: '   ' })).toBeNull();
+  });
+
+  it('rejects non-numeric userIds (would 404 the Profile page)', () => {
+    expect(buildAuthorProfilePath({ id: 'a-1', userId: 'not-a-number' })).toBeNull();
+    expect(buildAuthorProfilePath({ id: 'a-1', userId: '42abc' })).toBeNull();
+    expect(buildAuthorProfilePath({ id: 'a-1', userId: 'abc42' })).toBeNull();
+  });
+
+  it('rejects zero, negative, and decimal userIds', () => {
+    expect(buildAuthorProfilePath({ id: 'a-1', userId: '0' })).toBeNull();
+    expect(buildAuthorProfilePath({ id: 'a-1', userId: '-42' })).toBeNull();
+    expect(buildAuthorProfilePath({ id: 'a-1', userId: '3.14' })).toBeNull();
+  });
+
+  it('never builds a path from the author name', () => {
+    // Even if a future adapter ever ships `userId: "Nguyen Minh Anh"`,
+    // the helper must refuse to build a /profile/<name> path. The
+    // Profile route resolves by user id, and a name slug would 404.
+    expect(
+      buildAuthorProfilePath({ id: 'a-1', userId: 'Nguyen Minh Anh' }),
+    ).toBeNull();
   });
 });
