@@ -79,6 +79,8 @@ class SignalRService {
   private connection: HubConnection | null = null;
   private startPromise: Promise<void> | null = null;
   private listeners = new Map<string, Set<EventListener<any>>>();
+  private activePostGroups = new Set<string>();
+  private activePaperGroups = new Set<string>();
 
   /**
    * Resolve canonical Hub URL based on API_BASE_URL and constants.
@@ -123,32 +125,49 @@ class SignalRService {
 
     const conn = builder.build();
 
-    // Register all contract events from the Hub
+    // Register all contract events from the Hub with event logging and fallback aliases
     conn.on('ReceiveNotification', (data: unknown) => {
+      console.info('[SignalR ⚡] ReceiveNotification:', data);
       this.emit('ReceiveNotification', data, 'ars:receive-notification');
     });
 
     conn.on('UpdateUnreadCount', (data: unknown) => {
+      console.info('[SignalR ⚡] UpdateUnreadCount:', data);
       this.emit('UpdateUnreadCount', data, 'ars:update-unread-count');
     });
 
     conn.on('PaperStatusUpdated', (data: unknown) => {
+      console.info('[SignalR ⚡] PaperStatusUpdated:', data);
+      this.emit('PaperStatusUpdated', data, 'ars:paper-status-updated');
+    });
+
+    conn.on('PaperStatusChanged', (data: unknown) => {
+      console.info('[SignalR ⚡] PaperStatusChanged:', data);
       this.emit('PaperStatusUpdated', data, 'ars:paper-status-updated');
     });
 
     conn.on('ReviewRequestAssigned', (data: unknown) => {
+      console.info('[SignalR ⚡] ReviewRequestAssigned:', data);
       this.emit('ReviewRequestAssigned', data, 'ars:review-request-assigned');
     });
 
     conn.on('GroupJoinRequestUpdated', (data: unknown) => {
+      console.info('[SignalR ⚡] GroupJoinRequestUpdated:', data);
       this.emit('GroupJoinRequestUpdated', data, 'ars:group-join-request-updated');
     });
 
     conn.on('ForumCommentAdded', (data: unknown) => {
+      console.info('[SignalR ⚡] ForumCommentAdded:', data);
+      this.emit('ForumCommentAdded', data, 'ars:forum-comment-added');
+    });
+
+    conn.on('ReceiveComment', (data: unknown) => {
+      console.info('[SignalR ⚡] ReceiveComment:', data);
       this.emit('ForumCommentAdded', data, 'ars:forum-comment-added');
     });
 
     conn.on('MedalAwarded', (data: unknown) => {
+      console.info('[SignalR ⚡] MedalAwarded:', data);
       this.emit('MedalAwarded', data, 'ars:medal-awarded');
     });
 
@@ -158,6 +177,7 @@ class SignalRService {
 
     conn.onreconnected((connectionId) => {
       console.info('[SignalR] Reconnected successfully. ConnectionId:', connectionId);
+      void this.rejoinAllActiveGroups();
     });
 
     conn.onclose((error) => {
@@ -251,6 +271,7 @@ class SignalRService {
       .start()
       .then(() => {
         console.info(`[SignalR] Connected to notifications hub: ${this.getHubUrl()}`);
+        void this.rejoinAllActiveGroups();
       })
       .catch((err) => {
         console.warn('[SignalR] Connection start failed:', err);
@@ -364,33 +385,83 @@ class SignalRService {
   }
 
   /**
-   * Join a paper-scoped group on the Hub.
+   * Helper to re-join all tracked groups upon initial connect or reconnect.
    */
-  public async joinPaperGroup(paperId: number | string): Promise<void> {
+  private async rejoinAllActiveGroups(): Promise<void> {
     if (!this.connection || this.connection.state !== HubConnectionState.Connected) {
       return;
     }
+    for (const postId of this.activePostGroups) {
+      await this.invokeJoinPostGroup(postId);
+    }
+    for (const paperId of this.activePaperGroups) {
+      await this.invokeJoinPaperGroup(paperId);
+    }
+  }
+
+  private async invokeJoinPostGroup(postId: string): Promise<void> {
+    if (!this.connection || this.connection.state !== HubConnectionState.Connected) return;
     try {
-      await this.connection.invoke('JoinPaperGroup', String(paperId));
-    } catch (err) {
-      if (import.meta.env.DEV) {
-        console.warn(`[SignalR] Failed to join paper group "${paperId}":`, err);
+      await this.connection.invoke('JoinPostGroup', postId);
+      console.info(`[SignalR 🚀] Joined post group: ${postId}`);
+    } catch {
+      try {
+        await this.connection.invoke('JoinPostGroup', Number(postId));
+        console.info(`[SignalR 🚀] Joined post group (numeric): ${postId}`);
+      } catch {
+        try {
+          await this.connection.invoke('JoinGroup', `post_${postId}`);
+        } catch (err) {
+          console.warn(`[SignalR] Could not invoke JoinPostGroup for ${postId}:`, err);
+        }
       }
     }
+  }
+
+  private async invokeJoinPaperGroup(paperId: string): Promise<void> {
+    if (!this.connection || this.connection.state !== HubConnectionState.Connected) return;
+    try {
+      await this.connection.invoke('JoinPaperGroup', paperId);
+      console.info(`[SignalR 🚀] Joined paper group: ${paperId}`);
+    } catch {
+      try {
+        await this.connection.invoke('JoinPaperGroup', Number(paperId));
+        console.info(`[SignalR 🚀] Joined paper group (numeric): ${paperId}`);
+      } catch {
+        try {
+          await this.connection.invoke('JoinGroup', `paper_${paperId}`);
+        } catch (err) {
+          console.warn(`[SignalR] Could not invoke JoinPaperGroup for ${paperId}:`, err);
+        }
+      }
+    }
+  }
+
+  /**
+   * Join a paper-scoped group on the Hub.
+   */
+  public async joinPaperGroup(paperId: number | string): Promise<void> {
+    const idStr = String(paperId);
+    this.activePaperGroups.add(idStr);
+    await this.invokeJoinPaperGroup(idStr);
   }
 
   /**
    * Leave a paper-scoped group on the Hub.
    */
   public async leavePaperGroup(paperId: number | string): Promise<void> {
+    const idStr = String(paperId);
+    this.activePaperGroups.delete(idStr);
     if (!this.connection || this.connection.state !== HubConnectionState.Connected) {
       return;
     }
     try {
-      await this.connection.invoke('LeavePaperGroup', String(paperId));
-    } catch (err) {
-      if (import.meta.env.DEV) {
-        console.warn(`[SignalR] Failed to leave paper group "${paperId}":`, err);
+      await this.connection.invoke('LeavePaperGroup', idStr);
+    } catch {
+      try {
+        await this.connection.invoke('LeavePaperGroup', Number(idStr));
+      } catch {
+        /* ignore */
       }
     }
   }
@@ -399,30 +470,27 @@ class SignalRService {
    * Join a forum-post-scoped group on the Hub.
    */
   public async joinPostGroup(postId: number | string): Promise<void> {
-    if (!this.connection || this.connection.state !== HubConnectionState.Connected) {
-      return;
-    }
-    try {
-      await this.connection.invoke('JoinPostGroup', String(postId));
-    } catch (err) {
-      if (import.meta.env.DEV) {
-        console.warn(`[SignalR] Failed to join post group "${postId}":`, err);
-      }
-    }
+    const idStr = String(postId);
+    this.activePostGroups.add(idStr);
+    await this.invokeJoinPostGroup(idStr);
   }
 
   /**
    * Leave a forum-post-scoped group on the Hub.
    */
   public async leavePostGroup(postId: number | string): Promise<void> {
+    const idStr = String(postId);
+    this.activePostGroups.delete(idStr);
     if (!this.connection || this.connection.state !== HubConnectionState.Connected) {
       return;
     }
     try {
-      await this.connection.invoke('LeavePostGroup', String(postId));
-    } catch (err) {
-      if (import.meta.env.DEV) {
-        console.warn(`[SignalR] Failed to leave post group "${postId}":`, err);
+      await this.connection.invoke('LeavePostGroup', idStr);
+    } catch {
+      try {
+        await this.connection.invoke('LeavePostGroup', Number(idStr));
+      } catch {
+        /* ignore */
       }
     }
   }
