@@ -15,6 +15,7 @@ import styles from './ReportViolationPreviewModal.module.css';
 import { forumPostService } from '../../services/forumPost.service';
 import { forumCommentService } from '../../services/forumComment.service';
 import { paperService, Paper } from '../../services/paper.service';
+import { userService } from '../../services/user.service';
 import type { ViolationReport } from '../../types/adminAuxiliary';
 import type { ForumPost, ForumComment } from '../../types/forum.types';
 import { useI18n, useLocale } from '../../i18n/I18nContext';
@@ -37,6 +38,7 @@ export function ReportViolationPreviewModal({
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reporterDisplayName, setReporterDisplayName] = useState<string>('');
 
   const [postData, setPostData] = useState<ForumPost | null>(null);
   const [commentData, setCommentData] = useState<ForumComment | null>(null);
@@ -104,6 +106,25 @@ export function ReportViolationPreviewModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
+  useEffect(() => {
+    if (!report) return;
+    const initialName =
+      report.reportedByName && !report.reportedByName.startsWith('User #') && report.reportedByName !== '—'
+        ? report.reportedByName
+        : '';
+    setReporterDisplayName(initialName);
+
+    if (!initialName && report.reportedById) {
+      void userService
+        .getById(report.reportedById)
+        .then((u) => {
+          const name = u.fullName || u.username;
+          if (name) setReporterDisplayName(name);
+        })
+        .catch(() => {});
+    }
+  }, [report]);
+
   if (!isOpen || !report) return null;
 
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -158,7 +179,9 @@ export function ReportViolationPreviewModal({
         <span className={styles.reportContextLabel}>
           {t('admin.contentReports.preview.reportedBy', 'Reported By:')}
         </span>
-        <span className={styles.reportContextValue}>{report.reportedByName}</span>
+        <span className={styles.reportContextValue}>
+          {reporterDisplayName || report.reportedByName || (report.reportedById ? `User #${report.reportedById}` : '—')}
+        </span>
       </div>
     </div>
   );
@@ -363,36 +386,6 @@ export function ReportViolationPreviewModal({
     );
   };
 
-  const getLiveLink = () => {
-    if (report.type === 'FORUM_POST' || report.type === 'FORUM_COMMENT') {
-      return (
-        <a
-          href="/forum"
-          target="_blank"
-          rel="noopener noreferrer"
-          className={styles.externalForumLink}
-        >
-          <ExternalLink size={14} />
-          {t('admin.contentReports.preview.openForum', 'Open in Forum')}
-        </a>
-      );
-    }
-    if (report.type === 'RESEARCH_PAPER') {
-      return (
-        <a
-          href={`/admin/paper-submissions/${report.targetContentId}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={styles.externalForumLink}
-        >
-          <ExternalLink size={14} />
-          {t('admin.contentReports.preview.openPaper', 'View Paper Details')}
-        </a>
-      );
-    }
-    return null;
-  };
-
   return createPortal(
     <div
       className={styles.overlay}
@@ -445,7 +438,6 @@ export function ReportViolationPreviewModal({
         </div>
 
         <footer className={styles.footer}>
-          <div>{getLiveLink()}</div>
           <button type="button" className={styles.closeBtn} onClick={onClose}>
             {t('common.close', 'Close')}
           </button>
