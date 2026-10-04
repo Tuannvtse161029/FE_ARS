@@ -136,3 +136,6 @@ tests/automation/Playwright/storage/
 
 # graft's local graph cache — regenerable, not committed (run `graft build`).
 /graft/
+ARS_Package_Diagram_FE.svg
+*.drawio
+ARS_Use_Case_Diagram.svg
