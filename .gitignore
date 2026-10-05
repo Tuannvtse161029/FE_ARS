@@ -139,3 +139,32 @@ tests/automation/Playwright/storage/
 ARS_Package_Diagram_FE.svg
 *.drawio
 ARS_Use_Case_Diagram.svg
+
+# ==========================================
+# Personal-branch cleanup (October 2026)
+# ==========================================
+# These folders are tracked in the upstream project but kept out of
+# `phuongpdse140481_FE`'s remote so the personal branch stays focused
+# on the code under review. Files remain on disk locally; `git rm
+# --cached` was used to drop them from the index without deleting
+# them from the working tree.
+#
+# Removal rationale (per the October 2026 branch cleanup):
+#   * .playwright-screenshots/  — generated PNGs from one-off local
+#     Playwright runs; only referenced in `vite.config.ts`'s HMR
+#     ignore-glob, which still works after the folder is gitignored.
+#   * plans/                    — UI animation plans (Agent 4 series);
+#     not imported by `src/`. Regenerable locally if needed.
+#   * reports/implementation/   — implementation reports for the
+#     personal branch; not imported by `src/`. Lives under the
+#     already-ignored `reports/test-results/` pattern at runtime,
+#     but the implementation/ subfolder wasn't covered so this entry
+#     is explicit.
+#   * tickets/                  — FE/BE coordination tickets; only
+#     referenced from JSDoc comments in `src/*.ts` (no runtime
+#     imports). The cross-reference comments survive the removal —
+#     the links just point to non-existent files locally.
+.playwright-screenshots/
+plans/
+tickets/
+reports/implementation/

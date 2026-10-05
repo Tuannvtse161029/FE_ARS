@@ -29,6 +29,10 @@ export { useLearningMaterials } from './useLearningMaterials';
 // panels. Added in Phase C (Lead, lead-phase-c-contract.md S-8). Internally
 // calls userService.getById and caches per id.
 export { useLecturerProfile } from './useLecturerProfile';
+// useUserAvatar — opt-in User-table avatar lookup for the Forum
+// surface (post bylines, comment bylines). Reads `User.avatarUrl`
+// (NOT `Profile.avatarUrl`, which is stale after an avatar save).
+export { useUserAvatar } from './useUserAvatar';
 // Agent 15 — Table pagination helper.
 export { usePagination } from './usePagination';
 export type { UsePaginationResult } from './usePagination';
