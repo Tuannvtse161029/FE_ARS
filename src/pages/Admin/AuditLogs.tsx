@@ -34,11 +34,8 @@ const ROLE_ACCENT = 'var(--ars-admin)';
 /** Sortable column ids for the Audit Logs table. */
 type SortColumn = 'logId' | 'admin' | 'action' | 'target' | 'timestamp';
 
-// Color tag mapping per the Figma screen (green / red / blue / gray).
-const ACTION_COLOR: Record<
-  AuditLogAction,
-  'green' | 'red' | 'blue' | 'gray' | 'amber'
-> = {
+// Color tag mapping per the Figma screen (green / red / blue / gray / amber).
+const ACTION_COLOR: Record<string, 'green' | 'red' | 'blue' | 'gray' | 'amber'> = {
   APPROVED_ROLE_REQUEST: 'green',
   SUSPENDED_ACCOUNT: 'red',
   DENIED_ROLE_REQUEST: 'red',
@@ -50,36 +47,28 @@ const ACTION_COLOR: Record<
   UPDATED_PACKAGE: 'blue',
   TOGGLED_PACKAGE: 'blue',
   DELETED_PACKAGE: 'red',
+  MEDAL_GRANT: 'green',
+  MEDAL_GRANT_ALL_BY_ROLE: 'green',
+  MEDAL_REVOKE: 'red',
+  MEDAL_USER_STATUS_ACTIVATED: 'green',
+  MEDAL_USER_STATUS_DEACTIVATED: 'gray',
+  PAPER_PUBLISHED: 'green',
+  PAPER_REJECTED: 'red',
+  PAPER_REVIEWER_ASSIGNED: 'blue',
+  AUTHORSHIP_VERIFIED: 'green',
+  AUTHORSHIP_REJECTED: 'red',
+  CHECK_ORCID: 'blue',
 };
 
-// Words that, when present in `adminName`, indicate the actor is *not* an
-// admin. This is a best-effort client-side filter for BE hygiene: the
-// proper fix is the BE restricting AuditLog rows to admin actors only.
-// If the BE later exposes `actorRole` / `roleName` per row, prefer that
-// signal and remove this list.
-const NON_ADMIN_ACTOR_KEYWORDS = [
-  'reviewer',
-  'researcher',
-  'lecturer',
-  'student',
-  'graduate',
-  'groupleader',
-  'group leader',
-];
-
-function isAdminActor(entry: AuditLogEntry): boolean {
-  const name = (entry.adminName ?? '').toLowerCase();
-  if (!name) return true; // If BE leaves name empty, don't over-filter.
-  // Drop rows whose adminName clearly belongs to a non-admin role.
-  // The keyword check is conservative — if none of the known role words
-  // appear in the name, we assume the actor is an admin.
-  return !NON_ADMIN_ACTOR_KEYWORDS.some((kw) => name.includes(kw));
+function isAdministrativeAuditLog(entry: AuditLogEntry): boolean {
+  // Always exclude routine automated OpenAlex work lookup spam so real administrative actions are visible
+  if (entry.action === 'OPENALEX_WORK_LOOKUP') return false;
+  return true;
 }
 
 // Convert a camelCase / SCREAMING_SNAKE action code into a humanized
-// label ("UserMedal" -> "User Medal", "OPEN_ALEX_WORK" -> "Open Alex Work").
-// Falls back to a literal string when nothing else is known so the badge
-// is never blank.
+// label ("UserMedal" -> "User Medal").
+// Falls back to a literal string when nothing else is known so the badge is never blank.
 function humanizeAction(raw: string): string {
   if (!raw) return '';
   return raw
@@ -91,11 +80,65 @@ function humanizeAction(raw: string): string {
 }
 
 function getActionColor(raw: string): 'green' | 'red' | 'blue' | 'gray' | 'amber' {
-  const known = (ACTION_COLOR as Record<string, string | undefined>)[raw];
-  if (known === 'green' || known === 'red' || known === 'blue' || known === 'amber') {
-    return known;
+  const upper = (raw || '').toUpperCase();
+  const known = ACTION_COLOR[raw] || ACTION_COLOR[upper];
+  if (known) return known;
+
+  if (
+    upper.includes('GRANT') ||
+    upper.includes('APPROV') ||
+    upper.includes('PUBLISH') ||
+    upper.includes('ACTIVAT') ||
+    upper.includes('VERIF')
+  ) {
+    return 'green';
+  }
+  if (
+    upper.includes('REVOKE') ||
+    upper.includes('REJECT') ||
+    upper.includes('SUSPEND') ||
+    upper.includes('DELETE') ||
+    upper.includes('DENI')
+  ) {
+    return 'red';
+  }
+  if (upper.includes('WARN')) {
+    return 'amber';
+  }
+  if (
+    upper.includes('PACKAGE') ||
+    upper.includes('ASSIGN') ||
+    upper.includes('ROLE') ||
+    upper.includes('CHECK')
+  ) {
+    return 'blue';
   }
   return 'gray';
+}
+
+function formatAuditDetails(raw: string | undefined): React.ReactNode {
+  if (!raw || typeof raw !== 'string') return '—';
+  const trimmed = raw.trim();
+  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+    try {
+      const parsed = JSON.parse(trimmed) as Record<string, unknown>;
+      const keys = Object.keys(parsed);
+      if (keys.length === 0) return '—';
+      return (
+        <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: '4px 10px', fontSize: 'var(--font-size-xs)' }}>
+          {keys.map((k) => (
+            <span key={k}>
+              <strong style={{ color: 'var(--ars-ink)' }}>{k}:</strong>{' '}
+              <span style={{ color: 'var(--ars-ink-muted)' }}>{String(parsed[k] ?? '—')}</span>
+            </span>
+          ))}
+        </span>
+      );
+    } catch {
+      /* ignore JSON parse error */
+    }
+  }
+  return raw;
 }
 
 export default function AuditLogs(): JSX.Element {
@@ -104,18 +147,27 @@ export default function AuditLogs(): JSX.Element {
   const intlTag = locale === 'en' ? 'en-US' : 'vi-VN';
   useAdminGuard();
 
-  const ACTION_LABEL: Record<AuditLogAction, string> = {
-    APPROVED_ROLE_REQUEST: t('admin.auditLogs.action.approvedRoleRequest'),
-    DENIED_ROLE_REQUEST: t('admin.auditLogs.action.deniedRoleRequest'),
-    SUSPENDED_ACCOUNT: t('admin.auditLogs.action.suspendedAccount'),
-    UNSUSPENDED_ACCOUNT: t('admin.auditLogs.action.unsuspendedAccount'),
-    CREATED_PACKAGE: t('admin.auditLogs.action.createdPackage'),
-    UPDATED_PACKAGE: t('admin.auditLogs.action.updatedPackage'),
-    DELETED_PACKAGE: t('admin.auditLogs.action.deletedPackage'),
-    TOGGLED_PACKAGE: t('admin.auditLogs.action.toggledPackage'),
-    DISMISSED_REPORT: t('admin.auditLogs.action.dismissedReport'),
-    DELETED_CONTENT_WARNED: t('admin.auditLogs.action.deletedContentWarned'),
-    DELETED_CONTENT_SUSPENDED_14D: t('admin.auditLogs.action.deletedContentSuspended14d'),
+  const ACTION_LABEL: Record<string, string> = {
+    APPROVED_ROLE_REQUEST: t('admin.auditLogs.action.approvedRoleRequest', 'Approved role request'),
+    DENIED_ROLE_REQUEST: t('admin.auditLogs.action.deniedRoleRequest', 'Denied role request'),
+    SUSPENDED_ACCOUNT: t('admin.auditLogs.action.suspendedAccount', 'Suspended account'),
+    UNSUSPENDED_ACCOUNT: t('admin.auditLogs.action.unsuspendedAccount', 'Unsuspended account'),
+    CREATED_PACKAGE: t('admin.auditLogs.action.createdPackage', 'Created package'),
+    UPDATED_PACKAGE: t('admin.auditLogs.action.updatedPackage', 'Updated package'),
+    DELETED_PACKAGE: t('admin.auditLogs.action.deletedPackage', 'Deleted package'),
+    TOGGLED_PACKAGE: t('admin.auditLogs.action.toggledPackage', 'Toggled package'),
+    DISMISSED_REPORT: t('admin.auditLogs.action.dismissedReport', 'Dismissed report'),
+    DELETED_CONTENT_WARNED: t('admin.auditLogs.action.deletedContentWarned', 'Deleted content (warned)'),
+    DELETED_CONTENT_SUSPENDED_14D: t('admin.auditLogs.action.deletedContentSuspended14d', 'Deleted content (suspended 14d)'),
+    MEDAL_GRANT: t('admin.auditLogs.action.medalGrant', 'Granted medal'),
+    MEDAL_GRANT_ALL_BY_ROLE: t('admin.auditLogs.action.medalGrantAll', 'Granted medals by role'),
+    MEDAL_REVOKE: t('admin.auditLogs.action.medalRevoke', 'Revoked medal'),
+    MEDAL_USER_STATUS_ACTIVATED: t('admin.auditLogs.action.medalActivated', 'Activated medal'),
+    MEDAL_USER_STATUS_DEACTIVATED: t('admin.auditLogs.action.medalDeactivated', 'Deactivated medal'),
+    PAPER_PUBLISHED: t('admin.auditLogs.action.paperPublished', 'Published paper'),
+    PAPER_REJECTED: t('admin.auditLogs.action.paperRejected', 'Rejected paper'),
+    PAPER_REVIEWER_ASSIGNED: t('admin.auditLogs.action.reviewerAssigned', 'Assigned reviewer'),
+    CHECK_ORCID: t('admin.auditLogs.action.checkOrcid', 'Checked ORCID'),
   };
 
   const RANGE_OPTIONS: Array<{ value: AuditLogRange; label: string }> = [
@@ -198,7 +250,7 @@ export default function AuditLogs(): JSX.Element {
               return entry.timestamp ?? null;
           }
         })
-        .filter((entry) => isAdminActor(entry))
+        .filter(isAdministrativeAuditLog)
         .filter((entry) =>
           actionFilter === 'ALL' ? true : entry.action === actionFilter,
         ),
@@ -437,7 +489,7 @@ export default function AuditLogs(): JSX.Element {
                     </td>
                     <td>{entry.target}</td>
                     <td>{formatAuditTimestamp(entry.timestamp)}</td>
-                    <td className={styles.detailsCell}>{entry.details}</td>
+                    <td className={styles.detailsCell}>{formatAuditDetails(entry.details)}</td>
                   </tr>
                 ))}
               </tbody>
