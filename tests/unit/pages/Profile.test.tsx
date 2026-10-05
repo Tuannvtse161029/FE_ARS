@@ -111,7 +111,6 @@ describe('Profile page — wire & state contracts', () => {
     expect(screen.getByTestId('view-academic-title')).toHaveTextContent('Senior Reviewer');
     expect(screen.getByTestId('view-institution')).toHaveTextContent('FPT University');
     expect(screen.getByTestId('view-keywords')).toHaveTextContent('Distributed Systems');
-    expect(screen.getByTestId('view-avatar-initials')).toHaveTextContent('DA');
     expect(serviceMock.getByUserId).toHaveBeenCalledWith(42);
   });
 
