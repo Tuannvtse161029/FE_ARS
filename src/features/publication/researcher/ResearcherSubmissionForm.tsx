@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, FileText, Info, Send, Eye } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, FileText, Info, Send, Eye, ShieldCheck } from 'lucide-react';
 import { publicationAdapter } from '../api/publication.adapter';
 import { useFirebaseUpload } from '../../../hooks/useFirebaseUpload';
 import { useMajorFields, useSubFields } from '../../../hooks/useMajorFields';
+import { ResearcherResponsibilityModal } from '../../../components/policy/ResearcherResponsibilityModal';
 import {
   openAlexAdapter,
   type OpenAlexImportedMetadata,
@@ -66,6 +67,15 @@ export const ResearcherSubmissionForm = () => {
   const [publicationDate, setPublicationDate] = useState('');
   const [selectedMajorFieldId, setSelectedMajorFieldId] = useState<number | null>(null);
   const [selectedSubFieldId, setSelectedSubFieldId] = useState<number | null>(null);
+
+  // Pre-submission gate: the researcher must read the admin-editable
+  // "Researcher Responsibility" policy and tick the agree checkbox
+  // before the form will submit. `responsibilityModalOpen` is true
+  // while the modal is mounted; `responsibilityAgreed` flips to true
+  // only after the modal's "I agree" callback fires (a Cancel/Escape
+  // dismissal does NOT flip it).
+  const [responsibilityModalOpen, setResponsibilityModalOpen] = useState(false);
+  const [responsibilityAgreed, setResponsibilityAgreed] = useState(false);
 
   const { fields: majorFields, isLoading: isLoadingMajorFields } = useMajorFields();
   const { subFields, isLoading: isLoadingSubFields } = useSubFields(selectedMajorFieldId);
@@ -237,6 +247,10 @@ export const ResearcherSubmissionForm = () => {
     setOpenAlexImported(true);
   };
 
+  // `canSubmit` reflects whether every BLOCKING requirement is met.
+  // The Researcher Responsibility agreement is checked separately so
+  // the user can read & agree even when some metadata is still missing
+  // — but the actual `Submit to Admin` click below requires BOTH.
   const canSubmit =
     !saving &&
     !inFlightRef.current &&
@@ -258,6 +272,15 @@ export const ResearcherSubmissionForm = () => {
         t('researcher.form.footer.validation'),
         'submission-validation',
       );
+      return;
+    }
+    // Pre-submission policy gate: the researcher must explicitly read
+    // and agree to the Researcher Responsibility before we let them
+    // send the manuscript to Admin. We intercept the submit here so a
+    // user who hasn't yet seen the policy (e.g. a returning researcher
+    // who skipped the modal) is forced through it.
+    if (!responsibilityAgreed) {
+      setResponsibilityModalOpen(true);
       return;
     }
     submissionInFlight.current = true;
@@ -908,12 +931,63 @@ export const ResearcherSubmissionForm = () => {
               {t('researcher.form.footer.validation')}
             </p>
           )}
+          {/* ── Pre-submission policy gate ─────────────────────
+              The Researcher Responsibility is the policy admins
+              edit on /admin/policies. Until the researcher has
+              ticked the agree checkbox in the modal, the form
+              will intercept the submit click and open the modal
+              instead of calling the BE. Once agreed, the badge
+              below turns green and the submit button is live. */}
+          <div
+            className={styles.responsibilityGate}
+            data-testid="researcher-responsibility-gate"
+            data-agreed={responsibilityAgreed ? 'true' : 'false'}
+          >
+            <div className={styles.responsibilityGateIcon} aria-hidden>
+              <ShieldCheck size={18} />
+            </div>
+            <div className={styles.responsibilityGateBody}>
+              <p className={styles.responsibilityGateTitle}>
+                {responsibilityAgreed
+                  ? t(
+                      'researcher.responsibility.gate.titleAgreed',
+                      'Researcher Responsibility agreed',
+                    )
+                  : t(
+                      'researcher.responsibility.gate.titleRequired',
+                      'Read & agree to the Researcher Responsibility',
+                    )}
+              </p>
+              <p className={styles.responsibilityGateHint}>
+                {responsibilityAgreed
+                  ? t(
+                      'researcher.responsibility.gate.hintAgreed',
+                      'You can re-open the policy at any time before submitting.',
+                    )
+                  : t(
+                      'researcher.responsibility.gate.hintRequired',
+                      'Admin requires every researcher to confirm the policy before the manuscript is routed for screening.',
+                    )}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant={responsibilityAgreed ? 'outline' : 'primary'}
+              size="sm"
+              onClick={() => setResponsibilityModalOpen(true)}
+              data-testid="researcher-responsibility-open"
+            >
+              {responsibilityAgreed
+                ? t('researcher.responsibility.gate.review', 'Re-read policy')
+                : t('researcher.responsibility.gate.review', 'Read & agree')}
+            </Button>
+          </div>
           <div className={styles.formActionButtons}>
             <Button
               type="submit"
               variant="primary"
               size="md"
-              disabled={!canSubmit}
+              disabled={!canSubmit || !responsibilityAgreed}
               leftIcon={<Send size={14} aria-hidden />}
               data-testid="submission-submit"
             >
@@ -922,6 +996,15 @@ export const ResearcherSubmissionForm = () => {
           </div>
         </footer>
       </form>
+
+      <ResearcherResponsibilityModal
+        isOpen={responsibilityModalOpen}
+        onAgree={() => {
+          setResponsibilityAgreed(true);
+          setResponsibilityModalOpen(false);
+        }}
+        onClose={() => setResponsibilityModalOpen(false)}
+      />
     </section>
   );
 };

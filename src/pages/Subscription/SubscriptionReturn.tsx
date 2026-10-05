@@ -11,14 +11,23 @@
  *      BE-confirmed ACTIVE subscription unlocks the workspace. The user
  *      can navigate back to the subscription page manually.
  *
- *   2. Popup (PayOS checkout window) — `?popup=1`. The popup runs in
- *      its own JS context that does NOT share the parent's
- *      `secureToken` in-memory session key, so any authenticated BE
- *      call from the popup would 401, clear the shared on-disk
- *      envelope, and bounce BOTH windows to /login. To prevent that we
- *      render a tiny self-contained splash here, never touch the API,
- *      and auto-close the popup after a short delay so the parent tab
- *      can resume its polling/refetch loop.
+ *   2. Popup (PayOS checkout window) — `?popup=1`. Historically the
+ *      popup rendered a tiny splash here before auto-closing. That
+ *      flow has been retired (Sep 2026): PayOS now redirects the
+ *      popup to the static asset `public/payos-popup-closing.html`
+ *      instead, which renders the same outcome message WITHOUT
+ *      booting the React bundle — the popup was a new browser
+ *      context with no auth session, and the SPA would briefly
+ *      render the auth guard / shell before the splash, which the
+ *      user perceived as "the website main UI". The static page is
+ *      the only path used in production. The popup-rendering branch
+ *      below is kept as a safety net for any caller that still
+ *      navigates here with `?popup=1` (e.g. a manually-typed URL or
+ *      a stale link in the wild). It still MUST NOT touch the BE —
+ *      the popup has no auth session and any axios call would 401,
+ *      clear the shared on-disk envelope, and bounce BOTH windows to
+ *      /login. The parent tab's polling loop picks up the new
+ *      subscription state when the popup closes.
  *
  * Reads PayOS return params:
  *   - `code`         — PayOS response code. `00` = success.

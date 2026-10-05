@@ -1160,6 +1160,78 @@
   }
 }
 
+/* ── Researcher Responsibility gate (this worker) ──────────
+   The pre-submission policy gate shown in the Final review
+   footer. Two visual states: pending (warm amber) when the
+   researcher has not yet agreed, and agreed (green) once they
+   have. The colour shift is the affordance that says "you can
+   now submit" without us having to repeat the long policy text
+   on the page. */
+.responsibilityGate {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-3, 12px);
+  padding: var(--space-3, 12px) var(--space-4, 16px);
+  border: 1px solid color-mix(in srgb, var(--ars-researcher, #b45309) 35%, transparent);
+  border-radius: var(--radius-md, 8px);
+  background-color: color-mix(in srgb, var(--ars-researcher, #b45309) 10%, var(--surface-paper, #fff));
+}
+
+.responsibilityGate[data-agreed="true"] {
+  border-color: color-mix(in srgb, var(--ars-success, #16a34a) 35%, transparent);
+  background-color: color-mix(in srgb, var(--ars-success, #16a34a) 10%, var(--surface-paper, #fff));
+}
+
+.responsibilityGateIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: color-mix(in srgb, var(--ars-researcher, #b45309) 14%, transparent);
+  color: var(--ars-researcher, #b45309);
+  flex-shrink: 0;
+}
+
+.responsibilityGate[data-agreed="true"] .responsibilityGateIcon {
+  background-color: color-mix(in srgb, var(--ars-success, #16a34a) 14%, transparent);
+  color: var(--ars-success, #16a34a);
+}
+
+.responsibilityGateBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.responsibilityGateTitle {
+  margin: 0;
+  font-size: var(--font-size-sm, 14px);
+  font-weight: 600;
+  color: var(--ink-on-paper, #1a202c);
+  line-height: 1.3;
+}
+
+.responsibilityGateHint {
+  margin: 0;
+  font-size: var(--font-size-xs, 12px);
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--ink-on-paper, #1a202c) 70%, transparent);
+}
+
+@media (max-width: 600px) {
+  .responsibilityGate {
+    grid-template-columns: auto 1fr;
+  }
+  .responsibilityGate button {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+  }
+}
+
 /* ── Submission Detail ─────────────────────────────────────── */
 
 /* ── What Happens Next ────────────────────────────────────── */

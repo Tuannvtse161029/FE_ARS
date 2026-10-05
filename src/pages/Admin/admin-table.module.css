@@ -1,7 +1,29 @@
 /**
- * AdminGradingRubric — ARS Research Constellation
- * Admin GradingRubric management page.
- * Uses ARS design tokens from src/styles/ars-tokens.css
+ * Shared admin-table styles for the three Research Field CRUD surfaces
+ * (Major / Sub / Grading Rubic). Extracted from the original
+ * AdminGradingRubric.module.css when the three pages were merged into
+ * a single tabbed page. Keep the class names in sync with the new
+ * AdminResearchField.tsx.
+ *
+ * Class index:
+ *   .page               — page-level flex column
+ *   .searchWrap         — search-bar wrapper (used by TableToolbar filters)
+ *   .tableWrap          — bordered card around the <table>
+ *   .table              — base <table> reset + small font
+ *   .th                 — column header (mono / uppercase / muted)
+ *   .row                — alternating hover row
+ *   .td                 — body cell
+ *   .subFieldName       — bold cell content for names
+ *   .majorField         — muted cell content for parent-major column
+ *   .count              — pill, blue, "has attached" count
+ *   .countZero          — pill, amber, "zero attached" count
+ *   .actions            — flex row of action buttons
+ *   .actionButton       — base action button (border, padding, focus ring)
+ *   .manageButton       — neutral / admin-themed
+ *   .editButton         — neutral edit
+ *   .deleteButton       — destructive
+ *   .loadingWrap        — vertical padding around a SkeletonRow
+ *   .errorWrap          — vertical padding around an ErrorBanner
  */
 
 /* ── Page Shell ─────────────────────────────────────────────── */
@@ -195,3 +217,11 @@
   color: var(--ars-error);
 }
 
+/* ── Loading / Error wraps (shared by all three surfaces) ────── */
+.loadingWrap {
+  padding: var(--space-5, 16px);
+}
+
+.errorWrap {
+  padding: var(--space-5, 16px);
+}

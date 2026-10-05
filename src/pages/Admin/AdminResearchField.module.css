@@ -1,0 +1,12 @@
+/**
+ * AdminResearchField — page-level layout for the tabbed Research Field
+ * admin surface. The three inner surfaces (Major / Sub / Grading Rubic)
+ * reuse the shared admin-table.module.css for table chrome.
+ */
+
+.tabPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 16px);
+  background: transparent;
+}

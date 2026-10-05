@@ -1,0 +1,54 @@
+.tabBar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 0 0 4px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #ffffff;
+  border-radius: 10px 10px 0 0;
+  border-left: 1px solid #e2e8f0;
+  border-right: 1px solid #e2e8f0;
+  border-top: 1px solid #e2e8f0;
+}
+
+.tab {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 12px 18px;
+  font: inherit;
+  font-weight: 500;
+  font-size: 14px;
+  color: #475569;
+  cursor: pointer;
+  position: relative;
+  border-radius: 8px 8px 0 0;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.tab:hover {
+  color: #1e293b;
+  background: #f1f5f9;
+}
+
+.tab:focus-visible {
+  outline: 2px solid #007aff;
+  outline-offset: -2px;
+}
+
+.tabActive {
+  color: #007aff;
+  font-weight: 600;
+  background: #f8fafc;
+}
+
+.tabActive::after {
+  content: '';
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: -1px;
+  height: 2px;
+  background: #007aff;
+  border-radius: 2px 2px 0 0;
+}

@@ -14,6 +14,16 @@ export interface MajorFieldCreateRequest {
   description?: string | null;
 }
 
+/**
+ * Request body for PUT /api/MajorField/{id}.
+ * Both fields are optional so a partial update (e.g. only the description)
+ * can land without us echoing a stale name.
+ */
+export interface MajorFieldUpdateRequest {
+  name?: string | null;
+  description?: string | null;
+}
+
 export interface SubField {
   id: number;
   majorFieldId: number;

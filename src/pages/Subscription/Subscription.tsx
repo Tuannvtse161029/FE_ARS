@@ -264,6 +264,15 @@ export const Subscription = () => {
   // is the whole point of using a popup instead of `window.location.assign`.
   const checkoutPopupRef = useRef<Window | null>(null);
   const checkoutWatchdogRef = useRef<number | null>(null);
+  // Mirrors `checkoutPopupRef.current` as state so the watchdog useEffect
+  // (below) re-arms every time a NEW popup is opened on the same mount.
+  // The ref alone does not trigger re-renders, so without this state the
+  // effect would only run on first mount — meaning the second purchase
+  // in a session, or any purchase where the user opens the popup after
+  // the page has already settled, would never get the polling/refresh
+  // loop attached. Setting this state to `Date.now()` in
+  // `openPayosCheckoutPopup` is the trigger that re-runs the effect.
+  const [popupOpenedAt, setPopupOpenedAt] = useState<number | null>(null);
 
   const [history, setHistory] = useState<AnnualFeePurchase[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -455,9 +464,22 @@ export const Subscription = () => {
         checkoutWatchdogRef.current = null;
       }
       window.removeEventListener('beforeunload', beforeUnload);
-      checkoutPopupRef.current = null;
+      // Note: we intentionally do NOT null out `checkoutPopupRef.current`
+      // here. The ref is the source of truth for "is a popup open right
+      // now?" and it points to the live `Window` object. Clearing it on
+      // every re-run would nuke the handle the moment the user opens
+      // a second popup (or the same one twice) and the effect would
+      // immediately re-evaluate as if no popup existed, then return
+      // early without ever setting up the polling interval. The ref is
+      // cleared in two places only:
+      //   1. Inside `tick` once the popup is detected as closed (line
+      //      above) — so the watchdog doesn't re-fire on a stale handle.
+      //   2. On component unmount, the ref is GC'd with the component.
+      // We also detach the watchdog handle so a stale interval can't
+      // survive a re-run — the `checkoutWatchdogRef.current = null`
+      // assignment above already does that.
     };
-  }, [refetchSubscription, fetchHistory, location.pathname, locale]);
+  }, [refetchSubscription, fetchHistory, location.pathname, locale, popupOpenedAt]);
 
   const selectedPlan = useMemo<AnnualFee | null>(
     () => plans.find((plan) => plan.id === selectedPlanId) ?? null,
@@ -492,6 +514,12 @@ export const Subscription = () => {
     );
     if (popup) {
       checkoutPopupRef.current = popup;
+      // Re-arm the popup-close watchdog useEffect. The ref alone does not
+      // trigger re-renders, so the effect (which depends on this state
+      // via `popupOpenedAt`) would otherwise only run on first mount.
+      // Setting the state to the current timestamp is what makes the
+      // watchdog attach for this popup.
+      setPopupOpenedAt(Date.now());
     }
     return popup;
   }, []);
@@ -503,13 +531,23 @@ export const Subscription = () => {
       try {
         const order = await annualFeeService.purchaseAnnualFee(planId, {
           userId: authenticatedUserId,
+          // PayOS redirects the popup window to these URLs after a
+          // payment attempt. Both URLs point to a STATIC HTML page
+          // (`public/payos-popup-closing.html`) rather than a React
+          // Router route — this is intentional. Booting the SPA in
+          // the popup would briefly render the app shell + auth
+          // guard + a 401 retry loop before the splash, which the
+          // user described as "the website main UI in the popup" and
+          // bad UX. A static HTML page loads with no JS bundle, no
+          // auth checks, and shows a focused "Payment window is
+          // closing…" message before `window.close()` runs.
           returnUrl:
             typeof window !== 'undefined'
-              ? `${window.location.origin}${ROUTES.SUBSCRIPTION_RETURN}?status=success&popup=1`
+              ? `${window.location.origin}/payos-popup-closing.html?status=success&popup=1`
               : null,
           cancelUrl:
             typeof window !== 'undefined'
-              ? `${window.location.origin}${ROUTES.SUBSCRIPTION_RETURN}?status=cancelled&popup=1`
+              ? `${window.location.origin}/payos-popup-closing.html?status=cancelled&popup=1`
               : null,
         });
         if (order.checkoutUrl && typeof order.checkoutUrl === 'string') {
@@ -928,11 +966,31 @@ export const Subscription = () => {
                 </tr>
               </thead>
               <tbody>
-                {history.map((purchase) => {
+                {history.map((purchase, index) => {
+                  // Defensive: `purchase` itself must be an object — the
+                  // BE has occasionally returned null entries inside the
+                  // `items` array when the row was soft-deleted between
+                  // list and detail fetches. Treat those as "skip" rather
+                  // than letting `purchase.transactionId` throw a
+                  // `Cannot read properties of null` error that would
+                  // blank the entire table.
+                  if (!purchase || typeof purchase !== 'object') return null;
                   const status = resolveStatusDisplay(purchase.status);
+                  // `transactionId` may arrive as a number (BE int) or
+                  // string (older wire format). Coerce to string so the
+                  // React key never trips a "two children with the same
+                  // key" warning when two rows happen to share a numeric
+                  // id but one is rendered as a number and one as a
+                  // string. Falls back to the row index when both are
+                  // missing — better than React's default behaviour of
+                  // throwing on undefined keys.
+                  const txKey =
+                    purchase.transactionId != null
+                      ? String(purchase.transactionId)
+                      : `row-${index}`;
                   return (
                     <tr
-                      key={purchase.transactionId}
+                      key={txKey}
                       data-testid="history-row"
                     >
                       <td>
