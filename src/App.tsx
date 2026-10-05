@@ -100,10 +100,15 @@ const AuditLogs = lazy(() => import('./pages/Admin/AuditLogs').then((m) => ({ de
 const AnnualFees = lazy(() =>
   import('./pages/Admin/AnnualFees').then((m) => ({ default: m.default })),
 );
-// GradingRubric — Admin management of per-SubField scoring criteria.
-// Wired to GET /api/SubField (list) and PATCH /api/SubField/{id}/rubric.
-const AdminGradingRubric = lazy(() =>
-  import('./pages/Admin/AdminGradingRubric').then((m) => ({ default: m.AdminGradingRubric })),
+// Agent admin-research-field — single tabbed admin page that hosts the
+// three CRUD surfaces (Major Field / Sub Field / Grading Rubic). The
+// legacy routes /admin/major-fields, /admin/sub-fields, and
+// /admin/grading-rubric redirect here; the `?tab=` query string
+// selects which surface to render.
+const AdminResearchField = lazy(() =>
+  import('./pages/Admin/AdminResearchField').then((m) => ({
+    default: m.AdminResearchField,
+  })),
 );
 // Agent admin-policies — Admin tab for managing the four platform
 // policy documents. Loads Firestore directly through `policyService`;
@@ -350,7 +355,11 @@ const App = () => {
                   <Route path={ROUTES.ADMIN_AUDIT_LOGS} element={<AuditLogs />} />
                   <Route path={ROUTES.ADMIN_POLICIES} element={<AdminPolicies />} />
                   <Route path={ROUTES.ADMIN_ANNUAL_FEES} element={<AnnualFees />} />
-                  <Route path={ROUTES.ADMIN_GRADING_RUBRIC} element={<AdminGradingRubric />} />
+                  <Route path={ROUTES.ADMIN_RESEARCH_FIELD} element={<AdminResearchField />} />
+                  {/* Legacy routes — merged into /admin/research-field. */}
+                  <Route path="/admin/grading-rubric" element={<Navigate to={`${ROUTES.ADMIN_RESEARCH_FIELD}?tab=gr`} replace />} />
+                  <Route path="/admin/major-fields" element={<Navigate to={`${ROUTES.ADMIN_RESEARCH_FIELD}?tab=major`} replace />} />
+                  <Route path="/admin/sub-fields" element={<Navigate to={`${ROUTES.ADMIN_RESEARCH_FIELD}?tab=sub`} replace />} />
                 </Route>
               </Route>
             </Route>

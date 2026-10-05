@@ -92,9 +92,12 @@ export const ROUTES = {
   // Annual Fees — Admin CRUD over Researcher / Lecturer subscription plans.
   // Page wired to `GET/POST/PUT/PATCH/DELETE /api/AnnualFees` per BE-ANNUAL-FEE-01.
   ADMIN_ANNUAL_FEES: '/admin/annual-fees',
-  // GradingRubric — Admin management of per-SubField scoring criteria.
-  // Wired to GET /api/SubField (list) and PATCH /api/SubField/{id}/rubric.
-  ADMIN_GRADING_RUBRIC: '/admin/grading-rubric',
+  // Agent admin-major-fields / admin-sub-fields / grading-rubric — the
+  // three CRUD surfaces (Major, Sub, Grading Rubic) were merged into a
+  // single tabbed page at /admin/research-field. The legacy routes now
+  // redirect to that page; the URL is the source of truth for which tab
+  // is active (?tab=major|sub|gr).
+  ADMIN_RESEARCH_FIELD: '/admin/research-field',
   // Agent 52 — first-time Google-user onboarding. Created by the GIS button
   // when the BE's google-login response carries `isNewUser === true` or
   // `requiresOnboarding === true` (see src/services/googleAuth.service.ts).

@@ -4,6 +4,7 @@ import type {
   MajorField,
   SubField,
   MajorFieldCreateRequest,
+  MajorFieldUpdateRequest,
   SubFieldCreateRequest,
   SubFieldUpdateRequest,
   GradingRubricCriterion,
@@ -95,18 +96,38 @@ export const fieldService = {
   },
 
   /**
-   * Fetches all subfields for a given major field.
-   * @param majorFieldId - Must be a valid positive integer.
-   * @throws InvalidMajorFieldIdError if majorFieldId is not a valid positive integer.
+   * Updates an existing MajorField (Admin only).
+   * PUT /api/MajorField/{id}
+   */
+  updateMajor: async (id: number, data: MajorFieldUpdateRequest): Promise<MajorField> => {
+    const response = await api.put<MajorField>(API_ENDPOINTS.MAJOR_FIELD.UPDATE(id), data);
+    return response.data;
+  },
+
+  /**
+   * Deletes a MajorField (Admin only). The BE is responsible for any
+   * cascade to sub-fields; we surface whatever 4xx/5xx message it returns.
+   * DELETE /api/MajorField/{id}
+   */
+  deleteMajor: async (id: number): Promise<void> => {
+    await api.delete(API_ENDPOINTS.MAJOR_FIELD.DELETE(id));
+  },
+
+  /**
+   * Fetches all subfields, optionally scoped to a given major field.
+   * @param majorFieldId - When provided, the BE returns only sub-fields
+   * under that major. When omitted, the BE returns the full list.
+   * @throws InvalidMajorFieldIdError if majorFieldId is set but not a
+   * valid positive integer.
    */
   getAllSub: async (majorFieldId?: number): Promise<SubField[]> => {
-    // Guard: SubField API requires a valid positive integer majorFieldId.
-    // Rejecting undefined / NaN / 0 / negative numbers prevents HTTP 400.
-    if (!isValidEntityId(majorFieldId)) {
+    // Only include the `majorFieldId` query param when it's a valid
+    // positive integer — undefined/0/NaN would yield a 400.
+    if (majorFieldId !== undefined && !isValidEntityId(majorFieldId)) {
       throw new InvalidMajorFieldIdError(majorFieldId);
     }
     const response = await api.get<SubFieldApiResponse[]>(API_ENDPOINTS.SUB_FIELD.GET_ALL, {
-      params: { majorFieldId },
+      params: majorFieldId !== undefined ? { majorFieldId } : undefined,
     });
     if (!Array.isArray(response.data)) return [];
 

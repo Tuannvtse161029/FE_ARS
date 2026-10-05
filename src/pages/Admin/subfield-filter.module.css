@@ -1,0 +1,50 @@
+/**
+ * Shared styles for the Major-field filter row that appears in the
+ * Sub-field CRUD surface (and previously lived in AdminSubFields.module.css).
+ * The filter dropdown scopes GET /api/SubField by ?majorFieldId= so the
+ * page can re-issue the fetch rather than filter client-side.
+ */
+
+.filterRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+}
+
+.filterLabel {
+  font-size: var(--font-size-xs, 12px);
+  font-weight: var(--font-weight-bold, 600);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ars-ink-muted, #64748b);
+  font-family: var(--font-family-mono, monospace);
+}
+
+.filterSelect {
+  min-width: 200px;
+  padding: 6px 10px;
+  border: 1px solid var(--ars-node, #cbd5e1);
+  border-radius: var(--radius-md, 8px);
+  background: var(--ars-paper, #ffffff);
+  color: var(--ars-ink, #0f172a);
+  font: inherit;
+  font-size: var(--font-size-sm, 14px);
+  transition: border-color var(--transition-fast, 150ms ease);
+}
+
+.filterSelect:focus {
+  outline: none;
+  border-color: var(--ars-admin, #4c1d95);
+  box-shadow: 0 0 0 3px rgba(76, 29, 149, 0.12);
+}
+
+.filterSelect:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.filterCount {
+  font-size: var(--font-size-xs, 12px);
+  color: var(--ars-ink-muted, #64748b);
+  white-space: nowrap;
+}

@@ -1,0 +1,228 @@
+/* ResearcherResponsibilityModal
+   -------------------------------------------------------------
+   Pre-submission policy gate. Visually consistent with the existing
+   `PolicyModal` used on the Register page (same overlay + surface
+   tokens) so researchers get a familiar shape when the modal opens.
+   No external assets, no animations beyond the spinner, all tokens
+   from the global ars-tokens.css so theme switching is automatic. */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background-color: color-mix(in srgb, var(--sidebar-bg) 78%, transparent);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 9999;
+}
+
+.modal {
+  background-color: var(--surface-paper);
+  color: var(--ink-on-paper);
+  border-radius: 16px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  width: 100%;
+  max-width: 720px;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-strong);
+  overflow: hidden;
+}
+
+.header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  background-color: var(--surface-paper-muted);
+}
+
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ars-researcher, #b45309);
+}
+
+.title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ink-on-paper);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.summary {
+  font-size: 13px;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--ink-on-paper) 70%, transparent);
+  margin: 0;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  color: color-mix(in srgb, var(--ink-on-paper) 65%, transparent);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.closeBtn:hover {
+  color: var(--ink-on-paper);
+  background-color: var(--surface-paper-muted);
+}
+
+.closeBtn:focus-visible,
+.agreeLabel input:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.versionRow {
+  padding: 10px 24px;
+  background-color: var(--surface-paper);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.versionBadge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 500;
+  color: color-mix(in srgb, var(--ink-on-paper) 70%, transparent);
+  background-color: var(--surface-paper-muted);
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  padding: 2px 10px;
+}
+
+.content {
+  padding: 20px 24px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--ink-on-paper);
+  background-color: var(--surface-paper);
+}
+
+.section {
+  margin-bottom: 16px;
+}
+
+.sectionTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink-on-paper);
+  margin: 0 0 6px 0;
+}
+
+.paragraph {
+  margin: 0 0 10px 0;
+  color: color-mix(in srgb, var(--ink-on-paper) 85%, transparent);
+}
+
+.loadingState {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: color-mix(in srgb, var(--ink-on-paper) 70%, transparent);
+  padding: 16px 0;
+}
+
+.spinning {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinning {
+    animation: none;
+  }
+}
+
+.agreeRow {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-subtle);
+  background-color: var(--surface-paper-muted);
+}
+
+.agreeLabel {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-on-paper);
+  user-select: none;
+}
+
+.agreeLabel input {
+  margin-top: 2px;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--ars-researcher, #b45309);
+}
+
+.agreeLabel input:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.agreeLabelText {
+  flex: 1 1 auto;
+}
+
+.footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  background-color: var(--surface-paper);
+}
+
+.defaultNotice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 24px 16px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--ink-on-paper) 70%, transparent);
+  background-color: var(--surface-paper);
+}
