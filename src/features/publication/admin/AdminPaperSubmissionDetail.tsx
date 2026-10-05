@@ -13,6 +13,7 @@ import {
   AlertCircle,
   CheckCircle2,
   ChevronLeft,
+  Clock,
   FileText,
   Inbox,
   Lock,
@@ -20,6 +21,7 @@ import {
   ShieldCheck,
   X,
 } from 'lucide-react';
+import { useI18n } from '../../../i18n/I18nContext';
 import { publicationAdapter } from '../api/publication.adapter';
 import shared from '../components/PublicationShared.module.css';
 import { PageHeader } from '../../../components/PageHeader';
@@ -74,6 +76,7 @@ const STATUS_LABEL: Record<PublicationStatus, string> = {
 
 export const AdminPaperSubmissionDetail = () => {
   useAdminGuard();
+  const { t } = useI18n();
 
   const { id } = useParams();
   const location = useLocation();
@@ -358,7 +361,8 @@ export const AdminPaperSubmissionDetail = () => {
   // catalog) by returning false once the paper went to PUBLISHED, which
   // is exactly the state in which Admins most need to see the
   // recommendation that justified publishing it.
-  const showPrivateReview = paper.reviewer != null;
+  const hasAssignedReviewers = Boolean(paper.assignedReviewers && paper.assignedReviewers.length > 0);
+  const showPrivateReview = hasAssignedReviewers || paper.reviewer != null;
   const hasActions = actions.length > 0;
   const fileHref = paper.fileUrl?.trim();
 
@@ -500,111 +504,299 @@ export const AdminPaperSubmissionDetail = () => {
         )}
       </div>
 
-      {showPrivateReview && paper.reviewer ? (
+      {showPrivateReview ? (
         <div
           className={adminStyles.reviewBlock}
           role="region"
-          aria-label="Private reviewer record"
+          aria-label={t('admin.paperDetail.singleReviewerTitle', 'Private reviewer record')}
         >
-          <h3>Private reviewer record</h3>
-          <p className={adminStyles.reviewNote}>
-            Admin-only. This block MUST NOT appear on the public catalog, the
-            researcher detail page, or any other surface.
-          </p>
-          <dl className={shared.detailList}>
-            <dt>Reviewer</dt>
-            <dd>
-              {paper.reviewer.reviewerName}
-              <br />
-              <small className={shared.fieldHint}>
-                Identity-public flag:{' '}
-                {paper.reviewerIdentityPublic
-                  ? 'Yes (visible on catalog)'
-                  : 'No (private — never shown on the public catalog)'}
-              </small>
-            </dd>
-            <dt>Recommendation</dt>
-            <dd>
-              <span
-                className={`${adminStyles.statusBadge} ${
-                  adminStyles[
-                    paper.reviewer.recommendation === 'ACCEPT'
-                      ? 'statusRecommendAccept'
-                      : paper.reviewer.recommendation === 'REJECT'
-                        ? 'statusRecommendReject'
-                        : 'statusRevision'
-                  ] ?? ''
-                }`}
-              >
-                {paper.reviewer.recommendation?.replace(/_/g, ' ') ?? 'Awaiting submitted review'}
-              </span>
-            </dd>
-            <dt>Submitted</dt>
-            <dd>{paper.reviewer.submittedAt ? formatDisplayDate(paper.reviewer.submittedAt) : '—'}</dd>
-            <dt>Private comments</dt>
-            <dd>{paper.reviewer.privateComments || '—'}</dd>
-          </dl>
-          {Object.keys(paper.reviewer.privateScores).length > 0 && (
-            <div className={adminStyles.scoresSection}>
-              <h4 className={adminStyles.scoresSectionTitle}>
-                Core criteria scores
-              </h4>
-              <table className={adminStyles.reviewScoresTable}>
-                <thead>
-                  <tr>
-                    <th>Criterion</th>
-                    <th align="right">Score (1-10)</th>
-                    <th>Private Note</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(paper.reviewer.privateScores).map(([criterion, score]) => (
-                    <tr key={criterion}>
-                      <td><strong style={{ textTransform: 'capitalize' }}>{criterion}</strong></td>
-                      <td align="right"><strong>{score}</strong> / 10</td>
-                      <td style={{ color: 'var(--ars-ink-muted)', fontSize: 'var(--font-size-xs)' }}>
-                        {paper.reviewer?.privateNotes?.[criterion] || '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <div className={adminStyles.reviewBlockHeader}>
+            <div>
+              <h3>
+                {hasAssignedReviewers
+                  ? t('admin.paperDetail.reviewersSectionTitle', `Reviewer evaluations (${paper.assignedReviewers!.length})`, { count: paper.assignedReviewers!.length })
+                  : t('admin.paperDetail.singleReviewerTitle', 'Private reviewer record')}
+              </h3>
+              <p className={adminStyles.reviewNote}>
+                {t('admin.paperDetail.reviewersSectionSubtitle', 'Admin-only. Confidential reviewer evaluations and assignment status for this manuscript.')}
+              </p>
             </div>
-          )}
+            {hasAssignedReviewers && (
+              <div className={adminStyles.reviewersSummaryChips}>
+                <span className={adminStyles.summaryChipCompleted}>
+                  <CheckCircle2 size={13} aria-hidden="true" />
+                  {paper.assignedReviewers!.filter((r) => r.evaluation != null || (r.status ?? '').toLowerCase() === 'completed').length}{' '}
+                  {t('admin.paperDetail.completedCount', 'Completed')}
+                </span>
+                <span className={adminStyles.summaryChipPending}>
+                  <Clock size={13} aria-hidden="true" />
+                  {paper.assignedReviewers!.filter((r) => r.evaluation == null && (r.status ?? '').toLowerCase() !== 'completed').length}{' '}
+                  {t('admin.paperDetail.pendingCount', 'Pending')}
+                </span>
+              </div>
+            )}
+          </div>
 
-          {paper.reviewer.specializedEvaluations && paper.reviewer.specializedEvaluations.length > 0 && (
-            <div className={adminStyles.scoresSection}>
-              <h4 className={adminStyles.scoresSectionTitle}>
-                Specialized criteria scores
-              </h4>
-              <table className={adminStyles.reviewScoresTable}>
-                <thead>
-                  <tr>
-                    <th>Criterion</th>
-                    <th align="right">Score</th>
-                    <th>Private Note</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paper.reviewer.specializedEvaluations.map((spec, idx) => (
-                    <tr key={spec.criterionCode ?? idx}>
-                      <td><strong>{spec.criterionTitle}</strong></td>
-                      <td align="right">
-                        {spec.score != null ? (
-                          <strong>{spec.score}{spec.maxScore ? ` / ${spec.maxScore}` : ''}</strong>
-                        ) : (
-                          <span className={shared.fieldHint}>—</span>
+          {hasAssignedReviewers ? (
+            <div className={adminStyles.reviewersList}>
+              {paper.assignedReviewers!.map((rev, idx) => {
+                const evalData = rev.evaluation;
+                const revStatus = (rev.status ?? '').toLowerCase();
+                const statusClass =
+                  revStatus === 'completed'
+                    ? adminStyles.reviewerStatusCompleted
+                    : revStatus === 'in progress' || revStatus === 'in_progress'
+                      ? adminStyles.reviewerStatusInProgress
+                      : adminStyles.reviewerStatusPending;
+
+                return (
+                  <div key={rev.reviewerId ?? idx} className={adminStyles.reviewerCard}>
+                    <div className={adminStyles.reviewerCardHeader}>
+                      <div className={adminStyles.reviewerIdentity}>
+                        <span className={adminStyles.reviewerNumberBadge}>{idx + 1}</span>
+                        <div>
+                          <div className={adminStyles.reviewerNameTitle}>{rev.reviewerName}</div>
+                          {rev.reviewerEmail && (
+                            <div className={adminStyles.reviewerEmailSub}>{rev.reviewerEmail}</div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className={adminStyles.reviewerHeaderBadges}>
+                        {rev.deadline && (
+                          <span className={adminStyles.reviewerDeadlinePill} title="Review deadline">
+                            <Clock size={12} aria-hidden="true" />
+                            {formatDisplayDate(rev.deadline)}
+                          </span>
                         )}
-                      </td>
-                      <td style={{ color: 'var(--ars-ink-muted)', fontSize: 'var(--font-size-xs)' }}>
-                        {spec.notes || '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+
+                        {evalData ? (
+                          <span
+                            className={`${adminStyles.statusBadge} ${
+                              adminStyles[
+                                evalData.recommendation === 'ACCEPT'
+                                  ? 'statusRecommendAccept'
+                                  : evalData.recommendation === 'REJECT'
+                                    ? 'statusRecommendReject'
+                                    : 'statusRevision'
+                              ] ?? ''
+                            }`}
+                          >
+                            {evalData.recommendation?.replace(/_/g, ' ') ?? 'Submitted'}
+                          </span>
+                        ) : (
+                          <span className={`${adminStyles.reviewerStatusBadge} ${statusClass}`}>
+                            {rev.status || 'PENDING'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {evalData ? (
+                      <>
+                        <dl className={shared.detailList}>
+                          <dt>{t('admin.paperDetail.recommendationLabel', 'Recommendation')}</dt>
+                          <dd>
+                            <span
+                              className={`${adminStyles.statusBadge} ${
+                                adminStyles[
+                                  evalData.recommendation === 'ACCEPT'
+                                    ? 'statusRecommendAccept'
+                                    : evalData.recommendation === 'REJECT'
+                                      ? 'statusRecommendReject'
+                                      : 'statusRevision'
+                                ] ?? ''
+                              }`}
+                            >
+                              {evalData.recommendation?.replace(/_/g, ' ')}
+                            </span>
+                          </dd>
+                          <dt>{t('admin.paperDetail.submittedLabel', 'Submitted')}</dt>
+                          <dd>
+                            {evalData.submittedAt
+                              ? formatDisplayDate(evalData.submittedAt)
+                              : rev.createdAt
+                                ? formatDisplayDate(rev.createdAt)
+                                : '—'}
+                          </dd>
+                          <dt>{t('admin.paperDetail.privateComments', 'Private comments')}</dt>
+                          <dd>{evalData.privateComments || '—'}</dd>
+                        </dl>
+
+                        {evalData.privateScores && Object.keys(evalData.privateScores).length > 0 && (
+                          <div className={adminStyles.scoresSection}>
+                            <h4 className={adminStyles.scoresSectionTitle}>
+                              {t('admin.paperDetail.coreScores', 'Core criteria scores')}
+                            </h4>
+                            <table className={adminStyles.reviewScoresTable}>
+                              <thead>
+                                <tr>
+                                  <th>Criterion</th>
+                                  <th align="right">Score (1-10)</th>
+                                  <th>Private Note</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {Object.entries(evalData.privateScores).map(([criterion, score]) => (
+                                  <tr key={criterion}>
+                                    <td><strong style={{ textTransform: 'capitalize' }}>{criterion}</strong></td>
+                                    <td align="right"><strong>{score}</strong> / 10</td>
+                                    <td style={{ color: 'var(--ars-ink-muted)', fontSize: 'var(--font-size-xs)' }}>
+                                      {evalData.privateNotes?.[criterion] || '—'}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+
+                        {evalData.specializedEvaluations && evalData.specializedEvaluations.length > 0 && (
+                          <div className={adminStyles.scoresSection}>
+                            <h4 className={adminStyles.scoresSectionTitle}>
+                              {t('admin.paperDetail.specializedScores', 'Specialized criteria scores')}
+                            </h4>
+                            <table className={adminStyles.reviewScoresTable}>
+                              <thead>
+                                <tr>
+                                  <th>Criterion</th>
+                                  <th align="right">Score</th>
+                                  <th>Private Note</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {evalData.specializedEvaluations.map((spec, sIdx) => (
+                                  <tr key={spec.criterionCode ?? sIdx}>
+                                    <td><strong>{spec.criterionTitle}</strong></td>
+                                    <td align="right">
+                                      {spec.score != null ? (
+                                        <strong>{spec.score}{spec.maxScore ? ` / ${spec.maxScore}` : ''}</strong>
+                                      ) : (
+                                        <span className={shared.fieldHint}>—</span>
+                                      )}
+                                    </td>
+                                    <td style={{ color: 'var(--ars-ink-muted)', fontSize: 'var(--font-size-xs)' }}>
+                                      {spec.notes || '—'}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className={adminStyles.reviewerPendingBox}>
+                        <Clock size={20} className={adminStyles.pendingIcon} aria-hidden="true" />
+                        <div className={adminStyles.pendingBoxText}>
+                          <strong>{t('admin.paperDetail.awaitingReviewText', 'Awaiting review evaluation')}</strong>
+                          <span>{t('admin.paperDetail.awaitingReviewDesc', 'This reviewer has not submitted their rubric evaluation yet.')}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          )}
+          ) : paper.reviewer ? (
+            /* Fallback legacy rendering for single reviewer */
+            <div>
+              <dl className={shared.detailList}>
+                <dt>Reviewer</dt>
+                <dd>
+                  {paper.reviewer.reviewerName}
+                  <br />
+                  <small className={shared.fieldHint}>
+                    Identity-public flag:{' '}
+                    {paper.reviewerIdentityPublic
+                      ? 'Yes (visible on catalog)'
+                      : 'No (private — never shown on the public catalog)'}
+                  </small>
+                </dd>
+                <dt>{t('admin.paperDetail.recommendationLabel', 'Recommendation')}</dt>
+                <dd>
+                  <span
+                    className={`${adminStyles.statusBadge} ${
+                      adminStyles[
+                        paper.reviewer.recommendation === 'ACCEPT'
+                          ? 'statusRecommendAccept'
+                          : paper.reviewer.recommendation === 'REJECT'
+                            ? 'statusRecommendReject'
+                            : 'statusRevision'
+                      ] ?? ''
+                    }`}
+                  >
+                    {paper.reviewer.recommendation?.replace(/_/g, ' ') ?? 'Awaiting submitted review'}
+                  </span>
+                </dd>
+                <dt>{t('admin.paperDetail.submittedLabel', 'Submitted')}</dt>
+                <dd>{paper.reviewer.submittedAt ? formatDisplayDate(paper.reviewer.submittedAt) : '—'}</dd>
+                <dt>{t('admin.paperDetail.privateComments', 'Private comments')}</dt>
+                <dd>{paper.reviewer.privateComments || '—'}</dd>
+              </dl>
+              {Object.keys(paper.reviewer.privateScores).length > 0 && (
+                <div className={adminStyles.scoresSection}>
+                  <h4 className={adminStyles.scoresSectionTitle}>
+                    {t('admin.paperDetail.coreScores', 'Core criteria scores')}
+                  </h4>
+                  <table className={adminStyles.reviewScoresTable}>
+                    <thead>
+                      <tr>
+                        <th>Criterion</th>
+                        <th align="right">Score (1-10)</th>
+                        <th>Private Note</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(paper.reviewer.privateScores).map(([criterion, score]) => (
+                        <tr key={criterion}>
+                          <td><strong style={{ textTransform: 'capitalize' }}>{criterion}</strong></td>
+                          <td align="right"><strong>{score}</strong> / 10</td>
+                          <td style={{ color: 'var(--ars-ink-muted)', fontSize: 'var(--font-size-xs)' }}>
+                            {paper.reviewer?.privateNotes?.[criterion] || '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {paper.reviewer.specializedEvaluations && paper.reviewer.specializedEvaluations.length > 0 && (
+                <div className={adminStyles.scoresSection}>
+                  <h4 className={adminStyles.scoresSectionTitle}>
+                    {t('admin.paperDetail.specializedScores', 'Specialized criteria scores')}
+                  </h4>
+                  <table className={adminStyles.reviewScoresTable}>
+                    <thead>
+                      <tr>
+                        <th>Criterion</th>
+                        <th align="right">Score</th>
+                        <th>Private Note</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paper.reviewer.specializedEvaluations.map((spec, idx) => (
+                        <tr key={spec.criterionCode ?? idx}>
+                          <td><strong>{spec.criterionTitle}</strong></td>
+                          <td align="right">
+                            {spec.score != null ? (
+                              <strong>{spec.score}{spec.maxScore ? ` / ${spec.maxScore}` : ''}</strong>
+                            ) : (
+                              <span className={shared.fieldHint}>—</span>
+                            )}
+                          </td>
+                          <td style={{ color: 'var(--ars-ink-muted)', fontSize: 'var(--font-size-xs)' }}>
+                            {spec.notes || '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          ) : null}
         </div>
       ) : null}
 

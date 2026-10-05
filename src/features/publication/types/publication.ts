@@ -145,6 +145,7 @@ export interface AssignedReviewerInfo {
   deadline?: string | null;
   type?: string | null;
   createdAt?: string;
+  evaluation?: PublicationReview | null;
 }
 
 export const isAuthorshipAllowed = (paper?: PublicationPaper | null): boolean => {

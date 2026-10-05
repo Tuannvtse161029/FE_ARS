@@ -14,6 +14,7 @@ import {
   type CatalogQuery,
   type PagedPublicationResult,
   type PublicationPaper,
+  type PublicationReview,
   type PublicationStatus,
   type ReviewerRecommendation,
   type SubmissionInput,
@@ -187,11 +188,74 @@ const assignmentStatus = (
  * (see BACKEND_REQUESTS.md §3.2) — the FE does NOT paper over it with
  * localStorage anymore.
  */
+const buildPublicationReview = (
+  request?: ReviewRequest | null,
+  evaluation?: DetailedEvaluation | null,
+): PublicationReview | undefined => {
+  if (!request) return undefined;
+  const reviewerName =
+    request.reviewerName?.trim() ||
+    (request.reviewerId ? `Reviewer #${request.reviewerId}` : 'Assigned reviewer');
+
+  const scores: Record<string, number> = {};
+  const notes: Record<string, string> = {};
+  if (evaluation) {
+    scores.originality = evaluation.scoreOriginality ?? 0;
+    scores.references = evaluation.scoreLiterature ?? 0;
+    scores.methodology = evaluation.scoreMethodology ?? 0;
+    scores.significance = evaluation.scoreResults ?? 0;
+    scores.clarity = evaluation.scoreFormatting ?? 0;
+
+    notes.originality = evaluation.notesOriginality ?? '';
+    notes.references = evaluation.notesLiterature ?? '';
+    notes.methodology = evaluation.notesMethodology ?? '';
+    notes.significance = evaluation.notesResults ?? '';
+    notes.clarity = evaluation.notesFormatting ?? '';
+  }
+
+  const rawDecision = normalizedText(evaluation?.finalDecision);
+  const recommendation =
+    rawDecision === 'REJECT' || rawDecision === 'REJECTED'
+      ? 'REJECT'
+      : rawDecision === 'REVISION_REQUIRED' || rawDecision === 'REVISION'
+        ? 'REVISION_REQUIRED'
+        : rawDecision === 'ACCEPT' || rawDecision === 'ACCEPTED'
+          ? 'ACCEPT'
+          : undefined;
+
+  return {
+    reviewerName,
+    recommendation,
+    privateComments: evaluation?.generalComments ?? '',
+    privateScores: scores,
+    privateNotes: notes,
+    criteria1: evaluation?.criteria1 ?? null,
+    expandedCriteria1: evaluation?.expandedCriteria1 ?? null,
+    evaluationCriteria1: evaluation?.evaluationCriteria1 ?? null,
+    criteria2: evaluation?.criteria2 ?? null,
+    expandedCriteria2: evaluation?.expandedCriteria2 ?? null,
+    evaluationCriteria2: evaluation?.evaluationCriteria2 ?? null,
+    criteria3: evaluation?.criteria3 ?? null,
+    expandedCriteria3: evaluation?.expandedCriteria3 ?? null,
+    evaluationCriteria3: evaluation?.evaluationCriteria3 ?? null,
+    submittedAt: evaluation?.createdAt,
+    specializedEvaluations:
+      evaluation?.specializedEvaluation?.map((item) => ({
+        criterionCode: item.criterionCode,
+        criterionTitle: item.criterionTitle,
+        score: item.score ?? null,
+        maxScore: item.maxScore ?? null,
+        notes: item.notes ?? null,
+      })) ?? undefined,
+  };
+};
+
 const toPublicationPaper = async (
   paper: Paper,
   request?: ReviewRequest,
   evaluation: DetailedEvaluation | null = null,
   allRequests?: ReviewRequest[],
+  allEvaluationsMap?: Map<number, DetailedEvaluation | null>,
 ): Promise<PublicationPaper> => {
   // The paper record is authoritative for terminal editorial states. However, a
   // paper with an active review request should never be shown as "Inactive" to
@@ -209,22 +273,6 @@ const toPublicationPaper = async (
       : persistedStatus;
   const authorId = paper.authorId ?? (paper as unknown as { userId?: number }).userId;
   const subFieldId = paper.subFieldId ?? (paper as unknown as { subfieldId?: number }).subfieldId;
-  const reviewerName = request?.reviewerName?.trim();
-  const scores: Record<string, number> = {};
-  const notes: Record<string, string> = {};
-  if (evaluation) {
-    scores.originality = evaluation.scoreOriginality ?? 0;
-    scores.references = evaluation.scoreLiterature ?? 0;
-    scores.methodology = evaluation.scoreMethodology ?? 0;
-    scores.significance = evaluation.scoreResults ?? 0;
-    scores.clarity = evaluation.scoreFormatting ?? 0;
-
-    notes.originality = evaluation.notesOriginality ?? '';
-    notes.references = evaluation.notesLiterature ?? '';
-    notes.methodology = evaluation.notesMethodology ?? '';
-    notes.significance = evaluation.notesResults ?? '';
-    notes.clarity = evaluation.notesFormatting ?? '';
-  }
 
   const enriched = await enrichPublicationMetadata({
     id: String(paper.id),
@@ -283,40 +331,7 @@ const toPublicationPaper = async (
     createdAt: paper.createdAt ?? '',
     submittedAt: undefined,
     publishedAt: undefined,
-    reviewer: request
-      ? {
-          reviewerName:
-            reviewerName ||
-            (request.reviewerId ? `Reviewer #${request.reviewerId}` : 'Assigned reviewer'),
-          recommendation:
-            normalizedText(evaluation?.finalDecision) === 'REJECT'
-              ? 'REJECT'
-              : normalizedText(evaluation?.finalDecision) === 'REVISION_REQUIRED'
-                ? 'REVISION_REQUIRED'
-                : normalizedText(evaluation?.finalDecision) === 'ACCEPT' ? 'ACCEPT' : undefined,
-          privateComments: evaluation?.generalComments ?? '',
-          privateScores: scores,
-          privateNotes: notes,
-          criteria1: evaluation?.criteria1 ?? null,
-          expandedCriteria1: evaluation?.expandedCriteria1 ?? null,
-          evaluationCriteria1: evaluation?.evaluationCriteria1 ?? null,
-          criteria2: evaluation?.criteria2 ?? null,
-          expandedCriteria2: evaluation?.expandedCriteria2 ?? null,
-          evaluationCriteria2: evaluation?.evaluationCriteria2 ?? null,
-          criteria3: evaluation?.criteria3 ?? null,
-          expandedCriteria3: evaluation?.expandedCriteria3 ?? null,
-          evaluationCriteria3: evaluation?.evaluationCriteria3 ?? null,
-          submittedAt: evaluation?.createdAt,
-          specializedEvaluations:
-            evaluation?.specializedEvaluation?.map((item) => ({
-              criterionCode: item.criterionCode,
-              criterionTitle: item.criterionTitle,
-              score: item.score ?? null,
-              maxScore: item.maxScore ?? null,
-              notes: item.notes ?? null,
-            })) ?? undefined,
-        }
-      : undefined,
+    reviewer: buildPublicationReview(request, evaluation),
     reviewerIdentityPublic: false,
     researcherVerificationStatus: (() => {
       // Editorial status-based inference:
@@ -354,28 +369,41 @@ const toPublicationPaper = async (
     reviewType: request?.type ?? null,
     aiRecommended: request?.airecommended ?? null,
     assignedReviewers: (allRequests && allRequests.length > 0)
-      ? allRequests.map((r) => ({
-          reviewRequestId: r.id,
-          reviewerId: r.reviewerId ?? undefined,
-          reviewerName: r.reviewerName?.trim() || (r.reviewerId ? `Reviewer #${r.reviewerId}` : 'Assigned reviewer'),
-          reviewerEmail: r.reviewerEmail ?? null,
-          reviewerAvatarUrl: r.reviewerAvatarUrl ?? null,
-          status: r.status ?? null,
-          deadline: r.deadline ?? null,
-          type: r.type ?? null,
-          createdAt: r.createdAt,
-        }))
+      ? allRequests.map((r) => {
+          const reqId = r.id ?? (r as unknown as { reviewRequestId?: number }).reviewRequestId;
+          const rEval =
+            (reqId ? allEvaluationsMap?.get(reqId) : null) ??
+            (reqId && request?.id && reqId === request.id ? evaluation : null);
+          return {
+            reviewRequestId: reqId,
+            reviewerId: r.reviewerId ?? undefined,
+            reviewerName:
+              r.reviewerName?.trim() ||
+              (r.reviewerId ? `Reviewer #${r.reviewerId}` : 'Assigned reviewer'),
+            reviewerEmail: r.reviewerEmail ?? null,
+            reviewerAvatarUrl: r.reviewerAvatarUrl ?? null,
+            status: r.status ?? null,
+            deadline: r.deadline ?? null,
+            type: r.type ?? null,
+            createdAt: r.createdAt,
+            evaluation: buildPublicationReview(r, rEval) ?? null,
+          };
+        })
       : request
         ? [{
-            reviewRequestId: request.id,
+            reviewRequestId:
+              request.id ?? (request as unknown as { reviewRequestId?: number }).reviewRequestId,
             reviewerId: request.reviewerId ?? undefined,
-            reviewerName: request.reviewerName?.trim() || (request.reviewerId ? `Reviewer #${request.reviewerId}` : 'Assigned reviewer'),
+            reviewerName:
+              request.reviewerName?.trim() ||
+              (request.reviewerId ? `Reviewer #${request.reviewerId}` : 'Assigned reviewer'),
             reviewerEmail: request.reviewerEmail ?? null,
             reviewerAvatarUrl: request.reviewerAvatarUrl ?? null,
             status: request.status ?? null,
             deadline: request.deadline ?? null,
             type: request.type ?? null,
             createdAt: request.createdAt,
+            evaluation: buildPublicationReview(request, evaluation) ?? null,
           }]
         : undefined,
   });
@@ -576,10 +604,17 @@ class ApiPublicationAdapter implements PublicationAdapter {
   }
 
   async getAdminSubmissions(): Promise<PublicationPaper[]> {
-    const [papers, requests] = await Promise.all([
+    const [papers, requests, rawEvaluations] = await Promise.all([
       listAllPapers(),
       reviewRequestService.getAll(),
+      detailedEvaluationService.getAll().catch(() => [] as DetailedEvaluation[]),
     ]);
+    const evaluationsMap = new Map<number, DetailedEvaluation>();
+    for (const ev of rawEvaluations) {
+      if (ev.reviewRequestId) {
+        evaluationsMap.set(ev.reviewRequestId, ev);
+      }
+    }
     const requestMap = latestRequestByPaper(requests);
     const allRequestsMap = new Map<string, ReviewRequest[]>();
     for (const r of requests) {
@@ -594,24 +629,31 @@ class ApiPublicationAdapter implements PublicationAdapter {
         const key = String(paper.id);
         const request = requestMap.get(key);
         const paperRequests = allRequestsMap.get(key);
+        const evaluation = request?.id ? (evaluationsMap.get(request.id) ?? await evaluationFor(request)) : null;
         // Use the paper object already returned by listAllPapers() to avoid
         // an N+1 GET /api/paper/{id} call per paper that caused timeouts and
         // empty lists when the system has many submissions.
-        return toPublicationPaper(paper, request, await evaluationFor(request), paperRequests);
+        return toPublicationPaper(paper, request, evaluation, paperRequests, evaluationsMap);
       }),
     );
   }
 
-
   async getPaperById(id: string): Promise<PublicationPaper> {
-    const [paper, requests] = await Promise.all([
+    const [paper, requests, rawEvaluations] = await Promise.all([
       paperService.getById(id),
       reviewRequestService.getAll(),
+      detailedEvaluationService.getAll().catch(() => [] as DetailedEvaluation[]),
     ]);
+    const evaluationsMap = new Map<number, DetailedEvaluation>();
+    for (const ev of rawEvaluations) {
+      if (ev.reviewRequestId) {
+        evaluationsMap.set(ev.reviewRequestId, ev);
+      }
+    }
     const paperRequests = requests.filter((r) => String(r.paperId) === String(id));
     const request = latestRequestByPaper(requests).get(String(id));
-    const evaluation = await evaluationFor(request);
-    return toPublicationPaper(paper, request, evaluation, paperRequests);
+    const evaluation = request?.id ? (evaluationsMap.get(request.id) ?? await evaluationFor(request)) : null;
+    return toPublicationPaper(paper, request, evaluation, paperRequests, evaluationsMap);
   }
 
   async createDraft(input: SubmissionInput, submitToAdmin = false): Promise<PublicationPaper> {
