@@ -78,6 +78,14 @@ export interface DetailedEvaluationCreateRequest {
 export interface DetailedEvaluationUpdateRequest extends DetailedEvaluationCreateRequest {}
 
 export const detailedEvaluationService = {
+  getAll: async (): Promise<DetailedEvaluation[]> => {
+    const response = await api.get<DetailedEvaluation[]>(
+      API_ENDPOINTS.DETAILED_EVALUATION.GET_ALL,
+    );
+    const data = response.data;
+    return Array.isArray(data) ? data : [];
+  },
+
   getByReviewRequestId: async (reviewRequestId: number): Promise<DetailedEvaluation> => {
     // The BE returns a raw object; the unique constraint on DetailedEvaluation means
     // there is at most one evaluation per review request.

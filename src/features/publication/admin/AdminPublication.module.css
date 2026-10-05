@@ -711,6 +711,156 @@
   font-family: var(--font-family-mono);
 }
 
+/* ── Multi-reviewer evaluation blocks ───────────────────────────── */
+.reviewBlockHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.reviewersSummaryChips {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+}
+
+.summaryChipCompleted {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--ars-accent-light, #f0fdf4);
+  color: var(--ars-accent, #059669);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-weight: var(--font-weight-semibold);
+  border: 1px solid rgba(5, 150, 105, 0.2);
+}
+
+.summaryChipPending {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--ars-admin-light, #fffbeb);
+  color: var(--ars-admin, #b45309);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-weight: var(--font-weight-semibold);
+  border: 1px solid rgba(180, 83, 9, 0.2);
+}
+
+.reviewersList {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-2);
+}
+
+.reviewerCard {
+  background: var(--ars-paper, #ffffff);
+  border: 1px solid var(--border-subtle, var(--ars-network));
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  display: grid;
+  gap: var(--space-3);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.reviewerCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--ars-network, #e5e7eb);
+}
+
+.reviewerIdentity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.reviewerNumberBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--ars-ink, #1f2937);
+  color: var(--ars-canvas, #ffffff);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  font-family: var(--font-family-mono);
+  flex-shrink: 0;
+}
+
+.reviewerNameTitle {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--ars-ink);
+}
+
+.reviewerEmailSub {
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+}
+
+.reviewerHeaderBadges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.reviewerDeadlinePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+  background: var(--ars-paper-alt, #f9fafb);
+  border: 1px solid var(--ars-network, #e5e7eb);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.reviewerPendingBox {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: var(--space-3) var(--space-4);
+  background: var(--ars-paper-alt, #f9fafb);
+  border: 1px dashed var(--border-subtle, var(--ars-network));
+  border-radius: var(--radius-sm);
+  color: var(--ars-ink-muted);
+}
+
+.pendingIcon {
+  color: var(--ars-admin, #b45309);
+  flex-shrink: 0;
+}
+
+.pendingBoxText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pendingBoxText strong {
+  font-size: var(--font-size-sm);
+  color: var(--ars-ink);
+}
+
+.pendingBoxText span {
+  font-size: var(--font-size-xs);
+  color: var(--ars-ink-muted);
+}
+
 .assignForm {
   display: grid;
   gap: var(--space-3);
