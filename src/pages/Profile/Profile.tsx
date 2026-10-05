@@ -1371,7 +1371,6 @@ export const Profile = () => {
                 />
                 <ProfileView
                   draft={savedDraft}
-                  avatarInitials={avatarInitials}
                   updatedAt={profile?.updatedAt}
                   isEmpty={isEmptyProfile}
                   profile={profile}
@@ -1475,7 +1474,6 @@ export const Profile = () => {
                 {roleName === 'Admin' || !roleName ? (
                   <ProfileView
                     draft={savedDraft}
-                    avatarInitials={avatarInitials}
                     updatedAt={profile?.updatedAt}
                     isEmpty={isEmptyProfile}
                     profile={profile}
@@ -1642,14 +1640,13 @@ const AccountContactStrip = ({
 
 interface ProfileViewProps {
   draft: DraftFields;
-  avatarInitials: string;
   updatedAt: string | null | undefined;
   isEmpty: boolean;
   profile?: ProfileDto | null;
   isOwner: boolean;
 }
 
-const ProfileView = ({ draft, avatarInitials, updatedAt, isEmpty, profile, isOwner }: ProfileViewProps) => {
+const ProfileView = ({ draft, updatedAt, isEmpty, profile, isOwner }: ProfileViewProps) => {
   const { t } = useI18n();
   const showValue = (value: string, fallback?: string) =>
     value.trim() === '' ? <span className={styles.viewEmpty}>{fallback ?? t('profile.view.notSet', 'Not set')}</span> : value;
@@ -1667,12 +1664,6 @@ const ProfileView = ({ draft, avatarInitials, updatedAt, isEmpty, profile, isOwn
       </div>
 
       <div className={styles.viewGrid}>
-        <div className={styles.viewItem}>
-          <span className={styles.viewLabel}>{t('profile.view.avatarInitials', 'Avatar initials')}</span>
-          <p className={styles.viewValue} data-testid="view-avatar-initials">
-            {avatarInitials}
-          </p>
-        </div>
         <div className={styles.viewItem}>
           <span className={styles.viewLabel}>{t('profile.view.fullName', 'Full name')}</span>
           <p className={styles.viewValue} data-testid="view-full-name">

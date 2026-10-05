@@ -91,7 +91,7 @@ const ROLE_REQUIREMENTS: Record<UserRole, string> = {
   'Graduate Student':
     'Provide an official institution-issued confirmation letter showing current enrollment, programme, department, study period, and authorized signatory. FPT applicants should use an FPT-branded confirmation letter.',
   Admin:
-    'Administrator accounts are provisioned directly in the database and cannot be self-registered.',
+    'ARS System accounts are provisioned directly in the database and cannot be self-registered.',
 };
 
 export const Register = () => {

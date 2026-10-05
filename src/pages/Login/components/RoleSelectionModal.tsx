@@ -22,7 +22,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
   Reviewer: 'Reviewer',
   Lecturer: 'Lecturer (Seminar / Research Groups)',
   'Graduate Student': 'Graduate Student',
-  Admin: 'Administrator',
+  Admin: 'ARS System',
 };
 
 // Role descriptions verified against each workspace:
@@ -44,7 +44,7 @@ const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
     'Manage research topics and phases, evaluate student reports, and curate learning materials.',
   'Graduate Student':
     'Track milestones and deadlines, submit phased reports, and engage with peers in your research group.',
-  Admin: 'System administrator (assigned only via the database).',
+  Admin: 'Assigned only via the database — handles platform-wide configuration and moderation.',
 };
 
 /**
