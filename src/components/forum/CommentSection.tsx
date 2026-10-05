@@ -28,6 +28,7 @@ import { forumPostService } from '../../services/forumPost.service';
 import { signalrService } from '../../services/signalr.service';
 import { inferNotificationKind } from '../../utils/notificationRouteMap';
 import { useCanInteractInForum } from '../../hooks/useCanInteractInForum';
+import { ForumAvatar } from './ForumAvatar';
 import { useI18n } from '../../i18n/I18nContext';
 import { useShortcuts } from '../../hooks/useShortcuts';
 import { useListShortcuts } from '../../hooks/useListShortcuts';
@@ -743,6 +744,27 @@ export const CommentSection = ({
                     className={`${styles.commentItem} ${comment.replyId ? styles.replyItem : ''} ${commentIndex === commentSelectedIndex ? styles.selectedComment : ''}`}
                   >
                     <div className={styles.commentMeta}>
+                      <ForumAvatar
+                        userId={comment.userId ?? null}
+                        displayName={renderAuthorLabel(comment)}
+                        wireAvatarUrl={comment.authorAvatar}
+                        size={24}
+                        onClick={
+                          comment.userId
+                            ? () => handleCommenterClick(comment.userId)
+                            : undefined
+                        }
+                        title={
+                          comment.userId
+                            ? `View ${renderAuthorLabel(comment)}'s profile`
+                            : undefined
+                        }
+                        ariaLabel={
+                          comment.userId
+                            ? `Open ${renderAuthorLabel(comment)}'s profile`
+                            : undefined
+                        }
+                      />
                       <button
                         type="button"
                         className={styles.commentAuthor}

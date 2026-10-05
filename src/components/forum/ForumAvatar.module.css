@@ -1,0 +1,54 @@
+/* ForumAvatar — wraps <AvatarVisual> for post-byline + comment-byline
+ * rendering. The coloured circle behind the initials is supplied by
+ * the [data-palette] attribute, which the parent CSS module (or a
+ * future theme file) can target. The avatar sizing is intentionally
+ * minimal here — the per-call `size` prop on ForumAvatar controls the
+ * actual pixel dimensions.
+ */
+
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  flex-shrink: 0;
+  overflow: hidden;
+  background-color: var(--surface-paper-muted);
+  color: var(--ink-on-paper);
+  border: 1px solid var(--border-strong);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+}
+
+/* Palette colours mirror `PALETTE` in `src/pages/Forum/forum.utils.ts`
+ * so a forum card and its comment children sit in the same colour slot
+ * for the same authorId. Kept here as a self-contained module so the
+ * forum side does not depend on the global palette file.
+ */
+.avatar[data-palette='0'] { background-color: #eff6ff; color: #1e3a8a; }
+.avatar[data-palette='1'] { background-color: #f0fdf4; color: #166534; }
+.avatar[data-palette='2'] { background-color: #fef9c3; color: #854d0e; }
+.avatar[data-palette='3'] { background-color: #fdf4ff; color: #86198f; }
+.avatar[data-palette='4'] { background-color: #fff7ed; color: #9a3412; }
+.avatar[data-palette='5'] { background-color: #ecfeff; color: #155e75; }
+.avatar[data-palette='6'] { background-color: #f5f3ff; color: #5b21b6; }
+.avatar[data-palette='7'] { background-color: #fef2f2; color: #991b1b; }
+
+/* When used as a button (post author byline) — match the existing
+ * `.avatarButton` styling from ForumPostCard.module.css so the
+ * hover/focus affordances stay consistent.
+ */
+button.avatar {
+  cursor: pointer;
+  border-color: var(--ars-network);
+}
+
+button.avatar:hover {
+  background-color: var(--surface-paper);
+}
+
+button.avatar:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}

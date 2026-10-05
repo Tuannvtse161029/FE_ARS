@@ -49,34 +49,19 @@
 }
 
 .avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-family-ui);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-bold);
-  flex-shrink: 0;
-  background-color: var(--surface-paper-muted);
-  color: var(--ink-on-paper);
-  border: 1px solid var(--border-strong);
+  /* Deprecated: avatar rendering moved to <ForumAvatar> in
+   * src/components/forum/ForumAvatar.tsx, which owns its own
+   * CSS module. This rule is left intentionally empty so any
+   * stale `className={styles.avatar}` reference does not crash
+   * the build — but new code should use the dedicated component.
+   */
 }
 
 .avatarButton {
-  composes: avatar;
-  cursor: pointer;
-  border-color: var(--ars-network);
-}
-
-.avatarButton:hover {
-  background-color: var(--surface-paper);
-}
-
-.avatarButton:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
+  /* Deprecated: avatar-button styling moved to
+   * src/components/forum/ForumAvatar.module.css
+   * (button.avatar / button.avatar:hover / button.avatar:focus-visible).
+   */
 }
 
 .authorInfo {

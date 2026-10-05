@@ -13,6 +13,7 @@ import { CommentSection } from './CommentSection';
 import { FollowButton } from './FollowButton';
 import { ReportModal } from './ReportModal';
 import { ForumPostEngagementRow } from './ForumPostEngagementRow';
+import { ForumAvatar } from './ForumAvatar';
 import { UserFlairBadge } from '../../components/medals/UserFlairBadge';
 import { ImageViewer } from '../../components/ImageViewer';
 import { useForumComments } from '../../hooks/useForumComments';
@@ -24,7 +25,7 @@ import { signalrService } from '../../services/signalr.service';
 import { buildForumPostViewModel } from '../../types/forumPostViewModel';
 import { inferNotificationKind } from '../../utils/notificationRouteMap';
 import type { ForumPost } from '../../types/forum.types';
-import { initialsFromName, formatRelativeTime } from '../../pages/Forum/forum.utils';
+import { formatRelativeTime } from '../../pages/Forum/forum.utils';
 import styles from './ForumPostCard.module.css';
 
 // `LazyPdfViewer` dynamically imports `pdfjs-dist` (≈ 1.7 MB raw) so it does
@@ -183,8 +184,6 @@ export const ForumPostCard = ({
             ? `Author #${post.authorId}`
             : 'Unknown author');
 
-  const authorInitials = initialsFromName(authorLabel);
-
   const viewModel = buildForumPostViewModel({
     post: {
       ...post,
@@ -262,15 +261,15 @@ export const ForumPostCard = ({
     >
       {/* Author row */}
       <div className={styles.authorRow}>
-        <button
-          type="button"
-          className={styles.avatarButton}
+        <ForumAvatar
+          userId={post.authorId ?? null}
+          displayName={authorLabel}
+          wireAvatarUrl={post.authorAvatar}
+          size={36}
           onClick={handleAuthorClick}
           title={post.authorId ? `View ${authorLabel}'s profile` : undefined}
-          aria-label={post.authorId ? `Open ${authorLabel}'s profile` : undefined}
-        >
-          {authorInitials}
-        </button>
+          ariaLabel={post.authorId ? `Open ${authorLabel}'s profile` : undefined}
+        />
         <div className={styles.authorInfo}>
           <span className={styles.authorNameRow}>
             <button
