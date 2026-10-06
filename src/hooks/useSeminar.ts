@@ -368,12 +368,17 @@ export function useSendReminder(
 // refetch so the row flips its status pill / tab count in place.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type SeminarLifecycleAction = 'suspend' | 'reactivate';
+export type SeminarLifecycleAction = 'suspend' | 'reactivate' | 'complete';
+
+export interface UseUpdateSeminarStatusOptions {
+  startTime?: string | null;
+}
 
 export interface UseUpdateSeminarStatusResult {
   updateStatus: (
     id: number,
     action: SeminarLifecycleAction,
+    options?: UseUpdateSeminarStatusOptions,
   ) => Promise<void>;
   /** True while a status toggle is in flight (used to disable the buttons). */
   isUpdating: boolean;
@@ -391,12 +396,33 @@ export function useUpdateSeminarStatus(
     async (
       id: number,
       action: SeminarLifecycleAction,
+      options?: UseUpdateSeminarStatusOptions,
     ): Promise<void> => {
       setIsUpdating(true);
       setUpdateError(null);
-      const nextStatus = action === 'suspend' ? 'Inactive' : 'Upcoming';
+      const nextStatus =
+        action === 'suspend'
+          ? 'Inactive'
+          : action === 'complete'
+            ? 'Completed'
+            : 'Upcoming';
+
+      // If completing and the seminar has already started, supply current time as endTime
+      let endTime: string | undefined;
+      if (action === 'complete') {
+        const now = new Date();
+        if (options?.startTime) {
+          const startDate = new Date(options.startTime);
+          if (now >= startDate) {
+            endTime = now.toISOString();
+          }
+        } else {
+          endTime = now.toISOString();
+        }
+      }
+
       try {
-        await seminarService.setStatus(id, nextStatus);
+        await seminarService.setStatus(id, nextStatus, { endTime });
         if (refetch) {
           await refetch();
         }
@@ -406,7 +432,9 @@ export function useUpdateSeminarStatus(
           (err as { message?: string })?.message ??
           (action === 'suspend'
             ? 'Failed to suspend the seminar.'
-            : 'Failed to reactivate the seminar.');
+            : action === 'complete'
+              ? 'Failed to complete the seminar.'
+              : 'Failed to reactivate the seminar.');
         setUpdateError(msg);
         throw err;
       } finally {

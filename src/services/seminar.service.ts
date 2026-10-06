@@ -739,15 +739,21 @@ export const seminarService = {
    */
   setStatus: async (
     id: number,
-    nextStatus: 'Inactive' | 'Upcoming' | string,
+    nextStatus: 'Inactive' | 'Upcoming' | 'Completed' | string,
+    options?: { endTime?: string },
   ): Promise<Seminar> => {
     // Persist status override locally so the UI updates immediately and
     // survives refetches, even if the backend controller fails to persist request.status.
     setSeminarStatusOverride(id, nextStatus);
 
+    const payload: { status: string; endTime?: string } = { status: nextStatus };
+    if (options?.endTime) {
+      payload.endTime = options.endTime;
+    }
+
     const response = await api.put<Seminar>(
       API_ENDPOINTS.SEMINAR.UPDATE(id),
-      { status: nextStatus },
+      payload,
     );
     return {
       ...(response?.data ?? {}),
