@@ -45,6 +45,7 @@ import {
 import { useSeminars, useCreateSeminar, useSendReminder, useSeminarRoleContext, useUpdateSeminarStatus, type SeminarLifecycleAction } from '../../hooks/useSeminar';
 import { hasAdminRole, isAdminRoleName } from '../../utils/roleNormalizer';
 import { safeHref } from '../../utils/validationRules';
+import { cleanSeminarHeading } from '../../utils/seminarTitle';
 import { notificationService } from '../../services/notification.service';
 import { AudioSummaryModal } from '../../components/seminar/AudioSummaryModal';
 import { SeminarFeedbackModal } from '../../components/seminar/SeminarFeedbackModal';
@@ -69,7 +70,7 @@ import styles from './SeminarWorkspace.module.css';
 
 const SEMINARS_PER_PAGE = 3;
 
-type TabKey = 'all' | 'upcoming' | 'completed' | 'inactive';
+type TabKey = 'all' | 'upcoming' | 'in-progress' | 'completed' | 'inactive';
 type WorkspaceTab = 'manage' | 'participate';
 
 interface InviteeCandidate {
@@ -364,7 +365,9 @@ export const SeminarWorkspace = () => {
           const effective =
             seminar.effectiveStatus ||
             deriveEffectiveStatus(seminar.status, seminar.endTime);
-          if (effective === 'UPCOMING' || effective === 'IN PROGRESS') {
+          if (effective === 'IN PROGRESS') {
+            counts.inProgress += 1;
+          } else if (effective === 'UPCOMING') {
             counts.upcoming += 1;
           } else if (effective === 'COMPLETED') {
             counts.completed += 1;
@@ -373,22 +376,50 @@ export const SeminarWorkspace = () => {
           }
           return counts;
         },
-        { upcoming: 0, completed: 0, inactive: 0 },
+        { upcoming: 0, inProgress: 0, completed: 0, inactive: 0 },
       ),
     [seminars],
   );
 
   const filteredSeminars = useMemo(() => {
-    return seminars.filter((sem) => {
-      const effective =
-        sem.effectiveStatus || deriveEffectiveStatus(sem.status, sem.endTime);
-      if (activeTab === 'upcoming') {
-        return effective === 'UPCOMING' || effective === 'IN PROGRESS';
-      }
-      if (activeTab === 'completed') return effective === 'COMPLETED';
-      if (activeTab === 'inactive') return effective === 'INACTIVE';
-      return true;
-    });
+    return seminars
+      .filter((sem) => {
+        const effective =
+          sem.effectiveStatus || deriveEffectiveStatus(sem.status, sem.endTime);
+        if (activeTab === 'in-progress') {
+          return effective === 'IN PROGRESS';
+        }
+        if (activeTab === 'upcoming') {
+          return effective === 'UPCOMING';
+        }
+        if (activeTab === 'completed') return effective === 'COMPLETED';
+        if (activeTab === 'inactive') return effective === 'INACTIVE';
+        return true;
+      })
+      // Seminar ordering — live sessions float to the top regardless of
+      // which tab is active so the lecturer can spot them at a glance.
+      // Without this, a fresh fetch that returned the BE's natural
+      // (creation-order) sort would bury a seminar that just started
+      // underneath rows that haven't started yet. Within each status
+      // tier we keep the BE's order so we don't shuffle unrelated rows.
+      .slice()
+      .sort((a, b) => {
+        const effA =
+          a.effectiveStatus || deriveEffectiveStatus(a.status, a.endTime);
+        const effB =
+          b.effectiveStatus || deriveEffectiveStatus(b.status, b.endTime);
+        const tier = (s: string) =>
+          s === 'IN PROGRESS'
+            ? 0
+            : s === 'UPCOMING'
+              ? 1
+              : s === 'COMPLETED'
+                ? 2
+                : s === 'INACTIVE'
+                  ? 3
+                  : 4;
+        return tier(effA) - tier(effB);
+      });
   }, [activeTab, seminars]);
 
   const totalSeminarPages = Math.max(
@@ -935,6 +966,11 @@ export const SeminarWorkspace = () => {
   const tabs: Array<{ key: TabKey; label: string; count: number }> = [
     { key: 'all', label: 'All Seminars', count: seminars.length },
     {
+      key: 'in-progress',
+      label: copy('In Progress', 'Đang diễn ra'),
+      count: seminarCounts.inProgress,
+    },
+    {
       key: 'upcoming',
       label: 'Upcoming',
       count: seminarCounts.upcoming,
@@ -1243,7 +1279,7 @@ export const SeminarWorkspace = () => {
 
                     <div className={styles.cardTitleRow}>
                       <h3 className={styles.cardTitle}>
-                        {sem.title}
+                        {cleanSeminarHeading(sem.title)}
                       </h3>
                       <span
                         className={`${styles.statusBadge} ${
