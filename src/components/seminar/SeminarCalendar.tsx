@@ -54,6 +54,7 @@ import {
   formatDisplayDate,
   formatDisplayTime,
 } from '../../utils/datetime';
+import { cleanSeminarHeading } from '../../utils/seminarTitle';
 import type { EnrichedSeminar } from '../../hooks/useSeminarCalendar';
 import styles from './SeminarCalendar.module.css';
 
@@ -234,7 +235,9 @@ function EventTooltip({ seminar, anchorRect, containerRect }: EventTooltipProps)
     left = TOOLTIP_WIDTH / 2 + 8;
   }
 
-  const title = seminar.content?.split('\n')[0]?.trim() || seminar.title || `Seminar #${seminar.seminarId}`;
+  const title = cleanSeminarHeading(
+    seminar.content?.split('\n')[0]?.trim() || seminar.title || `Seminar #${seminar.seminarId}`,
+  );
   const hasJoinLink =
     seminar.onlineLink &&
     (statusUpper === 'UPCOMING' || statusUpper === 'IN PROGRESS');
@@ -382,10 +385,11 @@ function MonthView({
 
             <div className={styles.monthEventDots}>
               {visible.map((sem) => {
-                const title =
+                const title = cleanSeminarHeading(
                   sem.content?.split('\n')[0]?.trim() ||
-                  sem.title ||
-                  `Seminar #${sem.seminarId}`;
+                    sem.title ||
+                    `Seminar #${sem.seminarId}`,
+                );
                 return (
                   <button
                     key={sem.seminarId}
@@ -492,10 +496,11 @@ function WeekView({
 
     const top = getEventTop(startH, startM);
     const height = getEventHeight(startH, startM, endH, endM);
-    const title =
+    const title = cleanSeminarHeading(
       sem.content?.split('\n')[0]?.trim() ||
-      sem.title ||
-      `Seminar #${sem.seminarId}`;
+        sem.title ||
+        `Seminar #${sem.seminarId}`,
+    );
     const timeLabel = start
       ? `${formatDisplayTime(start, 'en')}${end ? ` – ${formatDisplayTime(end, 'en')}` : ''}`
       : '';
@@ -690,10 +695,11 @@ function DayView({
 
     const top = getEventTop(startH, startM);
     const height = getEventHeight(startH, startM, endH, endM);
-    const title =
+    const title = cleanSeminarHeading(
       sem.content?.split('\n')[0]?.trim() ||
-      sem.title ||
-      `Seminar #${sem.seminarId}`;
+        sem.title ||
+        `Seminar #${sem.seminarId}`,
+    );
     const timeLabel = start
       ? `${formatDisplayTime(start, 'en')}${end ? ` – ${formatDisplayTime(end, 'en')}` : ''}`
       : '';

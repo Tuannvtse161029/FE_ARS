@@ -33,6 +33,7 @@ import {
   formatDisplayTime,
 } from '../../utils/datetime';
 import { useLocale } from '../../i18n/I18nContext';
+import { cleanSeminarHeading } from '../../utils/seminarTitle';
 import styles from './SeminarDetailModal.module.css';
 
 interface SeminarDetailModalProps {
@@ -200,7 +201,7 @@ export const SeminarDetailModal = ({
                 id="seminar-detail-title"
                 className={styles.title}
               >
-                {seminar.title}
+                {cleanSeminarHeading(seminar.title)}
               </h2>
               <p className={styles.subtitle}>
                 {isHost
