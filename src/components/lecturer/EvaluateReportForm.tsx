@@ -39,6 +39,7 @@ import LazyPdfViewer from '../PdfViewer/LazyPdfViewer';
 import { useEvaluatePhasedReport } from '../../hooks/useEvaluatePhasedReport';
 import type { PhasedReport } from '../../services/phasedReport.service';
 import { safeHref } from '../../utils/validationRules';
+import { classifyPhaseReportStatus } from '../../utils/lecturerPhaseStatus';
 import styles from './EvaluateReportModal.module.css';
 
 export type EvaluationAction = 'approve' | 'requestResubmit';
@@ -163,11 +164,29 @@ export const EvaluateReportForm = ({
 
   const isResubmitMode = mode === 'requestResubmit';
   const hasPdf = !!report.reportFileUrl;
-  // The grading UI is only meaningful once the student has uploaded their
-  // file and a submitted-at timestamp is on record. Until then we hide
-  // every input and render an honest "not submitted yet" panel — the
-  // lecturer can still extend the deadline from the owning modal.
-  const isSubmitted = !!report.submittedAt && hasPdf;
+  // Lecturer-side gate for the grading UI (Oct 2026 fix).
+    //
+    // The original guard was `!!report.submittedAt && hasPdf`. That
+    // missed a real class of cases: when the student had uploaded a
+    // PDF (`reportFileUrl` non-null) and the BE had stamped the row
+    // with `status: 'SUBMITTED'` (which is exactly what our PUT-based
+    // `submitPhasedReport` does — see phasedReport.service.ts), but
+    // the BE response did NOT echo back a `submittedAt` timestamp in
+    // the same payload. The grading form stayed hidden, the lecturer
+    // saw an empty "Not submitted yet" panel, and the bug report from
+    // the user came back: "when user click see detail, it didn't show
+    // the submit yet for lecturer to evaluate."
+    //
+    // The fix is to consult the canonical `classifyPhaseReportStatus`
+    // classifier — the same single source of truth used by the
+    // PhaseReports page, the PhaseTimeline, and the StatusBadge. The
+    // classifier treats both `status === 'Submitted'` AND a truthy
+    // `submittedAt` as submission signals (see Tier 3 of
+    // `src/utils/lecturerPhaseStatus.ts`). Combined with the hard
+    // `hasPdf` requirement (the user explicitly asked: "report file
+    // url is not null"), this gives us the right gate: the form opens
+    // when there is a real PDF to grade.
+  const isSubmitted = hasPdf && classifyPhaseReportStatus(report).isSubmitted;
 
   return (
     <>
