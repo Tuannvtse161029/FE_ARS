@@ -21,6 +21,7 @@ import {
   Star,
   Ban,
   RotateCcw,
+  CheckCircle2,
   Info,
 } from 'lucide-react';
 import api from '../../services/axios';
@@ -454,6 +455,12 @@ export const SeminarWorkspace = () => {
     setLifecycleModalOpen(true);
   }, []);
 
+  const openCompleteConfirm = useCallback((sem: SeminarCard) => {
+    setLifecycleTarget(sem);
+    setLifecycleAction('complete');
+    setLifecycleModalOpen(true);
+  }, []);
+
   const handleReactivate = useCallback(
     async (sem: SeminarCard) => {
       try {
@@ -483,9 +490,13 @@ export const SeminarWorkspace = () => {
     const actionLabel =
       lifecycleAction === 'suspend'
         ? copy('suspended', 'tạm dừng')
-        : copy('reactivated', 'kích hoạt lại');
+        : lifecycleAction === 'complete'
+          ? copy('completed early', 'kết thúc sớm')
+          : copy('reactivated', 'kích hoạt lại');
     try {
-      await updateSeminarStatus(lifecycleTarget.seminarId, lifecycleAction);
+      await updateSeminarStatus(lifecycleTarget.seminarId, lifecycleAction, {
+        startTime: lifecycleTarget.startTime,
+      });
       // Defensive FE notification fan-out — notify every participant of
       // the lifecycle change so their bell reflects the new state
       // without waiting for the polling window. Best-effort: failures
@@ -527,12 +538,14 @@ export const SeminarWorkspace = () => {
           ? err.message
           : lifecycleAction === 'suspend'
             ? copy('Failed to suspend the seminar.', 'Không thể tạm dừng hội thảo.')
-            : copy('Failed to reactivate the seminar.', 'Không thể kích hoạt lại hội thảo.');
+            : lifecycleAction === 'complete'
+              ? copy('Failed to end the seminar early.', 'Không thể kết thúc sớm hội thảo.')
+              : copy('Failed to reactivate the seminar.', 'Không thể kích hoạt lại hội thảo.');
       announce(msg, 'error', copy('Action Failed', 'Thao tác thất bại'));
       // Keep the modal open on error so the user can retry without
       // re-clicking the card button.
     }
-  }, [announce, closeLifecycleModal, copy, lifecycleAction, lifecycleTarget, updateSeminarStatus]);
+  }, [announce, closeLifecycleModal, copy, currentUserId, lifecycleAction, lifecycleTarget, updateSeminarStatus]);
 
   // ── Create form helpers ─────────────────────────────────────────
   const handleAddEmail = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -1258,9 +1271,12 @@ export const SeminarWorkspace = () => {
             // Owner-only lifecycle gates:
             //   - "Suspend" shows on upcoming / in-progress rows so the
             //     owner can take the seminar offline before it starts.
+            //   - "Complete" shows on upcoming / in-progress rows so the
+            //     owner can end the seminar early.
             //   - "Reactivate" shows on INACTIVE rows so the owner can
             //     flip the seminar back to Upcoming from the same card.
             const showSuspend = canModify && owns && isUpcomingish;
+            const showComplete = canModify && owns && isUpcomingish;
             const showReactivate = canModify && owns && isInactive;
             return (
                   <li className={styles.seminarCard} key={sem.seminarId}>
@@ -1546,6 +1562,22 @@ export const SeminarWorkspace = () => {
                             >
                               <Ban size={14} aria-hidden />
                               {copy('Suspend', 'Tạm dừng')}
+                            </button>
+                          )}
+                          {showComplete && (
+                            <button
+                              type="button"
+                              className={styles.actionBtnOutline}
+                              onClick={() => openCompleteConfirm(sem)}
+                              disabled={isUpdatingStatus}
+                              data-testid="seminar-complete-button"
+                              title={copy(
+                                'End this seminar early and mark it as completed.',
+                                'Kết thúc sớm hội thảo này và đánh dấu đã hoàn thành.'
+                              )}
+                            >
+                              <CheckCircle2 size={14} aria-hidden />
+                              {copy('Complete', 'Kết thúc')}
                             </button>
                           )}
                           {showReactivate && (
@@ -2503,7 +2535,7 @@ export const SeminarWorkspace = () => {
         }
       />
 
-      {/* LIFECYCLE CONFIRM MODAL — owner-only Suspend confirmation.
+      {/* LIFECYCLE CONFIRM MODAL — owner-only Suspend / Complete confirmation.
           Reactivation bypasses this modal and runs immediately because
           reversing a Suspend is a safe action. The modal title / copy /
           variant adapt based on `lifecycleAction`. */}
@@ -2520,6 +2552,24 @@ export const SeminarWorkspace = () => {
           )}
           variant="destructive"
           confirmLabel={copy('Suspend seminar', 'Tạm dừng hội thảo')}
+          cancelLabel={copy('Cancel', 'Huỷ')}
+          onConfirm={() => void handleConfirmLifecycle()}
+          onClose={closeLifecycleModal}
+        />
+      )}
+      {lifecycleModalOpen && lifecycleTarget && lifecycleAction === 'complete' && (
+        <ConfirmModal
+          open={lifecycleModalOpen}
+          title={copy(
+            'End this seminar early?',
+            'Kết thúc sớm hội thảo này?',
+          )}
+          description={copy(
+            `"${lifecycleTarget.title}" will be marked as Completed immediately. Attendees can proceed to submit feedback, and you can upload the meeting recording for AI summary.`,
+            `"${lifecycleTarget.title}" sẽ được chuyển sang trạng thái Đã hoàn thành ngay lập tức. Người tham dự có thể gửi phản hồi và bạn có thể tải lên video ghi hình để tóm tắt bằng AI.`
+          )}
+          variant="default"
+          confirmLabel={copy('Complete seminar', 'Kết thúc hội thảo')}
           cancelLabel={copy('Cancel', 'Huỷ')}
           onConfirm={() => void handleConfirmLifecycle()}
           onClose={closeLifecycleModal}
