@@ -126,6 +126,15 @@
   padding: 20px 24px;
   overflow-y: auto;
   flex: 1 1 auto;
+  /* `min-height: 0` is required for the flex-shrink-on-overflow
+     trick to work: without it, the default `min-height: auto`
+     means the flex item is at least as tall as its content, so
+     the long policy body would push the modal past `max-height`
+     and get clipped by `overflow: hidden` on the parent. With
+     `min-height: 0`, the item can shrink to the available space
+     and the `overflow-y: auto` finally lets the user scroll the
+     policy text inside the modal. */
+  min-height: 0;
   font-size: 14px;
   line-height: 1.65;
   color: var(--ink-on-paper);
