@@ -26,7 +26,7 @@
  * controls out-of-band.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Loader2, ShieldCheck, X } from 'lucide-react';
+import { CheckCircle2, Loader2, ShieldCheck, X } from 'lucide-react';
 import { Button } from '../Button/Button';
 import { ErrorBanner } from '../ErrorBanner';
 import { useT } from '../../i18n/I18nContext';
@@ -173,19 +173,23 @@ export const ResearcherResponsibilityModal = ({
     };
   }, [isOpen, t]);
 
-  // Lock body scroll + auto-focus the cancel button when the modal opens,
-  // mirroring the existing `PolicyModal` so the two modals feel like
-  // siblings and screen-reader users get a predictable focus target.
+  // Auto-focus the cancel button when the modal opens. We deliberately
+  // do NOT lock body scroll while the modal is open: the policy text is
+  // fully contained inside the modal's own scroll container (`.content`
+  // is `overflow-y: auto`), and locking the page would prevent the
+  // researcher from scrolling back through the form fields they were
+  // just filling in to verify them. Since the overlay is `position:
+  // fixed` with `z-index: 9999`, scroll-jacking the page behind the
+  // modal is unnecessary; the user can still scroll the page if they
+  // need to look up something else on it.
   useEffect(() => {
     if (!isOpen) return undefined;
-    document.body.style.overflow = 'hidden';
     // Defer focus until after the modal paints so the focus call doesn't
     // race with the loading state mount.
     const focusTimer = window.setTimeout(() => {
       cancelButtonRef.current?.focus();
     }, 0);
     return () => {
-      document.body.style.overflow = '';
       window.clearTimeout(focusTimer);
     };
   }, [isOpen]);
@@ -214,12 +218,19 @@ export const ResearcherResponsibilityModal = ({
 
   const meta = POLICY_META.researcher_responsibility;
   const body = state.stage === 'ready' ? state.snapshot.content : '';
+  // Oct 2026: the version badge is only rendered when a real, admin-
+  // published policy is loaded. The previous "Default policy (admin
+  // has not saved a custom version yet)" copy was confusing — it told
+  // the researcher about an internal implementation detail (the
+  // Firestore seed) and made the modal look like it was warning them
+  // about something they should care about. The researcher just needs
+  // to see the current policy and the version that admin published.
   const versionLine =
     state.stage === 'ready' && state.snapshot.fromFirestore
       ? t('researcher.responsibility.versionActive', 'Active policy · v{version}', {
           version: state.snapshot.version,
         })
-      : t('researcher.responsibility.versionDefault', 'Default policy (admin has not saved a custom version yet)');
+      : null;
 
   return (
     <div
@@ -255,9 +266,11 @@ export const ResearcherResponsibilityModal = ({
           </button>
         </div>
 
-        <div className={styles.versionRow}>
-          <span className={styles.versionBadge}>{versionLine}</span>
-        </div>
+        {versionLine && (
+          <div className={styles.versionRow}>
+            <span className={styles.versionBadge}>{versionLine}</span>
+          </div>
+        )}
 
         <div
           className={styles.content}
@@ -317,18 +330,6 @@ export const ResearcherResponsibilityModal = ({
             {t('researcher.responsibility.agreeCta', 'I agree — continue to submit')}
           </Button>
         </div>
-
-        {state.stage === 'ready' && !state.snapshot.fromFirestore && (
-          <div className={styles.defaultNotice} role="status">
-            <AlertTriangle size={14} aria-hidden />
-            <span>
-              {t(
-                'researcher.responsibility.defaultNotice',
-                'Admins have not published a custom Researcher Responsibility yet — the text below is the platform default and is still binding.',
-              )}
-            </span>
-          </div>
-        )}
       </div>
     </div>
   );

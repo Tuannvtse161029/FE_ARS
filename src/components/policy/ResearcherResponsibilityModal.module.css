@@ -224,14 +224,3 @@
   gap: 12px;
   background-color: var(--surface-paper);
 }
-
-.defaultNotice {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 10px 24px 16px;
-  font-size: 12px;
-  line-height: 1.5;
-  color: color-mix(in srgb, var(--ink-on-paper) 70%, transparent);
-  background-color: var(--surface-paper);
-}
