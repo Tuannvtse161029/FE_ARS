@@ -461,11 +461,17 @@ export const LecturerGroupDetail = (): JSX.Element => {
     setRosterError(null);
     try {
       const [usersRes, membershipsRes] = await Promise.allSettled([
-        // BE filter — the lecturer console treats role=GraduateStudent
-        // as the canonical roster key. If the BE ignores the query
-        // param, we still narrow to GraduateStudent on the FE because
-        // the page must never show admin / lecturer profiles.
-        api.get('/api/User', { params: { role: 'GraduateStudent' } }),
+        // BE filter — the lecturer console treats `role=Graduate Student`
+        // (with the space, matching the `BusinessRole` literal in
+        // `src/types/auth.ts` and the BE's documented role-name list
+        // on the badge endpoint) as the canonical roster key. The
+        // previous `GraduateStudent` (no-space) value silently failed
+        // to match the BE filter and the modal rendered empty even
+        // though the candidates exist on `/api/User`. The FE also runs
+        // a defensive client-side filter below (roleName / roleId / roles)
+        // so any user that survives the BE filter is still narrowed to
+        // the Graduate Student role before it is offered to the lecturer.
+        api.get('/api/User', { params: { role: 'Graduate Student' } }),
         groupMemberService.getAll(),
       ]);
 

@@ -194,6 +194,121 @@ describe('phasedReportService', () => {
         submitPhasedReport({ researchGroupId: 7, reportFileUrl: 'x' }),
       ).rejects.toThrow(/missing required id/);
     });
+
+    // Oct 2026 regression test — the "submit POSTs a duplicate row" bug.
+    //
+    // The original implementation always called POST /api/PhasedReport
+    // (the /submit endpoint, with a fallback to /create) regardless of
+    // whether a milestone row already existed for this (group, phase)
+    // pair. Every student upload therefore created a brand-new
+    // PhasedReport row, leaving the lecturer's milestone data orphaned
+    // and the table rendering two competing rows for the same phase
+    // (which the user reported as "Seminar Workflow and Prototype
+    // Design" appearing in a single merged cell). The fix routes
+    // submits with a known `phasedReportId` through PUT against that
+    // row id, echoing the lecturer-managed fields back so the BE
+    // doesn't wipe them.
+    it('PUTs /api/PhasedReport/{id} when phasedReportId is provided', async () => {
+      // 1) GET the existing row to learn its lecturer-managed fields.
+      getMock.mockResolvedValueOnce({
+        data: {
+          id: 33,
+          phasedReportId: 33,
+          researchGroupId: 7,
+          groupMemberId: 99,
+          topicId: 11,
+          phaseNumber: 2,
+          milestoneTitle: 'Seminar Workflow and Prototype Design',
+          status: 'WAITING',
+          deadlineAt: '2026-12-31T23:59:00Z',
+          requirements: 'Cover both lecture and lab',
+          assessmentCriteria: 'Clarity + correctness',
+          startDate: '2026-09-01T00:00:00Z',
+          phasedMaterialsUrl: 'https://fb/materials.pdf',
+        },
+      });
+      // 2) PUT the update with the new reportFileUrl and SUBMITTED status.
+      putMock.mockResolvedValueOnce({
+        data: {
+          id: 33,
+          phasedReportId: 33,
+          researchGroupId: 7,
+          groupMemberId: 99,
+          topicId: 11,
+          phaseNumber: 2,
+          milestoneTitle: 'Seminar Workflow and Prototype Design',
+          status: 'SUBMITTED',
+          reportFileUrl: 'https://fb/upload.pdf',
+          submittedAt: '2026-10-06T12:00:00Z',
+          deadlineAt: '2026-12-31T23:59:00Z',
+          requirements: 'Cover both lecture and lab',
+          assessmentCriteria: 'Clarity + correctness',
+          startDate: '2026-09-01T00:00:00Z',
+          phasedMaterialsUrl: 'https://fb/materials.pdf',
+        },
+      });
+      const result = await submitPhasedReport({
+        phasedReportId: 33,
+        researchGroupId: 7,
+        groupMemberId: 99,
+        topicId: 11,
+        phaseNumber: 2,
+        reportFileUrl: 'https://fb/upload.pdf',
+      });
+      // The GET fired first.
+      expect(getMock).toHaveBeenCalledWith('/api/PhasedReport/33');
+      // The PUT fired against the same id (NOT POST).
+      expect(putMock).toHaveBeenCalledTimes(1);
+      expect(putMock).toHaveBeenCalledWith(
+        '/api/PhasedReport/33',
+        expect.objectContaining({
+          researchGroupId: 7,
+          reportFileUrl: 'https://fb/upload.pdf',
+          status: 'SUBMITTED',
+          // Lecturer-managed fields echoed back so the BE doesn't wipe them.
+          topicId: 11,
+          milestoneTitle: 'Seminar Workflow and Prototype Design',
+          deadlineAt: '2026-12-31T23:59:00Z',
+          requirements: 'Cover both lecture and lab',
+          assessmentCriteria: 'Clarity + correctness',
+          startDate: '2026-09-01T00:00:00Z',
+          phasedMaterialsUrl: 'https://fb/materials.pdf',
+        }),
+      );
+      // POST /submit must NOT have been called when the PUT path succeeded.
+      expect(postMock).not.toHaveBeenCalled();
+      expect(result.id).toBe(33);
+      expect(result.status).toBe('SUBMITTED');
+      expect(result.reportFileUrl).toBe('https://fb/upload.pdf');
+    });
+
+    it('falls back to POST /submit when the PUT fails (defensive)', async () => {
+      getMock.mockResolvedValueOnce({
+        data: {
+          id: 34,
+          phasedReportId: 34,
+          researchGroupId: 7,
+          status: 'WAITING',
+        },
+      });
+      putMock.mockRejectedValueOnce(new Error('PUT 500 — BE not deployed yet'));
+      postMock.mockResolvedValueOnce({
+        data: {
+          id: 34,
+          phasedReportId: 34,
+          researchGroupId: 7,
+          status: 'SUBMITTED',
+          reportFileUrl: 'https://fb/upload.pdf',
+        },
+      });
+      await submitPhasedReport({
+        phasedReportId: 34,
+        researchGroupId: 7,
+        reportFileUrl: 'https://fb/upload.pdf',
+      });
+      expect(putMock).toHaveBeenCalledTimes(1);
+      expect(postMock).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('resubmitPhasedReport', () => {
@@ -269,6 +384,59 @@ describe('phasedReportService', () => {
         previousReportId: 42,
       });
       expect(result.previousReportId).toBe(42);
+    });
+
+    // Oct 2026 regression test — resubmit must also PUT, not POST, when
+    // a target phasedReportId is known. The lineage pointer is written
+    // into capacityEvaluation on the PUT body.
+    it('PUTs /api/PhasedReport/{id} when resubmitting into an existing row', async () => {
+      getMock.mockResolvedValueOnce({
+        data: {
+          id: 35,
+          phasedReportId: 35,
+          researchGroupId: 7,
+          groupMemberId: 99,
+          topicId: 11,
+          phaseNumber: 3,
+          milestoneTitle: 'Prototype Implementation',
+          status: 'REJECTED',
+          deadlineAt: '2026-12-31T23:59:00Z',
+        },
+      });
+      putMock.mockResolvedValueOnce({
+        data: {
+          id: 35,
+          phasedReportId: 35,
+          researchGroupId: 7,
+          status: 'SUBMITTED',
+          reportFileUrl: 'https://fb/revised.pdf',
+          submittedAt: '2026-10-06T12:00:00Z',
+        },
+      });
+      const result = await resubmitPhasedReport({
+        phasedReportId: 35,
+        researchGroupId: 7,
+        groupMemberId: 99,
+        reportFileUrl: 'https://fb/revised.pdf',
+        previousReportId: 30,
+      });
+      expect(getMock).toHaveBeenCalledWith('/api/PhasedReport/35');
+      expect(putMock).toHaveBeenCalledTimes(1);
+      expect(putMock).toHaveBeenCalledWith(
+        '/api/PhasedReport/35',
+        expect.objectContaining({
+          status: 'SUBMITTED',
+          reportFileUrl: 'https://fb/revised.pdf',
+          // Lineage pointer is stamped into capacityEvaluation on resubmit.
+          capacityEvaluation: '__LINEAGE__:Resubmitted from report #30',
+          // Lecturer-managed milestone data echoed back.
+          topicId: 11,
+          milestoneTitle: 'Prototype Implementation',
+          deadlineAt: '2026-12-31T23:59:00Z',
+        }),
+      );
+      expect(postMock).not.toHaveBeenCalled();
+      expect(result.id).toBe(35);
     });
   });
 

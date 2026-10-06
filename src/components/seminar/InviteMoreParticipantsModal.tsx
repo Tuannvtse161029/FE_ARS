@@ -20,6 +20,8 @@ import { fieldService } from '../../services/field.service';
 import type { MajorField } from '../../types/domain';
 import { seminarService, type SeminarCard } from '../../services/seminar.service';
 import { notificationService } from '../../services/notification.service';
+import { userService } from '../../services/user.service';
+import { isAdminUser } from '../../utils/roleNormalizer';
 import { useI18n } from '../../i18n/I18nContext';
 import { GoogleMeetCapacityMeter } from './GoogleMeetCapacityMeter';
 import styles from './InviteMoreParticipantsModal.module.css';
@@ -111,7 +113,12 @@ export const InviteMoreParticipantsModal = ({ isOpen, onClose, seminar, currentU
   }, [isOpen, onClose]);
 
   // Build the candidate pool whenever the modal opens. We pull profiles
-  // AND users so we can join role information onto each profile.
+  // AND users so we can join role information onto each profile. The
+  // /api/User call walks every backend page (via `userService.getAllUsers`)
+  // so Graduate Students — who are the base-tier role and are not required
+  // to file a ProfessionalProfile — still appear in the candidate list.
+  // The previous single-shot `/api/User?role=ALL&pageSize=1000` call was
+  // capped at the BE's default pageSize and silently dropped them.
   useEffect(() => {
     if (!isOpen) return;
     let cancelled = false;
@@ -123,7 +130,10 @@ export const InviteMoreParticipantsModal = ({ isOpen, onClose, seminar, currentU
         const [majorsRes, profilesRes, usersRes] = await Promise.allSettled([
           fieldService.getAllMajor(),
           api.get('/api/ProfessionalProfile'),
-          api.get('/api/User', { params: { role: 'ALL', pageSize: 1000 } }),
+          userService
+            .getAllUsers(200)
+            .then((res) => res.items)
+            .catch(() => [] as Awaited<ReturnType<typeof userService.getAllUsers>>['items']),
         ]);
 
         if (cancelled) return;
@@ -137,12 +147,18 @@ export const InviteMoreParticipantsModal = ({ isOpen, onClose, seminar, currentU
 
         // 2. userId → roles map.
         const userRolesMap = new Map<number, string[]>();
-        if (usersRes.status === 'fulfilled' && usersRes.value?.data) {
-          const uData = usersRes.value.data;
-          const uList = Array.isArray(uData)
-            ? uData
-            : (uData.items ?? []);
-          for (const u of uList) {
+        if (usersRes.status === 'fulfilled') {
+          for (const u of usersRes.value as Array<{
+            id?: number;
+            email?: string;
+            fullName?: string;
+            avatarUrl?: string | null;
+            roleName?: string | null;
+            role?: string | null;
+            roleId?: number | null;
+            isActive?: boolean | null;
+            roles?: string[] | null;
+          }>) {
             if (!u || !u.id) continue;
             const rList: string[] = Array.isArray(u.roles) && u.roles.length > 0
               ? (u.roles as string[]).map((r) => String(r))
@@ -155,9 +171,17 @@ export const InviteMoreParticipantsModal = ({ isOpen, onClose, seminar, currentU
           }
         }
 
-        // 3. ProfessionalProfile rows → InviteCandidate rows.
+        // 3. Build candidate rows. We source from BOTH the
+        // ProfessionalProfile list (which carries subField / majorField
+        // data) AND the /api/User list (which carries every account,
+        // including Graduate Students that have no profile). The
+        // candidate pool is deduplicated by userId so users present in
+        // both lists get the richer ProfessionalProfile row.
+        const next: InviteCandidate[] = [];
+        const seenUserIds = new Set<number>();
+
+        // 3a. Users WITH a ProfessionalProfile.
         if (profilesRes.status === 'fulfilled' && Array.isArray(profilesRes.value?.data)) {
-          const next: InviteCandidate[] = [];
           for (const p of profilesRes.value.data) {
             if (!p || !p.userId || !p.email) continue;
             const rList: string[] = userRolesMap.has(p.userId)
@@ -170,6 +194,7 @@ export const InviteMoreParticipantsModal = ({ isOpen, onClose, seminar, currentU
               .filter(isInvitableRole);
             // Skip candidates with no invitable role (e.g. Admin-only accounts).
             if (invitableRoles.length === 0) continue;
+            seenUserIds.add(p.userId);
             next.push({
               userId: p.userId,
               fullName: p.fullName || `User #${p.userId}`,
@@ -182,10 +207,50 @@ export const InviteMoreParticipantsModal = ({ isOpen, onClose, seminar, currentU
               majorFieldId: p.majorFieldId ?? null,
             });
           }
-          setCandidates(next);
-        } else {
-          setCandidates([]);
         }
+
+        // 3b. Users WITHOUT a ProfessionalProfile — Graduate Students
+        // and any other account that has not upgraded to a
+        // profile-carrying role. Without this pass, the modal would
+        // only render the profile-bearing academics and silently drop
+        // every base-tier user.
+        if (usersRes.status === 'fulfilled') {
+          for (const u of usersRes.value as Array<{
+            id?: number;
+            email?: string;
+            fullName?: string;
+            avatarUrl?: string | null;
+            roleName?: string | null;
+            role?: string | null;
+            roleId?: number | null;
+            isActive?: boolean | null;
+          }>) {
+            if (!u || !u.id || !u.email) continue;
+            if (seenUserIds.has(u.id)) continue;
+            // Hide admin accounts and deactivated accounts.
+            if (isAdminUser({ roleName: u.roleName ?? null, roleId: u.roleId ?? null })) continue;
+            if (u.isActive === false) continue;
+            const rList: string[] = userRolesMap.get(u.id) ?? [];
+            const invitableRoles = rList
+              .map(normaliseRole)
+              .filter(isInvitableRole);
+            if (invitableRoles.length === 0) continue;
+            seenUserIds.add(u.id);
+            next.push({
+              userId: u.id,
+              fullName: (u.fullName && u.fullName.trim()) || `User #${u.id}`,
+              email: String(u.email).trim(),
+              avatarUrl: u.avatarUrl ?? null,
+              role: invitableRoles.join(' • '),
+              roles: invitableRoles,
+              subFieldId: null,
+              subFieldName: null,
+              majorFieldId: null,
+            });
+          }
+        }
+
+        setCandidates(next);
       } catch (err) {
         if (!cancelled) {
           setError(

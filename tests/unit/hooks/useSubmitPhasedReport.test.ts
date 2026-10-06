@@ -18,7 +18,7 @@ import { renderHook, act } from '@testing-library/react';
 // uses real React state internally (pdfUrl / error) so the consumer hook
 // sees a re-render when uploadPdf resolves.
 
-const { uploadPdfMock, resetUploadMock, submitPhasedReportMock, resubmitPhasedReportMock, pdfUrlSetterRef, errorSetterRef } =
+const { uploadPdfMock, resetUploadMock, submitPhasedReportMock, resubmitPhasedReportMock, pdfUrlSetterRef, errorSetterRef, toastSuccessMock, notificationCreateMock, getGroupMock, getTopicMock } =
   vi.hoisted(() => ({
     uploadPdfMock: vi.fn(),
     resetUploadMock: vi.fn(),
@@ -26,6 +26,10 @@ const { uploadPdfMock, resetUploadMock, submitPhasedReportMock, resubmitPhasedRe
     resubmitPhasedReportMock: vi.fn(),
     pdfUrlSetterRef: { current: null as ((v: string | null) => void) | null },
     errorSetterRef: { current: null as ((v: string | null) => void) | null },
+    toastSuccessMock: vi.fn(),
+    notificationCreateMock: vi.fn().mockResolvedValue(undefined),
+    getGroupMock: vi.fn().mockResolvedValue(null),
+    getTopicMock: vi.fn().mockResolvedValue(null),
   }));
 
 const setupFirebaseMock = () => {
@@ -62,6 +66,10 @@ const resetAll = () => {
   resetUploadMock.mockReset();
   submitPhasedReportMock.mockReset();
   resubmitPhasedReportMock.mockReset();
+  toastSuccessMock.mockReset();
+  notificationCreateMock.mockReset().mockResolvedValue(undefined);
+  getGroupMock.mockReset().mockResolvedValue(null);
+  getTopicMock.mockReset().mockResolvedValue(null);
 };
 
 const FILE = new File(['%PDF-1.4'], 'phase-1.pdf', { type: 'application/pdf' });
@@ -79,6 +87,34 @@ const loadHook = async () => {
     resubmitPhasedReport: resubmitPhasedReportMock,
     evaluatePhasedReport: vi.fn(),
     rejectPhasedReport: vi.fn(),
+  }));
+  // Default mocks for the side-effect services the hook calls after a
+  // successful submit (toast + lecturer notification fan-out). The
+  // hoisted fns let each test configure the mocks via the public
+  // .mockResolvedValueOnce / .mockReturnValueOnce APIs without having
+  // to re-mock the module.
+  vi.doMock('sonner', () => ({
+    toast: {
+      success: toastSuccessMock,
+      error: vi.fn(),
+      info: vi.fn(),
+      warning: vi.fn(),
+    },
+  }));
+  vi.doMock('../../../src/services/notification.service', () => ({
+    notificationService: {
+      create: notificationCreateMock,
+    },
+  }));
+  vi.doMock('../../../src/services/researchGroup.service', () => ({
+    researchGroupService: {
+      getById: getGroupMock,
+    },
+  }));
+  vi.doMock('../../../src/services/researchTopic.service', () => ({
+    researchTopicService: {
+      getById: getTopicMock,
+    },
   }));
   const mod = await import('../../../src/hooks/useSubmitPhasedReport');
   return mod.useSubmitPhasedReport;
@@ -319,5 +355,123 @@ describe('useSubmitPhasedReport', () => {
     );
     expect(result.current.submitError).toBeNull();
     expect(result.current.postUploadFailure).toBeNull();
+  });
+
+  // Regression test — October 2026 "no notification on submit" bug.
+  //
+  // Before the fix, the submit hook did not surface any feedback to the
+  // SUBMITTER (the student leader) — the modal's success card was the
+  // only signal, and it disappeared the moment the modal unmounted.
+  // The fix wires a Sonner toast.success call so the leader gets an
+  // ephemeral confirmation that their upload round-tripped.
+  it('fires a success toast on a successful submit', async () => {
+    uploadPdfMock.mockImplementation(async () => {
+      pdfUrlSetterRef.current?.(FIREBASE_URL);
+      return FIREBASE_URL;
+    });
+    submitPhasedReportMock.mockResolvedValueOnce({
+      id: 400,
+      researchGroupId: 7,
+      reportFileUrl: FIREBASE_URL,
+      status: 'SUBMITTED',
+      milestoneTitle: 'Phase 2 — Methodology',
+    });
+
+    const useHook = await loadHook();
+    const { result } = renderHook(() => useHook());
+
+    await act(async () => {
+      await result.current.submit(FILE, SUBMIT_OPTIONS);
+    });
+
+    expect(toastSuccessMock).toHaveBeenCalledTimes(1);
+    const [title, options] = toastSuccessMock.mock.calls[0] as [string, { description: string }];
+    expect(title.toLowerCase()).toContain('submitted');
+    expect(options.description).toContain('Methodology');
+  });
+
+  it('fires a resubmit toast (different copy) on isResubmission=true', async () => {
+    uploadPdfMock.mockImplementation(async () => {
+      pdfUrlSetterRef.current?.(FIREBASE_URL);
+      return FIREBASE_URL;
+    });
+    resubmitPhasedReportMock.mockResolvedValueOnce({
+      id: 401,
+      researchGroupId: 7,
+      reportFileUrl: FIREBASE_URL,
+      status: 'SUBMITTED',
+      milestoneTitle: 'Phase 2 — Methodology',
+    });
+
+    const useHook = await loadHook();
+    const { result } = renderHook(() => useHook());
+
+    await act(async () => {
+      await result.current.submit(FILE, {
+        researchGroupId: 7,
+        phaseKey: 'phase-2-literature-review',
+        isResubmission: true,
+        previousReportId: 100,
+      });
+    });
+
+    expect(toastSuccessMock).toHaveBeenCalledTimes(1);
+    const [title] = toastSuccessMock.mock.calls[0] as [string];
+    expect(title.toLowerCase()).toContain('resubmission');
+  });
+
+  // Regression test — October 2026 "lecturer was never notified" bug.
+  //
+  // The SubmitReport page used to pass `topicId={undefined}` to the
+  // submit modal, which meant `options.topicId` was undefined when the
+  // hook tried to fan out a notification to the topic's lecturer. The
+  // original implementation gated the entire notification on a numeric
+  // topicId, so a missing topicId silently dropped the lecturer
+  // notification. The fix:
+  //   1. Accept `topicId` from the page (so the call site can pass the
+  //      group's topicId).
+  //   2. Fall back to looking up the topic via the group when the
+  //      caller didn't pass a topicId.
+  it('still notifies the lecturer when topicId is omitted but the group has one', async () => {
+    getGroupMock.mockResolvedValueOnce({
+      id: 7,
+      topicId: 42,
+      lecturerId: 99,
+    });
+    getTopicMock.mockResolvedValueOnce({
+      id: 42,
+      lecturerId: 99,
+    });
+    uploadPdfMock.mockImplementation(async () => {
+      pdfUrlSetterRef.current?.(FIREBASE_URL);
+      return FIREBASE_URL;
+    });
+    submitPhasedReportMock.mockResolvedValueOnce({
+      id: 500,
+      researchGroupId: 7,
+      reportFileUrl: FIREBASE_URL,
+      status: 'SUBMITTED',
+      milestoneTitle: 'Phase 1 — Seminar',
+    });
+
+    const useHook = await loadHook();
+    const { result } = renderHook(() => useHook());
+
+    await act(async () => {
+      await result.current.submit(FILE, {
+        researchGroupId: 7,
+        phaseKey: 'phase-1',
+        // topicId deliberately omitted — the parent page forgot to
+        // pass it (the original bug). The hook should still resolve
+        // the lecturer via the group's topicId fallback.
+      });
+    });
+
+    expect(getGroupMock).toHaveBeenCalledWith(7);
+    expect(getTopicMock).toHaveBeenCalledWith(42);
+    expect(notificationCreateMock).toHaveBeenCalledTimes(1);
+    const [payload] = notificationCreateMock.mock.calls[0] as [{ userId: number; message: string }];
+    expect(payload.userId).toBe(99);
+    expect(payload.message).toContain('Seminar');
   });
 });

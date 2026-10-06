@@ -55,11 +55,13 @@ vi.mock('../../../../src/components/gradstudent/SubmitReportModal', () => ({
     onSubmitted,
     groupMemberId,
     researchGroupId,
+    topicId,
   }: {
     isOpen: boolean;
     onSubmitted: (report: unknown) => void;
     groupMemberId?: number;
     researchGroupId: number;
+    topicId?: number;
   }) => {
     if (!isOpen) return null;
     return (
@@ -69,6 +71,9 @@ vi.mock('../../../../src/components/gradstudent/SubmitReportModal', () => ({
         </span>
         <span data-testid="modal-research-group-id">
           {String(researchGroupId)}
+        </span>
+        <span data-testid="modal-topic-id">
+          {String(topicId ?? '')}
         </span>
         <button
           type="button"
@@ -225,6 +230,35 @@ describe('<SubmitReport> per-group milestone table', () => {
       '7',
     );
     expect(screen.getByTestId('modal-group-member-id')).toHaveTextContent('99');
+  });
+
+  it('passes the group topicId to the submit modal (was undefined pre-fix)', async () => {
+    mockListReportsForGroup.mockResolvedValue([
+      {
+        id: 6,
+        researchGroupId: 7,
+        groupMemberId: 99,
+        status: 'WAITING' as const,
+        phaseNumber: 1,
+        milestoneTitle: 'Methodology',
+        deadlineAt: '2026-11-01T00:00:00Z',
+      },
+    ]);
+
+    renderPage();
+    const submitButton = await screen.findByRole('button', {
+      name: /Submit report/i,
+    });
+    await userEvent.setup().click(submitButton);
+    await waitFor(() =>
+      expect(screen.getByTestId('submit-report-modal')).toBeInTheDocument(),
+    );
+    // Before the fix this was '' (the page passed topicId={undefined}
+    // unconditionally). The fix reads row.group.topicId and forwards it
+    // so the BE POST has the topic context — without it the lecturer
+    // notification fan-out silently dropped and the BE could store the
+    // new PhasedReport row without its topic link.
+    expect(screen.getByTestId('modal-topic-id')).toHaveTextContent('11');
   });
 
   it('does NOT render the legacy "Student #25" placeholder for the leader', async () => {

@@ -18,6 +18,7 @@
 //   - submitError        : Top-level failure that is NOT recoverable.
 
 import { useCallback, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import {
   submitPhasedReport,
   resubmitPhasedReport,
@@ -29,6 +30,7 @@ import { useFirebaseUpload } from './useFirebaseUpload';
 import { notificationService } from '../services/notification.service';
 import { researchTopicService } from '../services/researchTopic.service';
 import { researchGroupService } from '../services/researchGroup.service';
+import { useI18n } from '../i18n/I18nContext';
 
 const buildFolderPath = (researchGroupId: number, phaseKey: string): string =>
   `research-groups/${researchGroupId}/phased-reports/${phaseKey}/`;
@@ -57,6 +59,7 @@ export interface UseSubmitPhasedReportState {
 }
 
 export function useSubmitPhasedReport(): UseSubmitPhasedReportState {
+  const { t } = useI18n();
   const [activeFolder, setActiveFolder] = useState<string>(
     buildFolderPath(0, 'pending'),
   );
@@ -152,40 +155,100 @@ export function useSubmitPhasedReport(): UseSubmitPhasedReportState {
         // starts with a clean slate.
         upload.resetUpload();
         setPostUploadFailure(null);
+
+        // Toast feedback for the SUBMITTER (the student leader). The
+        // modal already shows an in-modal "Submission recorded" card and
+        // the page shows a "Your latest submission was recorded" banner,
+        // but neither is visible to the user once the modal closes — the
+        // toast is the ephemeral confirmation that their upload round-
+        // tripped. Best-effort: we never throw out of the toast call.
+        try {
+          const toastTitle =
+            result?.milestoneTitle?.trim() ||
+            result?.topicTitle?.trim() ||
+            (typeof options.phaseNumber === 'number'
+              ? `Phase ${options.phaseNumber}`
+              : '') ||
+            (typeof result?.id === 'number' ? `Report #${result.id}` : '');
+          if (options.isResubmission) {
+            toast.success(
+              t(
+                'student.phaseReport.toast.resubmitSuccess',
+                'Resubmission recorded — your lecturer has been notified.',
+              ),
+              {
+                description: t(
+                  'student.phaseReport.toast.resubmitSuccessDescription',
+                  '"{title}" was resubmitted and is now back under review.',
+                ).replace('{title}', toastTitle || '—'),
+              },
+            );
+          } else {
+            toast.success(
+              t(
+                'student.phaseReport.toast.submitSuccess',
+                'Report submitted — your lecturer has been notified.',
+              ),
+              {
+                description: t(
+                  'student.phaseReport.toast.submitSuccessDescription',
+                  '"{title}" is now under review. We\'ll refresh the table so you can see the status update.',
+                ).replace('{title}', toastTitle || '—'),
+              },
+            );
+          }
+        } catch (toastErr) {
+          console.warn('Failed to render submit-success toast:', toastErr);
+        }
+
         // Defensive FE notification — fire a `[Lecturer] report submitted`
         // (first submission) or `[Lecturer] report resubmitted` (re-submit)
         // notification to the topic's lecturer. Best-effort: failures
         // never block the primary action. We resolve the lecturerId by
-        // fetching the group → topic chain.
+        // fetching the group → topic chain, falling back to the group
+        // alone when the caller did not pass a topicId (the original
+        // implementation gated this on topicId, which silently dropped
+        // the notification whenever the page forgot to pass one through
+        // — see the September 2026 Submit Report regression where the
+        // lecturer was never told a leader had submitted a phase).
         try {
-          if (typeof options.topicId === 'number' && options.topicId > 0) {
-            const group = await researchGroupService.getById(options.researchGroupId).catch(() => null);
-            const topic = await researchTopicService
-              .getById(options.topicId)
-              .catch(() => null);
-            const lecturerId =
-              typeof topic?.lecturerId === 'number'
-                ? topic.lecturerId
-                : typeof group?.lecturerId === 'number'
-                  ? group.lecturerId
-                  : null;
-            if (lecturerId && lecturerId > 0) {
-              const title =
-                result?.milestoneTitle?.trim() ||
-                result?.topicTitle?.trim() ||
-                `Phase ${options.phaseNumber ?? ''}`.trim() ||
-                `Report #${result?.id ?? ''}`;
-              const message = options.isResubmission
-                ? `[Lecturer] report resubmitted: "${title}" — student vừa nộp lại báo cáo.`
-                : `[Lecturer] report submitted: "${title}" — student vừa nộp báo cáo.`;
-              try {
-                await notificationService.create({
-                  userId: lecturerId,
-                  message,
-                });
-              } catch (notifyErr) {
-                console.warn('Failed to send report-submission notification:', notifyErr);
-              }
+          const group = await researchGroupService
+            .getById(options.researchGroupId)
+            .catch(() => null);
+          const topic =
+            typeof options.topicId === 'number' && options.topicId > 0
+              ? await researchTopicService
+                  .getById(options.topicId)
+                  .catch(() => null)
+              : typeof group?.topicId === 'number' && group.topicId > 0
+              ? await researchTopicService
+                  .getById(group.topicId)
+                  .catch(() => null)
+              : null;
+          const lecturerId =
+            typeof topic?.lecturerId === 'number'
+              ? topic.lecturerId
+              : typeof group?.lecturerId === 'number'
+                ? group.lecturerId
+                : null;
+          if (lecturerId && lecturerId > 0) {
+            const title =
+              result?.milestoneTitle?.trim() ||
+              result?.topicTitle?.trim() ||
+              (typeof options.phaseNumber === 'number'
+                ? `Phase ${options.phaseNumber}`
+                : '') ||
+              (typeof result?.id === 'number' ? `Report #${result.id}` : '');
+            const message = options.isResubmission
+              ? `[Lecturer] report resubmitted: "${title}" — student vừa nộp lại báo cáo.`
+              : `[Lecturer] report submitted: "${title}" — student vừa nộp báo cáo.`;
+            try {
+              await notificationService.create({
+                userId: lecturerId,
+                message,
+              });
+            } catch (notifyErr) {
+              console.warn('Failed to send report-submission notification:', notifyErr);
             }
           }
         } catch (notifyFanoutErr) {
@@ -205,7 +268,7 @@ export function useSubmitPhasedReport(): UseSubmitPhasedReportState {
         inFlightRef.current = false;
       }
     },
-    [postUploadFailure, upload],
+    [postUploadFailure, upload, t],
   );
 
   const reset = useCallback(() => {
