@@ -1170,16 +1170,14 @@ export const AudioSummaryModal = ({
 
 
 
-  // Did the BE just 409 us?
-
-
-  const is409 =
-
-
-    isFailed &&
-
-
-    (error ?? '').toLowerCase().includes('summary_already_exists');
+  // Did the BE just 409 us? Branch on the structured `error.code` /
+  // `error.status` rather than scanning the displayed message string —
+  // the message no longer carries the `[CODE]` suffix (it was a debug
+  // artefact that leaked into the UI), so the previous substring check
+  // would silently miss every 409. The HTTP status is the canonical
+  // signal; the code is a belt-and-braces second check in case the BE
+  // ever returns 409 for a different reason.
+  const is409 = isFailed && (error?.status === 409 || error?.code === 'SUMMARY_ALREADY_EXISTS');
 
 
 
@@ -1893,7 +1891,7 @@ export const AudioSummaryModal = ({
               <p className={styles.errorMessage}>
 
 
-                {error ?? 'An unexpected error occurred.'}
+                {error?.message ?? 'An unexpected error occurred.'}
 
 
               </p>

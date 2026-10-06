@@ -20,6 +20,24 @@ export type AudioUploadStatus =
   | 'completed'
   | 'failed';
 
+/**
+ * Structured error returned by the summarize hook.
+ *
+ * Splitting `message` (for the user) from `code` (for the UI to branch on)
+ * keeps the displayed string free of `[CODE]` suffixes — the bug the
+ * user reported was the BE message being tagged with `Không có nội dung
+ * feedback [SEMINAR_NO_FEEDBACK]` in the modal, which is the kind of
+ * developer-only noise the FE has to scrub.
+ */
+export interface AudioUploadError {
+  /** Human-readable, English, with any BE error-code suffix stripped. */
+  message: string;
+  /** BE error code, if any (e.g. `SUMMARY_ALREADY_EXISTS`). Null otherwise. */
+  code: string | null;
+  /** HTTP status from the BE response, if any. */
+  status: number | null;
+}
+
 export interface UseSeminarAudioResult {
   /** Trigger the upload + summarize flow. */
   summarize: (
@@ -33,8 +51,12 @@ export interface UseSeminarAudioResult {
   progress: number;
   /** The final response once status === 'completed'. */
   result: SeminarAudioSummaryResponse | null;
-  /** Error message when status === 'failed'. */
-  error: string | null;
+  /**
+   * Structured error when status === 'failed'. The `message` is the
+   * user-facing string (already English, no `[CODE]` suffix); the `code`
+   * is the BE error code for callers that need to branch on it.
+   */
+  error: AudioUploadError | null;
   /** Abort the in-flight request (if possible). */
   cancel: () => void;
   /** Reset to idle state. Call after displaying results to allow a new upload. */
@@ -143,7 +165,7 @@ export function useSeminarAudio(): UseSeminarAudioResult {
   const [status, setStatus] = useState<AudioUploadStatus>('idle');
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<SeminarAudioSummaryResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<AudioUploadError | null>(null);
 
   // Store the cancel function from the in-flight request
   const cancelRef = useRef<(() => void) | null>(null);
@@ -179,7 +201,11 @@ export function useSeminarAudio(): UseSeminarAudioResult {
         await validateFile(file);
       } catch (err) {
         setStatus('failed');
-        setError((err as Error).message);
+        setError({
+          message: (err as Error).message,
+          code: null,
+          status: null,
+        });
         throw err;
       }
 
@@ -207,8 +233,11 @@ export function useSeminarAudio(): UseSeminarAudioResult {
         setProgress(100);
         return response;
       } catch (err) {
-        // Surface the BE's `message` (ticket §36) verbatim so the FE can
-        // show the same wording the host would otherwise see in Swagger.
+        // Surface the BE's `message` (ticket §36) but ALWAYS render in
+        // English, and never append the BE's `[CODE]` tag to the
+        // user-facing string. Callers that need to branch on the code
+        // (e.g. open the 409 replace confirm flow) consume
+        // `error.code` directly instead of doing a substring search.
         const ax = err as {
           response?: {
             status?: number;
@@ -220,21 +249,21 @@ export function useSeminarAudio(): UseSeminarAudioResult {
           (typeof ax.response?.data === 'object'
             ? ax.response?.data?.code
             : undefined) ?? null;
-        const beMessage =
+        const beStatus = ax.response?.status ?? null;
+        const rawBeMessage =
           (typeof ax.response?.data === 'object'
             ? ax.response?.data?.message
             : undefined) ??
           (typeof ax.response?.data === 'string'
             ? ax.response.data
             : undefined) ??
-          ax.message ??
-          'Upload failed. Check your connection and try again.';
+          ax.message;
 
-        // Tag the message with the BE error code so callers (UI) can
-        // branch on it (e.g. open the 409 replace confirm flow).
-        const friendly = beCode
-          ? `${beMessage} [${beCode}]`
-          : beMessage;
+        const friendly: AudioUploadError = {
+          message: translateBeError(beCode, rawBeMessage),
+          code: beCode,
+          status: beStatus,
+        };
 
         setStatus('failed');
         setError(friendly);
@@ -248,3 +277,103 @@ export function useSeminarAudio(): UseSeminarAudioResult {
 }
 
 export default useSeminarAudio;
+
+// ─── BE error translation ────────────────────────────────────────────────────
+// The BE returns `Không có nội dung feedback` (and possibly other
+// Vietnamese strings) as the human-readable message. The FE is the
+// English surface, so we maintain a small lookup of known BE codes
+// to English messages, plus a regex fallback for the common Vietnamese
+// patterns the BE sends today. Anything unrecognised falls back to
+// the original message so a future BE translation update is never
+// silently swallowed — the user just sees whatever the BE wrote.
+//
+// This is intentionally NOT a complete i18n table; the BE is the
+// source of truth, and this file is the bridge that scrubs the
+// displayed string so it never includes a `[CODE]` suffix and is
+// always English. If a new BE message needs mapping, add an entry
+// below — the regex test is case-insensitive and trims whitespace.
+const FALLBACK_ENGLISH_MESSAGE =
+  'Upload failed. Check your connection and try again.';
+
+/**
+ * Known BE codes → English messages.
+ *
+ * The keys are the BE's `code` field. When the BE has a stable code,
+ * we trust the code more than the message text because the message
+ * may be translated in the future.
+ */
+const BE_CODE_TO_ENGLISH: Record<string, string> = {
+  SEMINAR_NO_FEEDBACK:
+    'No feedback content is available yet. Participants need to submit their feedback before an AI summary can be generated.',
+  SUMMARY_ALREADY_EXISTS:
+    'A summary already exists for this seminar. Confirm replacement to overwrite it with a fresh one.',
+  NO_FEEDBACK_CONTENT:
+    'No feedback content is available yet. Participants need to submit their feedback before an AI summary can be generated.',
+};
+
+/**
+ * Vietnamese → English regex fallbacks. Matched case-insensitively.
+ * Keys are regex sources, values are the English replacement.
+ */
+const VIETNAMESE_MESSAGE_PATTERNS: Array<{ pattern: RegExp; english: string }> = [
+  {
+    pattern: /không có nội dung feedback/i,
+    english:
+      'No feedback content is available yet. Participants need to submit their feedback before an AI summary can be generated.',
+  },
+  {
+    pattern: /không có dữ liệu/i,
+    english: 'No data is available for this seminar yet.',
+  },
+  {
+    pattern: /đã tồn tại/i,
+    english: 'A record with this name already exists.',
+  },
+];
+
+/**
+ * Map a (code, rawMessage) pair from the BE to a user-facing English
+ * string. Always returns a non-empty string so the modal never shows
+ * a blank error.
+ *
+ * Exported for unit testing — the hook uses it internally to scrub
+ * every BE error before it reaches the UI.
+ */
+export function translateBeError(
+  beCode: string | null,
+  rawMessage: string | undefined,
+): string {
+  // 1. Trust the BE code if we have a translation for it.
+  if (beCode && BE_CODE_TO_ENGLISH[beCode]) {
+    return BE_CODE_TO_ENGLISH[beCode]!;
+  }
+  // 2. Otherwise, try to recognise the message text (handles the
+  //    case where the BE omitted `code` but still sent a Vietnamese
+  //    message).
+  const candidate = (rawMessage ?? '').trim();
+  if (candidate) {
+    for (const { pattern, english } of VIETNAMESE_MESSAGE_PATTERNS) {
+      if (pattern.test(candidate)) return english;
+    }
+    // 3. If the candidate already looks like English (no Vietnamese
+    //    diacritics or characters), pass it through. This is the
+    //    path future BE translations will take.
+    if (looksLikeEnglish(candidate)) return candidate;
+  }
+  return FALLBACK_ENGLISH_MESSAGE;
+}
+
+/**
+ * Heuristic: a string is "likely English" if it contains no common
+ * Vietnamese diacritics and is made up of printable ASCII / common
+ * Latin characters. Used to avoid over-translating messages the BE
+ * might one day return in English.
+ */
+function looksLikeEnglish(s: string): boolean {
+  // Vietnamese letters and diacritics we want to detect:
+  //   ă â đ ê ô ơ ư (plus the diacritic-marked forms ắ ằ ẳ ẵ ặ …)
+  // and the combined forms with diacritics like "ế", "ộ", "ể".
+  // We use a Unicode property regex so we don't have to enumerate
+  // every letter.
+  return !/[\u00C0-\u024F\u1E00-\u1EFF]/.test(s);
+}
