@@ -53,6 +53,7 @@ export const SubmitReport = (): JSX.Element => {
   const [targetPhase, setTargetPhase] = useState<{
     groupId: number;
     phaseNumber: number;
+    topicId?: number;
     phasedReportId?: number;
     title: string;
   } | null>(null);
@@ -308,10 +309,12 @@ export const SubmitReport = (): JSX.Element => {
     phaseNumber: number,
     phasedReportId?: number,
     title?: string,
+    topicId?: number,
   ): void => {
     setTargetPhase({
       groupId,
       phaseNumber,
+      ...(typeof topicId === 'number' && topicId > 0 ? { topicId } : {}),
       phasedReportId,
       title: title || `${t('student.phaseReport.phasePrefix', 'Phase')} ${phaseNumber}`,
     });
@@ -754,6 +757,9 @@ export const SubmitReport = (): JSX.Element => {
                                   report.phaseNumber ?? 1,
                                   report.id,
                                   report.milestoneTitle,
+                                  typeof row.group?.topicId === 'number'
+                                    ? row.group.topicId
+                                    : undefined,
                                 )
                               }
                             >
@@ -779,6 +785,9 @@ export const SubmitReport = (): JSX.Element => {
                                   report.phaseNumber ?? 1,
                                   report.id,
                                   report.milestoneTitle,
+                                  typeof row.group?.topicId === 'number'
+                                    ? row.group.topicId
+                                    : undefined,
                                 );
                               }}
                             >
@@ -875,7 +884,7 @@ export const SubmitReport = (): JSX.Element => {
           isOpen={submitting}
           researchGroupId={targetPhase.groupId}
           groupMemberId={membershipIdForGroup(targetPhase.groupId)}
-          topicId={undefined}
+          topicId={targetPhase.topicId}
           phaseNumber={targetPhase.phaseNumber}
           phasedReportId={targetPhase.phasedReportId}
           phaseKey={`group-${targetPhase.groupId}-phase-${targetPhase.phaseNumber}`}

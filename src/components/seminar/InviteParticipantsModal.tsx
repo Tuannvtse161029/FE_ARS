@@ -44,6 +44,7 @@ import {
   seminarService,
 } from '../../services/seminar.service';
 import { notificationService } from '../../services/notification.service';
+import { userService } from '../../services/user.service';
 import type { MajorField } from '../../types/domain';
 import { useLocale } from '../../i18n/I18nContext';
 import { isAdminRoleName, isAdminUser } from '../../utils/roleNormalizer';
@@ -137,7 +138,16 @@ export const InviteParticipantsModal = ({
         const [majorsResult, profResult, usersResult] = await Promise.allSettled([
           api.get<MajorField[]>('/api/MajorField'),
           api.get<Record<string, unknown>[]>('/api/ProfessionalProfile'),
-          api.get<{ items?: Record<string, unknown>[]; data?: Record<string, unknown>[] }>('/api/User'),
+          // Walk every backend page so users WITHOUT a ProfessionalProfile
+          // (most notably Graduate Students, who are the base-tier role and
+          // are not required to file a professional profile) still appear
+          // in the candidate list. The previous single-shot `/api/User`
+          // call was capped at the BE's default pageSize, which silently
+          // dropped these users and made the invite modal look empty.
+          userService
+            .getAllUsers(200)
+            .then((res) => res.items)
+            .catch(() => [] as Awaited<ReturnType<typeof userService.getAllUsers>>['items']),
         ]);
 
         if (cancelled) return;
@@ -149,14 +159,12 @@ export const InviteParticipantsModal = ({
 
         // 2. Build userRole map from /api/User
         const userRoleMap = new Map<number, string>();
-        if (usersResult.status === 'fulfilled' && usersResult.value.data) {
-          const uData = usersResult.value.data;
-          const uList = Array.isArray(uData) ? uData : (uData.items || []);
-          for (const u of uList as Array<{
+        if (usersResult.status === 'fulfilled') {
+          for (const u of usersResult.value as Array<{
             id?: number;
-            roleName?: string;
-            role?: string;
-            roleId?: number;
+            roleName?: string | null;
+            role?: string | null;
+            roleId?: number | null;
           }>) {
             if (u.id) userRoleMap.set(u.id, u.roleName || u.role || '');
           }
@@ -165,9 +173,13 @@ export const InviteParticipantsModal = ({
         // 3. Build user list from ProfessionalProfiles
         if (profResult.status === 'fulfilled' && Array.isArray(profResult.value.data)) {
           const profiles = profResult.value.data;
+          const seenUserIds = new Set<number>();
           const seenEmails = new Set<string>();
           const users: InviteeUser[] = [];
 
+          // 3a. Users WITH a ProfessionalProfile — these carry the
+          // subField / majorField data the modal needs to group
+          // candidates into the three tiers.
           for (const p of profiles as Array<{
             userId?: number;
             email?: string;
@@ -185,6 +197,7 @@ export const InviteParticipantsModal = ({
             // Skip already-invited users
             if (existingEmails.map((e) => e.toLowerCase()).includes(email)) continue;
             seenEmails.add(email);
+            seenUserIds.add(p.userId);
 
             // Resolve the canonical role from BE data; null means "unknown / no role".
             // Only the five real ARS roles (Lecturer, Researcher, Reviewer,
@@ -223,6 +236,59 @@ export const InviteParticipantsModal = ({
               majorFieldId: p.majorFieldId ?? null,
               majorFieldName: majorField?.name ?? null,
             });
+          }
+
+          // 3b. Users WITHOUT a ProfessionalProfile — Graduate Students
+          // (the base-tier role) and any other account that has not
+          // upgraded to a profile-carrying role. These need to appear so
+          // the organiser can invite them. They land in the "Other
+          // participants" tier because they carry no subField / majorField
+          // data; the role badge still reflects their canonical
+          // `roleName` from /api/User.
+          if (usersResult.status === 'fulfilled') {
+            for (const u of usersResult.value as Array<{
+              id?: number;
+              email?: string;
+              fullName?: string;
+              avatarUrl?: string | null;
+              roleName?: string | null;
+              role?: string | null;
+              roleId?: number | null;
+              isActive?: boolean | null;
+            }>) {
+              if (!u?.id || !u?.email) continue;
+              if (seenUserIds.has(u.id)) continue;
+              const email = u.email.trim().toLowerCase();
+              if (seenEmails.has(email)) continue;
+              if (existingEmails.map((e) => e.toLowerCase()).includes(email)) continue;
+              // Hide admin accounts and deactivated accounts.
+              if (isAdminUser({ roleName: u.roleName ?? null, roleId: u.roleId ?? null })) continue;
+              if (u.isActive === false) continue;
+              seenEmails.add(email);
+              seenUserIds.add(u.id);
+
+              const role: string | null =
+                (typeof u.roleName === 'string' && u.roleName.trim()) ||
+                (typeof u.role === 'string' && u.role.trim()) ||
+                null;
+              // Skip users with no resolvable role — they cannot be
+              // sensibly placed in the role-filter dropdown or the
+              // Admin-exclusion list, and inviting an account with no
+              // role is almost certainly a misconfiguration.
+              if (!role) continue;
+
+              users.push({
+                userId: u.id,
+                fullName: u.fullName || `User #${u.id}`,
+                email: u.email.trim(),
+                avatarUrl: u.avatarUrl ?? null,
+                role,
+                subFieldId: null,
+                subFieldName: null,
+                majorFieldId: null,
+                majorFieldName: null,
+              });
+            }
           }
 
           setAllUsers(users);

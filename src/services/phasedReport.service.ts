@@ -394,6 +394,20 @@ export const filterPhasedReportsAwaitingReview = (
 // docs/local-only/research-workflow-contract.md §1) so these accept the
 // optional fields documented on StrictPhasedReportCreateRequest plus a
 // `previousReportId` for resubmission lineage.
+//
+// Oct 2026 — when the caller already has a milestone row id
+// (`phasedReportId`), the FE must PUT against that row instead of POSTing
+// a brand-new PhasedReport. The original POST-as-default flow was the
+// root cause of the "table shows Seminar Workflow and Prototype Design
+// in one cell" layout bug: every submit silently created a duplicate
+// row, the BE's GET /by-group then returned both rows for the same
+// (group, phase) pair, and the merge logic on the FE tried to render
+// both rows side by side but their milestoneTitle / topicTitle fields
+// didn't agree (one row was the lecturer's milestone, the other was the
+// student's submission, with mismatched payload data). The fix: when
+// `phasedReportId` is a number, route to PUT /api/PhasedReport/{id}
+// with the existing row's milestone fields echoed back so the BE
+// doesn't wipe them.
 export interface PhasedReportSubmitRequest {
   phasedReportId?: number;
   topicId?: number;
@@ -573,10 +587,160 @@ export const parsePhasedReportLineage = (
   };
 };
 
+// Helper: build the merged update body for `PUT /api/PhasedReport/{id}`.
+//
+// Per the `PhasedReportUpdateRequest` DTO (see types/researchWorkflowDtos.ts),
+// the BE silently nulls any milestone field that is absent from the
+// payload — `topicId`, `requirements`, `assessmentCriteria`, `startDate`,
+// `deadlineAt`, and `phasedMaterialsUrl`. The fix is to fetch the
+// existing row first, then merge our submission-only deltas (status,
+// reportFileUrl, submittedAt, capacityEvaluation lineage pointer) over
+// the top of the existing values.
+//
+// We deliberately do NOT touch the lecturer-side evaluation fields
+// (`finalOutcomeEvaluation`, `lectureFeedback`, lecturerDescription) —
+// those belong to the lecturer evaluation flow, not the student submit
+// flow, and overwriting them would erase any partial grading.
+const buildUpdateBody = (
+  existing: PhasedReport,
+  overrides: {
+    reportFileUrl: string;
+    status: string;
+    submittedAt: string;
+    capacityEvaluation: string | null;
+  },
+): StrictPhasedReportUpdateRequest => {
+  const body: StrictPhasedReportUpdateRequest = {
+    researchGroupId:
+      typeof existing.researchGroupId === 'number'
+        ? existing.researchGroupId
+        : null,
+    groupMemberId:
+      typeof existing.groupMemberId === 'number'
+        ? existing.groupMemberId
+        : null,
+    reportFileUrl: overrides.reportFileUrl,
+    capacityEvaluation: overrides.capacityEvaluation,
+    // Lecturer evaluation fields — keep whatever the BE already has.
+    // Sending `null` here would be a destructive overwrite.
+    finalOutcomeEvaluation:
+      typeof existing.finalOutcomeEvaluation === 'string'
+        ? existing.finalOutcomeEvaluation
+        : null,
+    lectureFeedback:
+      typeof existing.lectureFeedback === 'number'
+        ? existing.lectureFeedback
+        : null,
+    phaseNumber:
+      typeof existing.phaseNumber === 'number' ? existing.phaseNumber : null,
+    milestoneTitle:
+      typeof existing.milestoneTitle === 'string'
+        ? existing.milestoneTitle
+        : null,
+    status: overrides.status,
+    submittedAt: overrides.submittedAt,
+  };
+  // Echo the lecturer-managed milestone fields so the BE doesn't wipe
+  // them. Each one is `T | null` on the DTO; pass through whatever the
+  // existing row has (or null if it was never set).
+  if (typeof existing.phasedMaterialsUrl === 'string') {
+    body.phasedMaterialsUrl = existing.phasedMaterialsUrl;
+  } else {
+    body.phasedMaterialsUrl = null;
+  }
+  if (typeof existing.topicId === 'number') {
+    body.topicId = existing.topicId;
+  } else {
+    body.topicId = null;
+  }
+  if (typeof existing.requirements === 'string') {
+    body.requirements = existing.requirements;
+  } else {
+    body.requirements = null;
+  }
+  if (typeof existing.assessmentCriteria === 'string') {
+    body.assessmentCriteria = existing.assessmentCriteria;
+  } else {
+    body.assessmentCriteria = null;
+  }
+  if (typeof existing.startDate === 'string') {
+    body.startDate = existing.startDate;
+  } else {
+    body.startDate = null;
+  }
+  if (typeof existing.deadlineAt === 'string') {
+    body.deadlineAt = existing.deadlineAt;
+  } else {
+    body.deadlineAt = null;
+  }
+  return body;
+};
+
 // POST /api/PhasedReport/submit — fresh submission by Leader.
+//
+// Routing rules (Oct 2026 — replaces the original POST-only flow):
+//   1. If `phasedReportId` is provided, the milestone row already exists
+//      in the BE (the lecturer created it via the milestone editor). We
+//      GET the row, merge our submission deltas over the lecturer data,
+//      and PUT against that id. This is the "update the current phase"
+//      path the user asked for.
+//   2. If `phasedReportId` is NOT provided, the milestone row doesn't
+//      exist yet — typically the student created a phase milestone
+//      ad-hoc. We POST a new row to create it.
+//   3. For backward compatibility with the original
+//      POST /api/PhasedReport/submit endpoint, we still try that first
+//      when the caller has a `phasedReportId` and the BE has shipped the
+//      "submit updates existing row" semantics on /submit. The
+//      `submitLeaderReport` call preserves the original wire shape
+//      (`phasedReportId`, `topicId`, `phaseNumber`, `researchGroupId`,
+//      `groupMemberId`, `reportFileUrl`). If the BE responds OK, we
+//      accept it. If it rejects (e.g. the BE has not yet shipped the
+//      "submit updates" semantics), we fall through to the PUT path.
 export const submitPhasedReport = async (
   payload: PhasedReportSubmitRequest,
 ): Promise<SubmittedPhasedReport> => {
+  const submittedAt = payload.submittedAt ?? new Date().toISOString();
+  const hasExistingRow =
+    typeof payload.phasedReportId === 'number' && payload.phasedReportId > 0;
+
+  // Path 1: milestone row exists → update it via PUT. This is the path
+  // the user explicitly asked for ("it should be PUT API into that, not
+  // POST the new submit"). We GET the row first so we can echo the
+  // lecturer-managed fields back and avoid wiping them.
+  if (hasExistingRow) {
+    try {
+      const existing = await phasedReportService.getById(
+        payload.phasedReportId as number,
+      );
+      const body = buildUpdateBody(existing, {
+        reportFileUrl: payload.reportFileUrl,
+        status: 'SUBMITTED',
+        submittedAt,
+        // Fresh submission — no lineage pointer. A resubmit goes
+        // through `resubmitPhasedReport` instead.
+        capacityEvaluation: null,
+      });
+      const response = await api.put<PhasedReport>(
+        API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.UPDATE(
+          payload.phasedReportId as number,
+        ),
+        body,
+      );
+      return toStrict(response.data);
+    } catch (putErr) {
+      // PUT failed (network error, BE not deployed, etc.) — fall
+      // through to the legacy POST /submit path before giving up.
+      console.warn(
+        'PUT /api/PhasedReport/{id} failed; falling back to POST /submit',
+        putErr,
+      );
+    }
+  }
+
+  // Path 2: legacy POST /submit. Some BE deployments still implement
+  // the "submit updates existing row" semantics on /submit (it
+  // accepts a `phasedReportId` and updates in place). Try it first
+  // for compatibility, then fall back to plain POST / if it rejects.
   try {
     const leaderRes = await phasedReportService.submitLeaderReport({
       phasedReportId: payload.phasedReportId,
@@ -588,6 +752,10 @@ export const submitPhasedReport = async (
     });
     return toStrict(leaderRes);
   } catch {
+    // Path 3: brand-new row. Used when the lecturer has not created a
+    // milestone row yet (e.g. ad-hoc student-created milestone) or
+    // when both the PUT and POST /submit paths failed. Create a fresh
+    // PhasedReport row.
     const baseBody: StrictPhasedReportCreateRequest = {
       researchGroupId: payload.researchGroupId,
       groupMemberId: typeof payload.groupMemberId === 'number' ? payload.groupMemberId : null,
@@ -598,7 +766,7 @@ export const submitPhasedReport = async (
       phaseNumber: payload.phaseNumber ?? null,
       milestoneTitle: payload.milestoneTitle ?? null,
       status: 'SUBMITTED',
-      submittedAt: payload.submittedAt ?? new Date().toISOString(),
+      submittedAt,
     };
     const response = await api.post<PhasedReport>(
       API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.CREATE,
@@ -608,30 +776,68 @@ export const submitPhasedReport = async (
   }
 };
 
-// Resubmission of a previously REJECTED report. The BE has no dedicated
-// resubmit endpoint; we POST a fresh row, threading `previousReportId` via
-// a stable sentinel `__LINEAGE__:Resubmitted from report #N` written into
-// `capacityEvaluation`. The sentinel is the primary signal that both sides
-// (Lecturer EvaluateReportModal, Grad RejectionFeedbackBanner) detect via
-// `parsePhasedReportLineage`. Until BE ships the structured
-// `PreviousReportId` column (gap ticket §E.5.1) this round-trip is how
-// lineage is preserved.
+// Resubmission of a previously REJECTED report.
+//
+// Same routing rules as `submitPhasedReport` — if we have a target
+// `phasedReportId`, PUT against it (preserving the lecturer's existing
+// data + the lineage pointer); if not, POST a fresh row with the
+// lineage sentinel. The lineage pointer is written to
+// `capacityEvaluation` as `__LINEAGE__:Resubmitted from report #N` and
+// detected downstream by `parsePhasedReportLineage`. This is the
+// temporary round-trip until BE ships the structured `PreviousReportId`
+// column (see api-gap-ticket-for-be.md §E.5.1).
 export const resubmitPhasedReport = async (
   payload: PhasedReportResubmitRequest,
 ): Promise<SubmittedPhasedReport> => {
+  const submittedAt = payload.submittedAt ?? new Date().toISOString();
+  const targetId =
+    typeof payload.phasedReportId === 'number' && payload.phasedReportId > 0
+      ? payload.phasedReportId
+      : null;
+  const lineagePointer =
+    typeof payload.previousReportId === 'number'
+      ? `__LINEAGE__:Resubmitted from report #${payload.previousReportId}`
+      : null;
+
+  // Path 1: update the existing row in place. Preserve the lecturer's
+  // milestone data and stamp the lineage pointer into
+  // `capacityEvaluation`.
+  if (targetId !== null) {
+    try {
+      const existing = await phasedReportService.getById(targetId);
+      const body = buildUpdateBody(existing, {
+        reportFileUrl: payload.reportFileUrl,
+        status: 'SUBMITTED',
+        submittedAt,
+        capacityEvaluation: lineagePointer,
+      });
+      const response = await api.put<PhasedReport>(
+        API_ENDPOINTS.RESEARCH_WORKFLOW.PHASED_REPORT.UPDATE(targetId),
+        body,
+      );
+      return toStrict(response.data);
+    } catch (putErr) {
+      console.warn(
+        'PUT /api/PhasedReport/{id} (resubmit) failed; falling back to POST /submit',
+        putErr,
+      );
+    }
+  }
+
+  // Path 2: brand-new row with the lineage pointer. This was the
+  // original behaviour and is preserved as the fallback so we still
+  // produce a working resubmit on BE deployments that haven't shipped
+  // the structured PreviousReportId column.
   const baseBody: StrictPhasedReportCreateRequest = {
     researchGroupId: payload.researchGroupId,
     groupMemberId: typeof payload.groupMemberId === 'number' ? payload.groupMemberId : null,
     reportFileUrl: payload.reportFileUrl,
-    capacityEvaluation:
-      typeof payload.previousReportId === 'number'
-        ? `__LINEAGE__:Resubmitted from report #${payload.previousReportId}`
-        : null,
+    capacityEvaluation: lineagePointer,
     finalOutcomeEvaluation: null,
     lectureFeedback: null,
     phaseNumber: payload.phaseNumber ?? null,
     milestoneTitle: payload.milestoneTitle ?? null,
-    submittedAt: payload.submittedAt ?? new Date().toISOString(),
+    submittedAt,
   };
   // When `previousReportId` is absent, strip `capacityEvaluation` entirely
   // so the wire body matches the prior service contract (no lineage pointer
