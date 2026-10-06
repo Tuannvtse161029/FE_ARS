@@ -37,19 +37,28 @@
   flex-shrink: 0;
 }
 
-/* PhasedReport variants — strict colour contract (brief #7):
-   submitted (on-time) + submitted-late → info/blue
-   awaiting-submission                   → info/blue
-   evaluated                             → success/green
-   rejected                              → error/red
-   overdue                               → error/red
+/* PhasedReport variants — strict colour contract (Oct 2026 update):
+   submitted (on-time)              → success/green   (student delivered on time)
+   submitted-late (past deadline)   → error/red       (student delivered but late)
+   awaiting-submission              → info/blue       (no submission yet, deadline ahead)
+   evaluated                        → success/green   (lecturer approved)
+   rejected                         → error/red       (lecturer rejected / needs revision)
+   overdue                          → error/red       (deadline passed, nothing uploaded)
    Both color AND label are always visible (WCAG — never color alone). */
 
-.submitted,
+.submitted {
+  background-color: var(--ars-success-bg);
+  color: var(--ars-success);
+  border-color: color-mix(in srgb, var(--ars-success) 30%, transparent);
+}
+
+/* submitted-late: red, same urgency as rejected/overdue. The student
+   did submit, but they missed the deadline — that's a failure state
+   the lecturer should be able to spot at a glance. */
 .submitted-late {
-  background-color: var(--ars-info-bg);
-  color: var(--ars-info);
-  border-color: color-mix(in srgb, var(--ars-info) 30%, transparent);
+  background-color: var(--ars-error-bg);
+  color: var(--ars-error);
+  border-color: color-mix(in srgb, var(--ars-error) 30%, transparent);
 }
 
 .awaiting-submission {
