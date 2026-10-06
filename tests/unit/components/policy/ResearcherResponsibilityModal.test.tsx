@@ -370,4 +370,100 @@ describe('ResearcherSubmissionForm – Researcher Responsibility gate', () => {
       'false',
     );
   });
+
+  // Oct 2026 fix: the previous implementation locked `document.body`
+  // with `overflow: hidden` while the modal was open, which prevented
+  // the researcher from scrolling the page behind the modal. The
+  // researcher reported they could not see/agree because the page
+  // itself was jammed. The modal's own `.content` is the scroll
+  // container for the policy text, so the body lock is unnecessary.
+  it('does NOT lock the body scroll while the modal is open (so the page can be scrolled)', async () => {
+    renderForm();
+    expect(document.body.style.overflow).not.toBe('hidden');
+    fireEvent.click(screen.getByTestId('researcher-responsibility-open'));
+    await screen.findByTestId('researcher-responsibility-modal');
+    // Modal is open — the body should still be free to scroll.
+    expect(document.body.style.overflow).not.toBe('hidden');
+    // Closing the modal leaves the body in its original state.
+    await userEvent.click(screen.getByTestId('researcher-responsibility-cancel'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('researcher-responsibility-modal')).not.toBeInTheDocument();
+    });
+    expect(document.body.style.overflow).not.toBe('hidden');
+  });
+
+  // Oct 2026: the previous implementation rendered a "Default policy
+  // (admin has not saved a custom version yet)" version badge AND a
+  // bottom notice "Admins have not published a custom Researcher
+  // Responsibility yet …" when the policy came from the seed/fallback
+  // path (i.e. `fromFirestore: false`). Both pieces of copy were
+  // confusing the researcher — they leaked an internal implementation
+  // detail and made the modal look like it was warning them about
+  // something. We removed both. When the policy is the default seed,
+  // the modal should look identical to the live-policy case EXCEPT
+  // for the version badge, which simply doesn't render.
+  describe('default / seed policy (Oct 2026: no internal-detail copy)', () => {
+    const setDefaultPolicy = () => {
+      mockPolicyService.getOne.mockResolvedValue({
+        slug: 'researcher_responsibility',
+        title: 'Researcher Responsibility',
+        content: SEED_TEXT,
+        version: 1,
+        updatedAt: new Date().toISOString(),
+        updatedBy: 'System',
+        fromFirestore: false,
+      });
+    };
+
+    it('does NOT show the "Default policy (admin has not saved a custom version yet)" version badge', async () => {
+      setDefaultPolicy();
+      renderForm();
+      fireEvent.click(screen.getByTestId('researcher-responsibility-open'));
+      const modal = await screen.findByTestId('researcher-responsibility-modal');
+      // The version-badge text was the user's reported bad copy.
+      // After the fix, the version row simply doesn't render, so
+      // neither the English default string nor its translation can
+      // appear inside the modal.
+      expect(modal.textContent ?? '').not.toMatch(/default policy/i);
+      expect(modal.textContent ?? '').not.toMatch(/admin has not saved/i);
+      expect(modal.textContent ?? '').not.toMatch(/chính sách mặc định/i);
+      expect(modal.textContent ?? '').not.toMatch(/quản trị viên chưa lưu/i);
+    });
+
+    it('does NOT show the bottom "Admins have not published a custom Researcher Responsibility …" notice', async () => {
+      setDefaultPolicy();
+      renderForm();
+      fireEvent.click(screen.getByTestId('researcher-responsibility-open'));
+      const modal = await screen.findByTestId('researcher-responsibility-modal');
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('researcher-responsibility-content'),
+        ).toHaveTextContent(/Originality/);
+      });
+      expect(modal.textContent ?? '').not.toMatch(
+        /admins have not published/i,
+      );
+      expect(modal.textContent ?? '').not.toMatch(
+        /platform default and is still binding/i,
+      );
+      expect(modal.textContent ?? '').not.toMatch(
+        /quản trị viên chưa xuất bản/i,
+      );
+      expect(modal.textContent ?? '').not.toMatch(
+        /mặc định của nền tảng/i,
+      );
+    });
+
+    it('still shows the live version badge when the policy comes from Firestore', async () => {
+      // Sanity check: the version badge is still wired up, just
+      // only for the live-policy path. The default-policy case is
+      // the only one we hide it for.
+      renderForm();
+      fireEvent.click(screen.getByTestId('researcher-responsibility-open'));
+      const modal = await screen.findByTestId('researcher-responsibility-modal');
+      await waitFor(() => {
+        expect(modal.textContent ?? '').toMatch(/active policy/i);
+      });
+    });
+  });
 });
