@@ -35,6 +35,12 @@ import { groupMemberService, type GroupMember } from '../services/groupMember.se
 import { phasedReportService, type PhasedReport } from '../services/phasedReport.service';
 import { parseApiDateTimeAsUtc } from '../utils/datetime';
 import type { ProfilePublicationPreview, ProfileForumPostPreview } from '../services/profileExtras.service';
+// Used to hydrate the Reviewer profile's "papers reviewed by year" stream:
+// the ReviewRequest rows carry the reviewerId and the paperId, but the
+// `publishedAt` (the year we want to group on) lives on the Paper
+// record — so we join ReviewRequest → Paper by paperId before grouping.
+import { reviewRequestService } from '../services/reviewRequest.service';
+import { paperService } from '../services/paper.service';
 
 export type PublicProfileRole = 'Reviewer' | 'Researcher' | 'Lecturer' | 'Graduate Student';
 
@@ -99,7 +105,15 @@ export interface PublicProfileData {
     majorFieldName: string | null;
     subFieldName: string | null;
     expertiseChips: string[];
+    /**
+     * Bar chart of papers the profile owner REVIEWED, grouped by the
+     * year each paper was published. Distinct from
+     * `publicationCount` (which is the count of papers the profile
+     * owner AUTHORED and comes from the professional profile).
+     */
     yearStream: Array<{ label: string; value: number }>;
+    /** Total count of papers the profile owner reviewed, across all years. */
+    reviewedPaperCount: number;
   };
 
   researcher?: {
@@ -326,23 +340,89 @@ export function usePublicProfileData({
           safeText(prof?.subFieldName) || null,
         ].filter((x): x is string => Boolean(x));
         if (role === 'Reviewer') {
-          const yearStream = publications
-            .map((p) => ({ publishedAt: p.publishedAt }))
-            .filter((p) => p.publishedAt != null);
-          setRoleData((prev) => ({
-            ...prev,
-            reviewer: {
-              professionalProfile: prof ?? null,
-              isAvailable: typeof prof?.isAvailable === 'boolean' ? prof.isAvailable : null,
-              hindex: prof?.hindex ?? null,
-              totalCitations: prof?.totalCitations ?? null,
-              publicationCount: prof?.publicationCount ?? null,
-              majorFieldName: prof?.majorFieldName ?? null,
-              subFieldName: prof?.subFieldName ?? null,
-              expertiseChips,
-              yearStream: groupYearStream(yearStream),
-            },
-          }));
+          // The Reviewer's "by year" stream must reflect papers they
+          // REVIEWED, not papers they authored. The ProfilePublicationPreview
+          // rows in `publications` are authored by the profile owner (they
+          // also render in the publications list below), so we cannot reuse
+          // them. Instead:
+          //   1. Pull every ReviewRequest where this profile is the
+          //      reviewer — that gives us a list of paperIds they reviewed.
+          //   2. Pull the full Paper catalog so we can join each review
+          //      request to its paper's `publishedAt` (the year of the
+          //      paper that came out, which is the year the reviewer
+          //      contributed peer review on it).
+          //   3. Group the publishedAt years with the same helper the
+          //      Researcher branch uses so the bar-chart semantics stay
+          //      consistent across role types.
+          //
+          // If either fetch fails, fall back to an empty stream — better
+          // to render "No papers reviewed on record yet" than to mislabel
+          // the researcher's authored papers as reviews.
+          Promise.all([
+            reviewRequestService
+              .getForReviewer(userId)
+              .catch(() => [] as Awaited<ReturnType<typeof reviewRequestService.getForReviewer>>),
+            paperService
+              .getAll({ pageNumber: 1, pageSize: 1000 })
+              .then((res) => (Array.isArray(res?.items) ? res.items : []))
+              .catch(() => [] as Awaited<ReturnType<typeof paperService.getAll>>['items']),
+          ])
+            .then(([reviewRequests, papers]) => {
+              if (cancelled) return;
+              const paperPublishedAtById = new Map<number, string | null | undefined>();
+              for (const paper of papers) {
+                if (typeof paper?.id === 'number') {
+                  // The BE `Paper` schema uses `publicationDate` (not
+                  // `publishedAt`). The downstream `groupYearStream`
+                  // helper accepts any `{ publishedAt: string | null }`
+                  // shape, so we re-key the field on the way in.
+                  paperPublishedAtById.set(paper.id, paper.publicationDate ?? null);
+                }
+              }
+              const reviewYearStream = reviewRequests
+                .map((request) => {
+                  if (request.paperId == null) return null;
+                  return { publishedAt: paperPublishedAtById.get(request.paperId) ?? null };
+                })
+                .filter((row): row is { publishedAt: string | null } => row != null);
+              setRoleData((prev) => ({
+                ...prev,
+                reviewer: {
+                  professionalProfile: prof ?? null,
+                  isAvailable: typeof prof?.isAvailable === 'boolean' ? prof.isAvailable : null,
+                  hindex: prof?.hindex ?? null,
+                  totalCitations: prof?.totalCitations ?? null,
+                  publicationCount: prof?.publicationCount ?? null,
+                  majorFieldName: prof?.majorFieldName ?? null,
+                  subFieldName: prof?.subFieldName ?? null,
+                  expertiseChips,
+                  yearStream: groupYearStream(reviewYearStream),
+                  reviewedPaperCount: reviewRequests.length,
+                },
+              }));
+            })
+            .catch(() => {
+              if (cancelled) return;
+              // Fallback when both services error out — render an empty
+              // stream with the "no reviews on record" empty state. We
+              // deliberately do NOT reuse `publications` here because
+              // those are authored papers, not reviews.
+              setRoleData((prev) => ({
+                ...prev,
+                reviewer: {
+                  professionalProfile: prof ?? null,
+                  isAvailable: typeof prof?.isAvailable === 'boolean' ? prof.isAvailable : null,
+                  hindex: prof?.hindex ?? null,
+                  totalCitations: prof?.totalCitations ?? null,
+                  publicationCount: prof?.publicationCount ?? null,
+                  majorFieldName: prof?.majorFieldName ?? null,
+                  subFieldName: prof?.subFieldName ?? null,
+                  expertiseChips,
+                  yearStream: [],
+                  reviewedPaperCount: 0,
+                },
+              }));
+            });
         } else if (role === 'Researcher') {
           // ProfilePublicationPreview doesn't expose `status` — the BE filters
           // out non-PUBLISHED rows in profileExtras.service.ts. Treat every

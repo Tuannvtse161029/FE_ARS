@@ -71,7 +71,8 @@ const openPublicationDetails = (): void => {
 describe('<PublishedPaperCard> – private review data is hidden', () => {
   it('shows the reviewer name only when reviewerIdentityPublic is true', () => {
     renderCard(publicPaper, "Dr. Le Quang Huy");
-    openPublicationDetails();
+    // The reviewer row lives outside the collapsible details panel so
+    // the reviewer name is visible on the collapsed card.
     expect(screen.getByText(/Dr\. Le Quang Huy/)).toBeInTheDocument();
   });
 
@@ -100,7 +101,10 @@ describe('<PublishedPaperCard> – private review data is hidden', () => {
       reviewerIdentityPublic: false,
     };
     renderCard(closedIdentity, null);
-    openPublicationDetails();
+    // The reviewer row is now rendered OUTSIDE the collapsible
+    // "Show details" panel so the disclosure decision is visible
+    // without an extra click — same affordance as the Researcher
+    // badge at the top of the card.
     expect(screen.queryByText(/Dr\. Le Quang Huy/)).toBeNull();
     expect(screen.getByText(/Reviewer identity withheld per policy/i)).toBeInTheDocument();
   });
@@ -121,6 +125,84 @@ describe('<PublishedPaperCard> – private review data is hidden', () => {
     expect(screen.queryByText(/INTERNAL: do not leak/)).toBeNull();
     expect(screen.queryByText(/internalSecret/)).toBeNull();
     expect(screen.queryByText(/7/)).toBeNull();
+  });
+});
+
+describe('<PublishedPaperCard> – reviewer profile link on Discover Research', () => {
+  // The reviewer block at the bottom of the card surfaces the reviewer's
+  // full name so they receive the same profile credit as the Researcher
+  // (whose name is already a clickable `/profile/:userId` link). The
+  // link is only emitted when:
+  //   1. `reviewerIdentityPublic` is true (otherwise the name is
+  //      intentionally withheld per policy), AND
+  //   2. The reviewer row carries a numeric `reviewer.reviewerId` — we
+  //      never build a URL from a bare name.
+  it('renders the reviewer name as a /profile/:reviewerId link when both flags are set', () => {
+    const paperWithReviewerId: PublicationPaper = {
+      ...publicPaper,
+      reviewer: { ...publicPaper.reviewer!, reviewerId: 777 },
+    };
+    renderCard(paperWithReviewerId, 'Dr. Le Quang Huy');
+    // The reviewer row lives outside the collapsible details panel so
+    // the link is visible on the collapsed card — no need to expand
+    // the panel to assert on the link.
+    const link = screen.getByTestId('public-paper-reviewer-profile-link');
+    expect(link).toHaveAttribute('href', '/profile/777');
+    expect(link.textContent).toContain('Dr. Le Quang Huy');
+  });
+
+  it('renders the reviewer name as plain text when reviewerIdentityPublic=true but no reviewerId', () => {
+    // The BE joined the reviewer row but did not include a numeric
+    // reviewerId (or the row was synthesised by the demo). The card
+    // must still show the name, but as plain text — never as a
+    // URL built from the bare name.
+    const paperWithoutReviewerId: PublicationPaper = {
+      ...publicPaper,
+      reviewer: { ...publicPaper.reviewer!, reviewerId: undefined },
+    };
+    renderCard(paperWithoutReviewerId, 'Dr. Le Quang Huy');
+    expect(screen.getByText(/Dr\. Le Quang Huy/)).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('public-paper-reviewer-profile-link'),
+    ).toBeNull();
+  });
+
+  it('renders the reviewer name as plain text when reviewerIdentityPublic=false even if a reviewerId exists', () => {
+    // Identity is private — the name MUST NOT be linkable, and the
+    // card MUST render the "withheld" signal instead. The presence of
+    // a numeric reviewerId is irrelevant when the disclosure flag is
+    // off; emitting a link would leak the reviewer's identity against
+    // the explicit paper-level disclosure decision.
+    const paperIdentityPrivate: PublicationPaper = {
+      ...publicPaper,
+      reviewerIdentityPublic: false,
+      reviewer: { ...publicPaper.reviewer!, reviewerId: 777 },
+    };
+    renderCard(paperIdentityPrivate, null);
+    expect(screen.queryByText(/Dr\. Le Quang Huy/)).toBeNull();
+    expect(
+      screen.queryByTestId('public-paper-reviewer-profile-link'),
+    ).toBeNull();
+    expect(
+      screen.getByText(/Reviewer identity withheld per policy/i),
+    ).toBeInTheDocument();
+  });
+
+  it('ignores a non-finite reviewerId and falls back to plain text', () => {
+    // Defensive: if the adapter ever ships `NaN` or a non-positive
+    // number, the card must not build a malformed URL — the Profile
+    // page would 404. The realistic production paths are
+    // `undefined`/`null`/missing, but we also pin the NaN fallback
+    // because Math.random() / division can produce NaN at the
+    // adapter boundary.
+    const paperWithBadId: PublicationPaper = {
+      ...publicPaper,
+      reviewer: { ...publicPaper.reviewer!, reviewerId: Number.NaN },
+    };
+    renderCard(paperWithBadId, 'Dr. Le Quang Huy');
+    expect(
+      screen.queryByTestId('public-paper-reviewer-profile-link'),
+    ).toBeNull();
   });
 });
 
@@ -316,6 +398,28 @@ describe('<PublishedPaperCard> – demo papers render a profile link for the sub
       const link = screen.getByTestId('public-paper-author-profile-link');
       expect(link).toHaveAttribute('href', `/profile/${submitter.userId}`);
       expect(link.textContent).toContain(submitter.name);
+    });
+  }
+});
+
+describe('<PublishedPaperCard> – demo papers with a public reviewer render the reviewer profile link', () => {
+  // Mirrors the author-profile-link loop above. When a demo paper has
+  // both `reviewerIdentityPublic: true` AND a `reviewer.reviewerId`, the
+  // reviewer's full name must be a clickable link to `/profile/:id` —
+  // the same shape as the Researcher badge — so reviewers get profile
+  // credit on Discover Research during local preview.
+  for (const demoPaper of demoPublicationPapers) {
+    if (!demoPaper.reviewerIdentityPublic) continue;
+    if (!demoPaper.reviewer?.reviewerId) continue;
+
+    it(`renders ${demoPaper.reviewer.reviewerName} as a link to /profile/${demoPaper.reviewer.reviewerId} on "${demoPaper.title.slice(0, 40)}…"`, () => {
+      renderCard(demoPaper, demoPaper.reviewer.reviewerName);
+      // The reviewer row is rendered outside the collapsible details
+      // panel so the link is visible on the collapsed card — no need
+      // to expand the panel before asserting.
+      const link = screen.getByTestId('public-paper-reviewer-profile-link');
+      expect(link).toHaveAttribute('href', `/profile/${demoPaper.reviewer.reviewerId}`);
+      expect(link.textContent).toContain(demoPaper.reviewer.reviewerName);
     });
   }
 });

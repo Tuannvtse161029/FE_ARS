@@ -337,9 +337,19 @@
 }
 
 /* ── Reviewer disclosure row ───────────────────────────────── */
+/* Reviewer pill — mirrors the Researcher badge so both attribution
+   rows share the same layout (rounded, paper-tone background, icon +
+   muted label + bold role-coloured name). The whole pill is a single
+   clickable link when a numeric `reviewerId` is present, so reviewers
+   receive the same one-click profile access that the Researcher gets.
+   The Reviewer name uses `--ars-reviewer` (green) to stay
+   semantically distinct from the Researcher's amber tone while the
+   layout stays consistent. */
 .reviewerRow {
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--ars-network);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .reviewerPublic,
@@ -347,22 +357,49 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  padding: 4px var(--space-3);
   border-radius: var(--radius-md);
+  background: var(--ars-paper-alt);
+  border: 1px solid var(--ars-network);
+  color: var(--ars-ink);
   font-size: var(--font-size-sm);
   line-height: var(--line-height-normal);
-  border: 1px solid transparent;
+  width: fit-content;
+  text-decoration: none;
+  transition: background var(--transition-fast),
+    border-color var(--transition-fast),
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
 
-.reviewerPublic {
-  background: var(--ars-info-bg);
-  color: var(--ars-info);
+a.reviewerPublic {
+  cursor: pointer;
 }
 
-.reviewerPrivate {
-  background: var(--ars-paper-alt);
+a.reviewerPublic:hover {
+  background: var(--ars-paper);
+  border-color: var(--ars-reviewer);
+  box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.05));
+  transform: translateY(-1px);
+}
+
+a.reviewerPublic:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.reviewerLabel {
   color: var(--ars-ink-muted);
-  border-color: var(--ars-network);
+  font-weight: var(--font-weight-medium);
+}
+
+.reviewerName {
+  color: var(--ars-reviewer);
+  font-weight: var(--font-weight-semibold);
+}
+
+a.reviewerPublic:hover .reviewerName {
+  color: var(--ars-reviewer-mid);
 }
 
 /* ── Actions (cite + read PDF) ─────────────────────────────── */

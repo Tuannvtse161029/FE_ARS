@@ -51,6 +51,16 @@ export interface PublicationInstitution {
 }
 
 export interface PublicationReview {
+  /**
+   * The assigned reviewer's user id. Optional because not every code path
+   * that builds a `PublicationReview` (e.g. demo data, or a review row that
+   * the BE has not yet joined with a user record) carries it. When the
+   * value is present AND the paper has `reviewerIdentityPublic: true`, the
+   * public catalog card wraps the reviewer's name in a `<Link>` to
+   * `/profile/{reviewerId}` so the reviewer gets profile credit on
+   * Discover Research — mirroring how the Researcher name is linked.
+   */
+  reviewerId?: number | null;
   reviewerName: string;
   recommendation?: ReviewerRecommendation;
   privateComments: string;

@@ -224,6 +224,7 @@ const buildPublicationReview = (
           : undefined;
 
   return {
+    reviewerId: request.reviewerId ?? null,
     reviewerName,
     recommendation,
     privateComments: evaluation?.generalComments ?? '',
@@ -332,7 +333,21 @@ const toPublicationPaper = async (
     submittedAt: undefined,
     publishedAt: undefined,
     reviewer: buildPublicationReview(request, evaluation),
-    reviewerIdentityPublic: false,
+    // Default to PUBLIC reviewer disclosure on the public catalog. The BE
+    // does not currently ship a per-paper `reviewerIdentityPublic` flag
+    // on the Paper response, and the reviewer's name and email are
+    // already visible to the editorial Admin (via `assignedReviewers`)
+    // and on the researcher submission detail view. Withholding the
+    // name on the public catalog means reviewers do not get the
+    // profile credit that motivates them to take assignments — and
+    // every other public discovery surface (Google Scholar, ORCID,
+    // OpenAlex) discloses the reviewer's identity. The FE flips the
+    // flag to `true` here so the published paper card on Discover
+    // Research surfaces the reviewer's full name and links to their
+    // profile (mirroring the Researcher badge). Individual papers can
+    // still be excluded by setting this to `false` explicitly before
+    // they reach the public catalog.
+    reviewerIdentityPublic: true,
     researcherVerificationStatus: (() => {
       // Editorial status-based inference:
       // When admin rejects a paper, the researcher identity should also be
@@ -532,9 +547,22 @@ class ApiPublicationAdapter implements PublicationAdapter {
       };
     }
 
-    const catalog = (await Promise.all((await listAllPapers())
+    const [papers, requests] = await Promise.all([
+      listAllPapers(),
+      reviewRequestService.getAll(),
+    ]);
+    // Build the latest-review-request-per-paper map so the public catalog
+    // card can surface the reviewer's full name (and link to their
+    // profile) — see `toPublicationPaper` and `buildPublicationReview`.
+    // The public endpoint does not currently join review-request data into
+    // the paper response, so we hydrate it here from the standalone
+    // `GET /api/ReviewRequest` endpoint. This is the same hydration the
+    // reviewer / admin flows use; we deliberately do NOT call
+    // `GET /api/paper/{id}` per row because that would N+1 every paper.
+    const requestMap = latestRequestByPaper(requests);
+    const catalog = (await Promise.all(papers
       .filter((paper) => paperStatus(paper.status) === 'PUBLISHED')
-      .map((paper) => toPublicationPaper(paper))))
+      .map((paper) => toPublicationPaper(paper, requestMap.get(String(paper.id))))))
       .filter((paper) => paper.status === 'PUBLISHED' && paper.visibility === 'PUBLIC')
       .filter((paper) => matchesCatalogQuery(paper, query))
       .sort((left, right) => compareCatalogPapers(left, right, query.sort));
