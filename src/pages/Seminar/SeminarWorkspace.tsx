@@ -1271,12 +1271,15 @@ export const SeminarWorkspace = () => {
             // Owner-only lifecycle gates:
             //   - "Suspend" shows on upcoming / in-progress rows so the
             //     owner can take the seminar offline before it starts.
-            //   - "Complete" shows on upcoming / in-progress rows so the
-            //     owner can end the seminar early.
+            //   - "Complete" shows ONLY on in-progress rows so the
+            //     owner can end an ongoing seminar early (not upcoming).
             //   - "Reactivate" shows on INACTIVE rows so the owner can
             //     flip the seminar back to Upcoming from the same card.
             const showSuspend = canModify && owns && isUpcomingish;
-            const showComplete = canModify && owns && isUpcomingish;
+            const isInProgress =
+              sem.effectiveStatus === 'IN PROGRESS' ||
+              sem.status === 'IN PROGRESS';
+            const showComplete = canModify && owns && isInProgress;
             const showReactivate = canModify && owns && isInactive;
             return (
                   <li className={styles.seminarCard} key={sem.seminarId}>
