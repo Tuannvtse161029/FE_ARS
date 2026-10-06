@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nContext';
 import { adminService } from '../../services/admin.service';
-import { notificationService } from '../../services/notification.service';
 import type { RoleRequest } from '../../types/admin';
 import styles from './AdminDialog.module.css';
 
@@ -55,25 +54,18 @@ export const DenyRoleRequestModal = ({ request, open, onClose, onActioned }: Pro
       const updated = await adminService.decideRoleRequest(request.id, { status: 'DENIED', notes: normalized });
       onActioned(updated);
       onClose();
-      // Defensive FE notification — fire a `[Account] role rejected`
-      // notification to the requester. Best-effort: never block on a
-      // notification failure.
-      try {
-        if (typeof request.userId === 'number' && request.userId > 0) {
-          const roleLabel =
-            request.requestedAdditionalRoles?.length
-              ? request.requestedAdditionalRoles.join(', ')
-              : request.requestedRole?.trim() ||
-                request.requestedRoles?.join(', ') ||
-                'role';
-          await notificationService.create({
-            userId: request.userId,
-            message: `[Account] role rejected: yêu cầu nâng cấp "${roleLabel}" của bạn đã bị admin từ chối${normalized ? ` — ${normalized}` : ''}.`,
-          });
-        }
-      } catch (notifyErr) {
-        console.warn('Failed to send role-rejected notification:', notifyErr);
-      }
+      // NOTE: We intentionally do NOT fire a defensive `[Account] role
+      // rejected` notification from the FE. The BE
+      // (`POST /api/RoleRequest/{id}/reject`) already inserts the
+      // canonical `[Account] role rejected: …` row into the
+      // `Notifications` table and pushes it over SignalR. A second
+      // call from here (an earlier defensive hack) would produce a
+      // duplicate badge on the requester's bell — every rejection
+      // would bump the unread count by 2. Removing this call keeps
+      // the badge in sync with the BE's single source of truth. The
+      // route mapping for the resulting kind is in
+      // `src/utils/notificationRouteMap.ts` (`role-request-rejected`
+      // → `/account-settings`).
     } catch (submissionError) {
       setApiError(submissionError instanceof Error ? submissionError.message : t('admin.roleRequests.deny.apiError'));
     } finally {

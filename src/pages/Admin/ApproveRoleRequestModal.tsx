@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Check, X } from 'lucide-react';
 import { useI18n } from '../../i18n/I18nContext';
 import { adminService } from '../../services/admin.service';
-import { notificationService } from '../../services/notification.service';
 import type { RoleRequest } from '../../types/admin';
 import styles from './AdminDialog.module.css';
 
@@ -50,25 +49,18 @@ export const ApproveRoleRequestModal = ({ request, open, onClose, onActioned }: 
       });
       onActioned(updated);
       onClose();
-      // Defensive FE notification — fire a `[Account] role accepted`
-      // notification to the requester. Best-effort: never block on a
-      // notification failure.
-      try {
-        if (typeof request.userId === 'number' && request.userId > 0) {
-          const roleLabel =
-            request.requestedAdditionalRoles?.length
-              ? request.requestedAdditionalRoles.join(', ')
-              : request.requestedRole?.trim() ||
-                request.requestedRoles?.join(', ') ||
-                'role';
-          await notificationService.create({
-            userId: request.userId,
-            message: `[Account] role accepted: yêu cầu nâng cấp "${roleLabel}" của bạn đã được admin phê duyệt.`,
-          });
-        }
-      } catch (notifyErr) {
-        console.warn('Failed to send role-accepted notification:', notifyErr);
-      }
+      // NOTE: We intentionally do NOT fire a defensive `[Account] role
+      // accepted` notification from the FE. The BE
+      // (`POST /api/RoleRequest/{id}/approve`) already inserts the
+      // canonical `[Account] role accepted: …` row into the
+      // `Notifications` table and pushes it over SignalR. A second
+      // call from here (an earlier defensive hack) produced a
+      // duplicate badge on the requester's bell — every approve
+      // bumped the unread count by 2. Removing this call keeps the
+      // badge in sync with the BE's single source of truth. The
+      // route mapping for the resulting kind is in
+      // `src/utils/notificationRouteMap.ts` (`role-request-accepted`
+      // → `/account-settings`).
     } catch (submissionError) {
       setError(submissionError instanceof Error ? submissionError.message : t('admin.roleRequests.approve.failed'));
     } finally {
