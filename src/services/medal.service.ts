@@ -1320,4 +1320,36 @@ export const medalService = {
     }
     return [];
   },
+
+  /**
+   * Lấy danh sách huy hiệu dạng nhóm theo tiêu chí (category) để phục vụ dropdown Admin.
+   */
+  async getAdminDropdown(role?: string): Promise<any[]> {
+    const res = await api.get('/api/Medal/admin/dropdown', { params: role ? { role } : undefined });
+    return res.data || [];
+  },
+
+  /**
+   * Báo cáo thống kê tổng quan và chi tiết số lượng người dùng sở hữu từng huy hiệu từ Backend.
+   */
+  async getAdminAnalytics(): Promise<any> {
+    const res = await api.get('/api/Medal/admin/analytics');
+    return res.data;
+  },
+
+  /**
+   * Lấy danh sách chi tiết tất cả người dùng đang sở hữu huy hiệu được chỉ định (theo MedalId hoặc Code).
+   */
+  async getMedalUsers(id: string): Promise<any[]> {
+    const res = await api.get(`/api/Medal/admin/${id}/users`);
+    return res.data || [];
+  },
+
+  /**
+   * Tra cứu tiến độ thực tế theo thời gian thực của một User đối với một Medal cụ thể so với ngưỡng.
+   */
+  async getUserMedalProgress(userId: number | string, medalId: string): Promise<any> {
+    const res = await api.get(`/api/Medal/admin/users/${userId}/medal-progress/${medalId}`);
+    return res.data;
+  },
 };
