@@ -51,6 +51,16 @@ const ALLOWED_MIME_TYPES = ['video/mp4', 'video/mpeg'];
 /**
  * Validate file metadata (type, size, duration) before upload.
  * Duration is read via a temporary video element — no full file read needed.
+ *
+ * The duration check is best-effort: if the browser refuses to read
+ * metadata (CSP `media-src` is too tight, the user agent blocks the
+ * blob: URL, the codec is unsupported, or `loadedmetadata` simply
+ * never fires within the timeout), we log a `console.warn` and let
+ * the upload proceed. The BE enforces the 2-hour limit server-side
+ * (`POST /api/Seminar/{id}/summarize-audio` returns 4xx for over-long
+ * recordings), so a soft-fail here never lets an over-long video slip
+ * through — it only avoids blocking legitimate uploads on browsers
+ * that can't introspect the local blob.
  */
 async function validateFile(file: File): Promise<void> {
   if (!ALLOWED_MIME_TYPES.includes(file.type)) {
@@ -61,29 +71,67 @@ async function validateFile(file: File): Promise<void> {
   }
 
   // Read duration via video element — lightweight, no full file read.
+  // Wrapped in a 5-second timeout so a blocked `loadedmetadata` event
+  // (e.g. CSP `media-src` missing `blob:`) cannot stall the entire
+  // upload flow indefinitely.
   const objectUrl = URL.createObjectURL(file);
   try {
     const duration = await new Promise<number>((resolve, reject) => {
-      const video = document.createElement('video');
-      video.preload = 'metadata';
-      video.src = objectUrl;
-      video.onloadedmetadata = () => {
-        resolve(video.duration);
-        video.src = '';
+      const v = document.createElement('video');
+      v.preload = 'metadata';
+      v.muted = true;
+      v.src = objectUrl;
+      const cleanup = () => {
+        v.onloadedmetadata = null;
+        v.onerror = null;
+        v.src = '';
       };
-      video.onerror = () => {
+      v.onloadedmetadata = () => {
+        const d = v.duration;
+        cleanup();
+        resolve(d);
+      };
+      v.onerror = () => {
+        cleanup();
         reject(new Error('Could not read video metadata. The file may be corrupted.'));
       };
+      // Hard cap: if `loadedmetadata` never fires (CSP-blocked blob,
+      // missing codec, browser autoplay restrictions), resolve with
+      // `NaN` after 5s so the caller can soft-fail rather than hang.
+      window.setTimeout(() => {
+        if (v.onloadedmetadata) {
+          cleanup();
+          resolve(Number.NaN);
+        }
+      }, 5000);
     });
 
     if (!Number.isFinite(duration) || duration < 0) {
-      throw new Error('Could not determine video duration.');
+      // Soft fail: don't block the upload. The BE will reject files
+      // over 2 hours with a 4xx and surface a clear error message.
+      // eslint-disable-next-line no-console
+      console.warn(
+        '[useSeminarAudio] Could not read local video duration; skipping client-side 2-hour check. The BE will enforce the limit server-side.',
+      );
+      return;
     }
     if (duration >= MAX_DURATION_SEC) {
       throw new Error(
         `Video duration (${Math.floor(duration / 60)} min) must be strictly under 2 hours.`
       );
     }
+  } catch (err) {
+    // If we already threw a user-facing 2-hour error above, re-throw it
+    // verbatim. Anything else (CSP block, codec error, blob revoke race)
+    // is treated as a soft warning so the upload can still proceed.
+    if (err instanceof Error && /2 hours?/.test(err.message)) {
+      throw err;
+    }
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[useSeminarAudio] Video duration check skipped:',
+      err instanceof Error ? err.message : err,
+    );
   } finally {
     URL.revokeObjectURL(objectUrl);
   }

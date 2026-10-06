@@ -25,12 +25,20 @@
          directive when it comes from a <meta> element; the BE sets it
          as a real HTTP header in production so clickjacking protection
          still applies. `connect-src` whitelists the analytics endpoint
-         so GA4 measurement calls are not blocked by the policy. Every
-         other directive is locked down. Update this policy in lockstep
-         with index.html script/style sources. -->
+         so GA4 measurement calls are not blocked by the policy. `media-src`
+         is explicitly set to `'self' blob: data: https:` because the FE
+         reads MP4 metadata via a transient `<video>` element that points
+         at a `URL.createObjectURL(file)` blob — without `blob:` in
+         `media-src` the browser falls back to `default-src 'self'` and
+         blocks the media load, which manifests in the console as
+         `Loading media from 'blob:...' violates the following Content
+         Security Policy directive: "default-src 'self'"` and silently
+         breaks the seminar meeting-summary upload duration validation.
+         Every other directive is locked down. Update this policy in
+         lockstep with index.html script/style sources. -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://*.googletagmanager.com; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; style-src-elem 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://arsplatform.onrender.com wss://arsplatform.onrender.com https://*.googleapis.com https://*.google.com https://accounts.google.com https://firebasestorage.googleapis.com https://www.google-analytics.com wss://*.firebaseio.app; frame-src 'self' https://accounts.google.com https://*.firebaseapp.com https://firebasestorage.googleapis.com https://*.googleapis.com; object-src 'none'; base-uri 'self'; form-action 'self'"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://*.googletagmanager.com; style-src 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; style-src-elem 'self' 'unsafe-inline' https://accounts.google.com https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob: data: https:; connect-src 'self' https://arsplatform.onrender.com wss://arsplatform.onrender.com https://*.googleapis.com https://*.google.com https://accounts.google.com https://firebasestorage.googleapis.com https://www.google-analytics.com wss://*.firebaseio.app; frame-src 'self' https://accounts.google.com https://*.firebaseapp.com https://firebasestorage.googleapis.com https://*.googleapis.com; object-src 'none'; base-uri 'self'; form-action 'self'"
     />
 
     <!-- ── Bilingual font stack (this worker) ───────────────────
