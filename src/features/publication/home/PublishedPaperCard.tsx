@@ -118,6 +118,7 @@ export const PublishedPaperCard = ({
   accent,
 }: PublishedPaperCardProps) => {
   const locale = useLocale();
+  const t = useT();
   const copy = (en: string, vi: string): string => (locale === 'en' ? en : vi);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const orderedAuthors = [...paper.authors].sort((left, right) => left.order - right.order);
@@ -213,6 +214,46 @@ export const PublishedPaperCard = ({
         <p className={card.abstract}>{paper.abstract}</p>
       </section>
 
+      {/* Reviewer row lives OUTSIDE the collapsible "Show details"
+          panel so the reviewer's name and profile link are visible on
+          the collapsed card — the same affordance the Researcher badge
+          gets. The full editorial record (private comments, scores,
+          recommendation) is still hidden behind the toggle. The pill
+          mirrors the Researcher badge structure: icon + muted label
+          + role-coloured name, with the whole pill as the link target
+          when a numeric reviewerId is available. */}
+      <section className={card.reviewerRow} aria-label="Editorial review">
+        {publicReviewerName ? (
+          paper.reviewer?.reviewerId && Number.isFinite(paper.reviewer.reviewerId) ? (
+            <Link
+              to={`/profile/${paper.reviewer.reviewerId}`}
+              className={card.reviewerPublic}
+              data-testid="public-paper-reviewer-profile-link"
+              title={t(
+                'home.catalog.reviewer.viewProfile',
+                'View {name}\u2019s profile',
+                { name: publicReviewerName },
+              )}
+            >
+              <UserCheck size={14} aria-hidden="true" />
+              <span className={card.reviewerLabel}>{copy('Reviewer:', 'Người phản biện:')}</span>
+              <strong className={card.reviewerName}>{publicReviewerName}</strong>
+            </Link>
+          ) : (
+            <div className={card.reviewerPublic}>
+              <UserCheck size={14} aria-hidden="true" />
+              <span className={card.reviewerLabel}>{copy('Reviewer:', 'Người phản biện:')}</span>
+              <strong className={card.reviewerName}>{publicReviewerName}</strong>
+            </div>
+          )
+        ) : (
+          <div className={card.reviewerPrivate}>
+            <ShieldCheck size={14} aria-hidden="true" />
+            <span className={card.reviewerLabel}>{copy('Reviewer identity withheld per policy.', 'Danh tính người phản biện được bảo mật theo chính sách.')}</span>
+          </div>
+        )}
+      </section>
+
       <button
         type="button"
         className={card.detailsToggle}
@@ -301,19 +342,8 @@ export const PublishedPaperCard = ({
             )}
           </section>
 
-          <section className={card.reviewerRow} aria-label="Editorial review">
-            {publicReviewerName ? (
-              <div className={card.reviewerPublic}>
-                <UserCheck size={14} aria-hidden="true" />
-                <span>{copy('Reviewed by', 'Phản biện bởi')} <strong>{publicReviewerName}</strong> {copy('(publicly disclosed)', '(công khai danh tính)')}</span>
-              </div>
-            ) : (
-              <div className={card.reviewerPrivate}>
-                <ShieldCheck size={14} aria-hidden="true" />
-                <span>{copy('Reviewer identity withheld per policy.', 'Danh tính người phản biện được bảo mật theo chính sách.')}</span>
-              </div>
-            )}
-          </section>
+          {/* Reviewer row was moved out of the collapsible panel so the
+              name + profile link are visible on the collapsed card. */}
         </div>
       ) : null}
 

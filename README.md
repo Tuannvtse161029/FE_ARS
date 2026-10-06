@@ -359,7 +359,7 @@ The five roles split cleanly into three concerns: **platform stewardship** (Admi
 
 | Capability | Primary route(s) | Key BE endpoints | Notes |
 | --- | --- | --- | --- |
-| Authenticated research catalog (browse published papers) | `/home` | `GET /api/Paper`, `GET /api/OpenAlex/works/{workId}` | All four non-Admin roles share this catalog |
+| Authenticated research catalog (browse published papers) | `/home` | `GET /api/Paper`, `GET /api/ReviewRequest`, `GET /api/OpenAlex/works/{workId}` | All four non-Admin roles share this catalog. Each card surfaces the reviewer's full name as a clickable `/profile/:reviewerId` pill (when the paper carries a numeric reviewerId), the Researcher's name as a `/profile/:authorId` link, and a "Reviewed by … (publicly disclosed)" attribution when `reviewerIdentityPublic` is true. Withheld-identity papers render the "Reviewer identity withheld per policy." pill instead. See `src/features/publication/api/publication.adapter.ts` and `src/features/publication/home/PublishedPaperCard.tsx`. |
 | Submit a new manuscript | `/researcher/submissions/new` | `POST /api/Paper`, Firebase Storage direct upload for `pdfUrl` | Researcher submitts metadata + uploads PDF; BE stores the URL |
 | Track submission through the editorial state machine | `/researcher/submissions`, `/researcher/submissions/:id` | `GET /api/Paper/by-researcher`, `PUT /api/Paper/{id}` | Same `PUBLISHED / DRAFT / REVISION_REQUIRED / WITHDRAWN` machine |
 | Authorship verification (ORCID + Semantic Scholar + OpenAlex) | (inline on submission detail) | `POST /api/Paper/{id}/verify-authorship`, ORCID OAuth callback `/auth/orcid/callback` | Restricted to ORCID-eligible roles (Researcher / Reviewer / Lecturer) |
@@ -377,6 +377,7 @@ The five roles split cleanly into three concerns: **platform stewardship** (Admi
 | Edit own professional profile (used as the Admin assignment card) | `/profile?tab=professional` | `GET/PUT /api/ProfessionalProfile`, `GET /api/ProfessionalProfile/{id}` | Replaces the legacy `/reviewer/professional-profile` route |
 | Withdraw earned wallet balance to a bank account | `/profile` (wallet section) | `POST /api/WithdrawalRequest`, `GET /api/Wallet/{userId}` | Driven by the `WithdrawalRequest` schema |
 | Accept seminar invitations as an academic attendee | `/seminar-participations` | `GET /api/Seminar/my-invitations`, `PUT /api/SeminarParticipant/{id}` | Reviewer is the canonical invited role; feedback window is `SEMINAR_FEEDBACK_WINDOW_HOURS` |
+| Public profile — discoverable contribution ledger | `/profile/:userId` (public tab) | `GET /api/ProfessionalProfile/{id}`, `GET /api/ReviewRequest` (filtered by `reviewerId`), `GET /api/Paper` (joined for `publicationDate`) | Forest-green "Trust ledger" view. Visitors see the reviewer's identity strip, expertise-area chips, and the **"Papers reviewed by year"** bar chart (groups `ReviewRequest.paperId` → `Paper.publicationDate` per year, **not** authored papers). Owner-only preview surfaces H-Index / Citations / Publications metric tiles. Withheld reviewer identities still render a `ShieldCheck` pill instead of a name. See `src/components/profile/publicViews/ReviewerPublicView.tsx` and the `roleData.reviewer.yearStream` field in `src/hooks/usePublicProfileData.ts`. |
 
 #### Graduate Student
 
@@ -397,7 +398,7 @@ The five roles split cleanly into three concerns: **platform stewardship** (Admi
 | Public project landing (signed-out) | `/` | Outside `PublicRoute` so returning users can also visit it |
 | Login + register (incl. Google and ORCID OAuth) | `/login`, `/register`, `/auth/google/callback`, `/auth/orcid/callback`, `/complete-google-registration` | See `src/utils/registrationRoles.ts` for the requestable role list |
 | Forum | `/forum` | Open to all authenticated roles (unverified `Guest` included) |
-| Personal profile (Account / Professional / Public tabs) | `/profile` | Professional tab is the legacy Reviewer deep-link target |
+| Personal profile (Account / Professional / Public tabs) | `/profile`, `/profile/:userId` (public view) | The Professional tab is the legacy Reviewer deep-link target. The Public tab renders a role-specific "Trust ledger": for **Reviewer** profiles the year-stream is **papers reviewed** (joined from `GET /api/ReviewRequest` + `GET /api/Paper` by `paperId → publicationDate`), not authored papers; for **Researcher** profiles it is authored publications; for **Lecturer** profiles it is hosted seminars + groups. Reviewer/Researcher pill on the public published-paper card and the public profile share the same shape: icon + muted role label + role-coloured bold name with the whole pill as a `/profile/:userId` link when a numeric id is present. See `src/components/profile/publicViews/{Reviewer,Researcher,Lecturer}PublicView.tsx` and `src/components/profile/PublicProfilePage.tsx`. |
 | Notification inbox | `/notifications` | Per-role notification-type routing via `resolveNotificationRoute` |
 | Legal pages (Privacy / ToS) | `/privacy-policy`, `/terms-of-service` | Public |
 

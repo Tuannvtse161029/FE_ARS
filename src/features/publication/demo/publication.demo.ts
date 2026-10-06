@@ -57,5 +57,18 @@ export const demoPublicationPapers: PublicationPaper[] = [
     publishedAt: '2026-08-04T08:00:00.000Z',
     reviewerIdentityPublic: true,
     researcherVerificationStatus: 'VERIFIED',
+    // Reviewer row — populated so the demo can preview the new reviewer
+    // profile link on Discover Research. `reviewerId: 99003` is a
+    // hand-picked fake id, mirroring the demo author `userId` pattern
+    // above. The Profile page will 404 for this id (the demo catalog
+    // runs without a live BE seed) but the link wiring is what matters.
+    reviewer: {
+      reviewerId: 99003,
+      reviewerName: 'Dr. Le Quang Huy',
+      recommendation: 'ACCEPT',
+      privateComments: '',
+      privateScores: {},
+      submittedAt: '2026-07-22T08:00:00.000Z',
+    },
   },
 ];

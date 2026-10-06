@@ -66,6 +66,11 @@ describe('publicationAdapter.getPublicCatalog', () => {
         hasNext: false,
       },
     });
+    // `getPublicCatalog` now also fetches `/api/ReviewRequest` so the
+    // public card can surface the reviewer full name + profile link.
+    // Return an empty list for these tests — the reviewer-link shape is
+    // covered by the dedicated test below.
+    mockGet.mockResolvedValueOnce({ data: [] });
 
     const result = await publicationAdapter.getPublicCatalog({
       page: 1,
@@ -118,6 +123,11 @@ describe('publicationAdapter.getPublicCatalog', () => {
         hasNext: false,
       },
     });
+    // `getPublicCatalog` also fetches `/api/ReviewRequest` so the card
+    // can surface the reviewer full name + profile link. Return an
+    // empty list — none of the author-submitter tests assert on a
+    // reviewer row, so we keep the test focused on author identification.
+    mockGet.mockResolvedValueOnce({ data: [] });
 
     const result = await publicationAdapter.getPublicCatalog({
       page: 1,
@@ -165,6 +175,11 @@ describe('publicationAdapter.getPublicCatalog', () => {
         hasNext: false,
       },
     });
+    // `getPublicCatalog` also fetches `/api/ReviewRequest` so the card
+    // can surface the reviewer full name + profile link. Return an
+    // empty list — none of the author-submitter tests assert on a
+    // reviewer row.
+    mockGet.mockResolvedValueOnce({ data: [] });
 
     const result = await publicationAdapter.getPublicCatalog({
       page: 1,
@@ -228,6 +243,11 @@ describe('publicationAdapter.getPublicCatalog', () => {
         hasNext: false,
       },
     });
+    // `getPublicCatalog` also fetches `/api/ReviewRequest` so the card
+    // can surface the reviewer full name + profile link. Return an
+    // empty list — the OpenAlex-enriched author tests don't assert on
+    // a reviewer row.
+    mockGet.mockResolvedValueOnce({ data: [] });
 
     const result = await publicationAdapter.getPublicCatalog({
       page: 1,
